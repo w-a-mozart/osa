@@ -1,0 +1,84 @@
+<?php
+
+/**
+ * @file
+ * Drupal Module to integrate CiviCRM and Drupal Commerce 
+ */
+require_once 'civicrm_commerce.inc';
+require_once 'civicrm_line_item.php';
+
+/**
+ * This hook is called before a CiviCRM page is rendered.
+ * It then invokes the appropriate customization function.
+ *
+ * @param $page
+ *   The page being rendered.
+ *
+ * @see http://wiki.civicrm.org/confluence/display/CRMDOC33/CiviCRM+hook+specification#CiviCRMhookspecification-hookcivicrmpageRun
+function civicrm_commerce_civicrm_pageRun( &$page ) {
+    $name = $page->getVar('_name');
+
+    if (function_exists("civicrm_commerce_civicrm_page_$name")) {
+        call_user_func("civicrm_commerce_civicrm_page_$name", $page);
+    }
+}
+*/
+
+/**
+ * Override what is on the Contact Dashboard to make a 'Family Profile' page
+ *
+ * @param object $page
+ *   The CRM_Contact_Page_View_UserDashBoard object being rendered.
+ *
+function civicrm_commerce_civicrm_page_CRM_Contact_Page_View_UserDashBoard( &$page ) {
+}
+ */
+
+/**
+ * This hook is invoked when building a CiviCRM form. This hook should also be
+ * used to set the default values of a form element.
+ *
+ * @param string $formName
+ *   The name of the form.
+ * @param object $form
+ *    Reference to the form object.
+ *
+ * @see http://wiki.civicrm.org/confluence/display/CRMDOC41/CiviCRM+hook+specification#CiviCRMhookspecification-hookcivicrmbuildForm
+function civicrm_commerce_civicrm_buildForm( $formName, &$form ) {
+    
+    if (function_exists("civicrm_commerce_civicrm_buildForm_$formName")) {
+        call_user_func("civicrm_commerce_civicrm_buildForm_$formName", $form);
+    }
+}
+ */
+
+/**
+ * This hook is invoked when a CiviCRM form is submitted. If the module has
+ * injected any form elements, this hook should save the values in the database.
+ *
+ * @param string $formName
+ *   The name of the form.
+ * @param object $form
+ *   A reference to the form object.
+ *
+ * @see http://wiki.civicrm.org/confluence/display/CRMDOC41/CiviCRM+hook+specification#CiviCRMhookspecification-hookcivicrmpostProcess
+function civicrm_commerce_civicrm_postProcess( $formName, &$form ) {
+    
+    if (function_exists("civicrm_commerce_civicrm_postProcess_$formName")) {
+        call_user_func("civicrm_commerce_civicrm_postProcess_$formName", $form);
+    }
+}
+ */
+
+/**
+ * Add custom procesing to CiviCRM Profile based forms
+ *
+ * @param $form
+ *   The CRM_Profile_Form_Edit object being rendered.
+ *
+function civicrm_commerce_civicrm_buildForm_CRM_Profile_Form_Edit( &$form ) {
+}
+
+function civicrm_commerce_civicrm_postProcess_CRM_Profile_Form_Edit( &$form ) {
+}
+ */
