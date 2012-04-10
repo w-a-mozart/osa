@@ -1,0 +1,9 @@
+name = CiviCRM Commerce Integration
+description = "Integrate CiviCRM and Drupal Commerce Module."
+version = 7.x-dev
+package = CiviCRM
+dependencies[] = civicrm
+dependencies[] = commerce
+core = 7.x
+
+files[] = civicrm_commerce.module
