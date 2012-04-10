@@ -1,0 +1,13 @@
+A repository to manage custom modules for drupal and civicrm.
+
+This work is being done to support a non-profit children's music association.
+It is very much a work in progress.
+
+Some of the things we are attempting are:
+
+civicrm to drupal commerce integration
+- a civicrm custom payment processor which adds membership registration, event registration, other generic contributions to a drupal commerce cart rather than an actual payment processor directly.
+
+paid civicrm relationships
+- extend civicrm to enable end users to create and pay for a time limited relationship with another contact. Our use-case is to allow students to register and pay for private lesson fees with a specific teacher.
+
