@@ -1,0 +1,17 @@
+<?php
+
+  /**
+   * @file 
+   */
+
+  /**
+   * Implementation of hook_install() 
+   */
+  function osa_install() {
+  }
+
+  /**
+   * Implementation of hook_uninstall() 
+   */
+  function osa_uninstall() {
+  }

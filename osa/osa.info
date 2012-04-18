@@ -1,0 +1,8 @@
+name = Oakville Suzuki Association
+description = Code Specific to the OSA
+version = 7.x-dev
+package = OSA
+dependencies[] = civicrm
+core = 7.x
+
+files[] = osa.module

@@ -1,0 +1,286 @@
+<?php
+
+/**
+ * @file
+ * Drupal Module for The Oakville Suzuki Association
+ * - customizes several CiviCRM pages and forms
+ */
+require_once 'osa.inc';
+
+/**
+ * This hook is called before a CiviCRM page is rendered.
+ * It then invokes the appropriate customization function.
+ *
+ * @param $page
+ *   The page being rendered.
+ *
+ * @see http://wiki.civicrm.org/confluence/display/CRMDOC33/CiviCRM+hook+specification#CiviCRMhookspecification-hookcivicrmpageRun
+ */
+function osa_civicrm_pageRun(&$page)
+{
+  $name = $page->getVar('_name');
+
+  if (function_exists("osa_civicrm_page_$name")) {
+    call_user_func("osa_civicrm_page_$name", $page);
+  }
+}
+
+/**
+ * Override what is on the Contact Dashboard to make a 'Family Profile' page
+ *
+ * @param object $page
+ *   The CRM_Contact_Page_View_UserDashBoard object being rendered.
+ *
+ */
+function osa_civicrm_page_CRM_Contact_Page_View_UserDashBoard(&$page)
+{
+  require_once 'api/api.php';
+
+  // Want the family profile unless the contact id is passed in the URL
+  $hid = null;
+  $cid = CRM_Utils_Request::retrieve( 'id', 'Positive' );
+  if ( ! isset( $cid ) ) {
+    $cid = $page->_contactId;
+    $hid =_osa_getHousehold( $cid );
+    if ( isset( $hid ) ) {
+      $cid = $hid;
+    }
+    else {
+      CRM_Utils_System::setUFMessage( 'You do not have a Family Profile. Click <b>' . CRM_Utils_System::href( 'here', 'civicrm/profile/create', 'reset=1&gid=' . OSA_PROFILE_FAMILY ) . '</b> if you would like to create one.' );
+    }
+  }
+
+  // clean house
+  _osa_manageHouseholdRelationships( $cid );
+
+  // get the contact object being displayed
+  $result = civicrm_api( 'Contact', 'Get', array('id' => $cid, 'version' => 3) );
+  $pgContact = $result['values'][$result['id']];
+  $pgContactType = isset($pgContact['contact_sub_type']) ? $pgContact['contact_sub_type'][0] : $pgContact['contact_type'];
+  // FIX: image_URL not currently returned by api
+  $pgContact['image_URL'] = CRM_Contact_BAO_Contact_Utils::getImage( $pgContactType, false, $cid );
+  $page->assign( 'contact', $pgContact );
+
+  // init arrays
+  $homes = array();
+  $parents = array();
+  $students = array();
+  $teachers = array();
+  $others = array();
+  $members = array();
+  $smarty = $page->getTemplate();
+  
+  // get all relationships for this contact
+  $result = civicrm_api( 'Relationship', 'Get', array('contact_id' => $cid, 'version' => 3) );
+  $relationships = $result['values'];
+
+  // get the related people and separate them by type
+  foreach( $relationships as $rid => $relationship ) {
+    $result = civicrm_api( 'Contact', 'Get', array('id' => $relationship['cid'], 'version' => 3) );
+    $contact = $result['values'][$result['id']];
+    $contactType = isset($contact['contact_sub_type']) ? $contact['contact_sub_type'][0] : $contact['contact_type'];
+    $person = array( 
+      'contact' => $contact,
+      'relationship' => $relationship,
+      'links' => _osa_related_links( $contact['contact_id'], $relationship['id'], $contactType )
+    );
+
+    switch ( $contactType ) {
+      case 'Parent':
+        $parents[] = $person;
+        $result = civicrm_api( 'Contribution', 'Get', array('contact_id' => $relationship['cid'], 'sort' => 'receive_date desc', 'rowCount' => 6, 'version' => 3) );
+        _osa_appendTemplateVar( $smarty, 'contribute_rows', $result );
+      break;
+      case 'Student':
+        $membership = _osa_get_membership( $contact[ 'contact_id'] );
+        if ( isset( $membership ) ) {
+          $person[ 'contact' ][ 'is_current_member' ] = $membership[ 'is_current_member' ];
+          $membership[ 'display_name' ] = $contact[ 'display_name' ];
+          $members[] = $membership;
+        }
+        $students[] = $person;
+        $result = civicrm_api( 'Contribution', 'Get', array('contact_id' => $relationship['cid'], 'sort' => 'receive_date desc', 'rowCount' => 6, 'version' => 3) );
+        _osa_appendTemplateVar( $smarty, 'contribute_rows', $result );
+      break;
+      case 'Household':
+        $homes[] = $person;
+      break;
+      case 'Teacher':
+        $teachers[] = $person;
+      break;
+      default:
+        $others[] = $person;
+    }
+  }
+
+  // if this is not a family profile we need to add the current contact's info
+  if ( $pgContactType != 'Household' ) {
+    $membership = _osa_get_membership( $pgContact[ 'contact_id'] );
+    if ( isset( $membership ) ) {
+      $pgContact[ 'is_current_member' ] = $membership[ 'is_current_member' ];
+      $membership[ 'display_name' ] = $pgContact[ 'display_name' ];
+      $members[] = $membership;
+    }
+  }
+  
+  $page->assign( 'parents', $parents );
+  $page->assign( 'students', $students );
+  $page->assign( 'homes', $homes );
+  $page->assign( 'teachers', $teachers );
+  $page->assign( 'others', $others );
+  $page->assign( 'members', $members );
+  
+  // use the CiviCRM Profiles to display tombstone info
+  require_once 'CRM/Profile/Page/Dynamic.php';
+  $gids = array( 'Phone and Email' => OSA_PROFILE_PHONE_EMAIL, 'Address' => OSA_PROFILE_ADDRESS );
+  $profileElements = array();
+  foreach( $gids as $title => $gid ) {
+    $profile = new CRM_Profile_Page_Dynamic( $cid, $gid, 'Profile' );
+    $profileElements[] =
+      array(
+        'cid'   => $cid, 
+        'gid'   => $gid, 
+        'title' => $title,
+        'html'  => $profile->run()
+      );
+  }
+  $page->assign( 'profileElements', $profileElements );
+
+  // override the order and templates used for each dashboard element
+  $event_rows = $smarty->get_template_vars('event_rows');
+  $contribute_rows = $smarty->get_template_vars('contribute_rows');
+  $groupIn = $smarty->get_template_vars('groupIn');
+  
+  $dashboardElements = 
+    array (
+      array (
+        'templatePath' => 'CRM/Contact/Page/View/UserDashBoard/Family.tpl',
+        'sectionTitle' => 'Family Members',
+        'sectionState' => 'open'
+      ),
+      array (
+        'templatePath' => 'CRM/Contact/Page/View/UserDashBoard/Relationship.tpl',
+        'sectionTitle' => 'Other Related Individual(s)',
+        'sectionState' => empty($others) ? 'closed' : 'open',
+      ),
+      array (
+        'templatePath' => 'CRM/Contact/Page/View/UserDashBoard/Membership.tpl',
+        'sectionTitle' => 'Membership Registration(s)',
+        'sectionState' => empty($members) ? 'closed' : 'open',
+      ),
+      array (
+        'templatePath' => 'CRM/Contact/Page/View/UserDashBoard/Teacher.tpl',
+        'sectionTitle' => 'Teacher Registration(s)',
+        'sectionState' => empty($teachers) ? 'closed' : 'open',
+      ),
+      array (
+        'templatePath' => 'CRM/Contact/Page/View/UserDashBoard/Event.tpl',
+        'sectionTitle' => 'Event Registration(s)',
+        'sectionState' => empty($event_rows) ? 'closed' : 'open',
+      ),
+      array (
+        'templatePath' => 'CRM/Contact/Page/View/UserDashBoard/Contribute.tpl',
+        'sectionTitle' => 'Recent Payment(s)',
+        'sectionState' => empty($contribute_rows) ? 'closed' : 'open',
+      ),
+      array (
+        'templatePath' => 'CRM/Contact/Page/View/UserDashBoard/Group.tpl',
+        'sectionTitle' => 'Mailing List(s)',
+        'sectionState' => empty($groupIn) ? 'closed' : 'open',
+      ),
+    );
+  $page->assign( 'dashboardElements', $dashboardElements );
+
+  // override the page title (do this last as generating profiles also ovrides the title)
+  CRM_Utils_System::setTitle( $pgContact['display_name'], $pgContact['image_URL'] . ' ' . $pgContact['display_name'] );
+}
+
+/**
+ * Add custom procesing to CiviCRM Profile based forms
+ *
+ * @param $form
+ *   The CRM_Profile_Form_Edit object being rendered.
+ *
+ */
+function osa_civicrm_buildForm_CRM_Profile_Form_Edit( &$form ) {
+  
+  $gid = $form->getVar( '_gid' );
+  $mode = $form->getVar('_mode');
+
+  // Add a relationship type field to the Related Individual profile form
+  if ( $gid == OSA_PROFILE_REL_INDIVIDUAL ) {
+    if ( $mode == CRM_Profile_Form::MODE_CREATE ) { 
+      $hid = CRM_Utils_Request::retrieve( 'hid', 'Positive' );
+      _osa_addRelationshipField( $form, $hid );
+    }
+  }
+  
+  // add CSS and javascript to profile forms in a colorbox
+  $snippet = CRM_Utils_Request::retrieve( 'snippet', 'Positive' );
+  $context = CRM_Utils_Request::retrieve( 'context', 'String' );
+  if ( $snippet == 1 && $context == 'boxload' ) {
+    $smarty = CRM_Core_Smarty::singleton( );
+    $smarty->display( 'CRM/common/jquery.tpl' );
+    $smarty->display( 'CRM/common/commonCSS.tpl' );
+    $smarty->display( 'osa/boxload.tpl' );
+  }
+}
+
+function osa_civicrm_postProcess_CRM_Profile_Form_Edit(&$form) {
+
+  $gid = $form->getVar( '_gid' );
+  $mode = $form->getVar('_mode');
+  
+  // process the custom relationship type field on the Related Individual profile form
+  if ( $gid == OSA_PROFILE_REL_INDIVIDUAL ) {
+    // only support relationship creation; delete via civicrm/contact/view/rel?action=delete; edit via delete & create;
+    if ( $mode == CRM_Profile_Form::MODE_CREATE ) { 
+      _osa_saveRelationshipField( $form );
+    }
+  }
+}
+
+/**
+ * This hook is invoked when building a CiviCRM form. This hook should also be
+ * used to set the default values of a form element.
+ *
+ * @param string $formName
+ *   The name of the form.
+ * @param object $form
+ *  Reference to the form object.
+ *
+ * @see http://wiki.civicrm.org/confluence/display/CRMDOC41/CiviCRM+hook+specification#CiviCRMhookspecification-hookcivicrmbuildForm
+ */
+function osa_civicrm_buildForm($formName, &$form) {
+  
+  if (function_exists("osa_civicrm_buildForm_$formName")) {
+    call_user_func("osa_civicrm_buildForm_$formName", $form);
+  }
+}
+
+/**
+ * This hook is invoked when a CiviCRM form is submitted. If the module has
+ * injected any form elements, this hook should save the values in the database.
+ *
+ * @param string $formName
+ *   The name of the form.
+ * @param object $form
+ *   A reference to the form object.
+ *
+ * @see http://wiki.civicrm.org/confluence/display/CRMDOC41/CiviCRM+hook+specification#CiviCRMhookspecification-hookcivicrmpostProcess
+ */
+function osa_civicrm_postProcess($formName, &$form) {
+  
+  if (function_exists("osa_civicrm_postProcess_$formName")) {
+    call_user_func("osa_civicrm_postProcess_$formName", $form);
+  }
+}
+
+function osa_civicrm_buildForm_CRM_Contribute_Form_Contribution_Main(&$form) {
+  
+  CRM_Core_Error::debug( 'buildForm form', $form );
+  
+  $form->addElement('select', 'contact_id' , ts('Member'), array( 1 => 'Mom', 2 => 'Dad', 3 => 'Son' ));
+  $form->addRule('contact_id', ts('Please select a family member.'), 'required');
+
+}
