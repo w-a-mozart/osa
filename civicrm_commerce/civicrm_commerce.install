@@ -8,8 +8,8 @@
  * Implementation of hook_install() 
  */
 function civicrm_commerce_install() {
-    // get Commerce Line Items module to configure our types
-    commerce_line_item_configure_line_item_types();
+  // get Commerce Line Items module to configure our types
+  commerce_line_item_configure_line_item_types();
 }
 
 /**
@@ -17,16 +17,16 @@ function civicrm_commerce_install() {
  */
 function civicrm_commerce_uninstall() {
 
-    module_load_include('module', 'commerce');
-    $line_item_types = civicrm_commerce_commerce_line_item_type_info();
-    foreach ( $line_item_types as $line_item_type => $line_item_type_info ) {
-        // Delete any field instance attached to a giftwrap line item.
-        commerce_delete_instances('commerce_line_item', $line_item_type);
-    }
+  module_load_include('module', 'commerce');
+  $line_item_types = civicrm_commerce_commerce_line_item_type_info();
+  foreach ( $line_item_types as $line_item_type => $line_item_type_info ) {
+    // Delete any field instance attached to a giftwrap line item.
+    commerce_delete_instances('commerce_line_item', $line_item_type);
+  }
 
-    $fields = _civicrm_commerce_fields();
-    foreach ( $fields as $field => $field_info ) {
-        // Delete fields.
-        commerce_delete_field($field_info['name']);
-    }
+  $fields = _civicrm_commerce_fields();
+  foreach ( $fields as $field => $field_info ) {
+    // Delete fields.
+    commerce_delete_field($field_info['name']);
+  }
 }

@@ -2,7 +2,7 @@
 
 /**
  * @file
- * Drupal Module to integrate CiviCRM and Drupal Commerce 
+ * Drupal Module to integrate CiviCRM and Drupal Commerce as a Payment Processor
  */
 require_once 'civicrm_commerce.inc';
 require_once 'civicrm_line_item.php';
