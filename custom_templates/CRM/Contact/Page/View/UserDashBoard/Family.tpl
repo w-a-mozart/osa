@@ -87,8 +87,8 @@
 {/if}
 {if $contact.contact_type eq 'Household'}
         <div class="action-link">
-            <a title='New Parent' class='add button box-load'  href='{crmURL p='civicrm/profile/create' q="reset=1&snippet=1&context=boxload&gid=14&hid=`$contact.contact_id`"}&width=50%'><span><div class='icon add-icon'></div> Add a Parent/Guardian </span></a>
-            <a title='New Student' class='add button box-load'  href='{crmURL p='civicrm/profile/create' q="reset=1&snippet=1&context=boxload&gid=11&hid=`$contact.contact_id`"}&width=50%'><span><div class='icon add-icon'></div> Add a Student </span></a>
+            <a title='New Parent' class='add button box-load'  href='{crmURL p='civicrm/profile/create' q="reset=1&snippet=1&context=boxload&gid=14&osa_hid=`$contact.contact_id`"}&width=50%'><span><div class='icon add-icon'></div> Add a Parent/Guardian </span></a>
+            <a title='New Student' class='add button box-load'  href='{crmURL p='civicrm/profile/create' q="reset=1&snippet=1&context=boxload&gid=11&osa_hid=`$contact.contact_id`"}&width=50%'><span><div class='icon add-icon'></div> Add a Student </span></a>
         </div>
 {/if}
     </div>
