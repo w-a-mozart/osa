@@ -55,7 +55,8 @@ function clearAmountOther() {
 <div id="help">You have a current Lifetime Membership which does not need to be renewed.</div> 
 {/if}
 {if $priceSet && empty($useForMember)}
-    {* User selection. Rather than typing in an email, select who the contribution is from. *}
+  {* User selection. Rather than typing in an email, select who the contribution is from. *}
+  {if $onbehalfFamily }
     <div class="crm-section contact-id-section">
       <fieldset>
         <legend>{ts}Contribution{/ts}</legend>
@@ -65,6 +66,7 @@ function clearAmountOther() {
       </fieldset>
 	  </div>
     <div class="clear"></div> 
+  {/if}
     <div id="priceset"> 
         <fieldset>
             <legend>{ts}Contribution Options{/ts}</legend>
@@ -131,14 +133,8 @@ function clearAmountOther() {
 			<div class="content">{$pcpSupporterText}</div>
 	    </div>
 	{/if}
-	    {assign var=n value=email-$bltID}
-	    <div class="crm-section {$form.$n.name}-section">
-	    	<div class="label">{$form.$n.label}</div>
-	    	<div class="content">
-	    		{$form.$n.html}
-	    	</div>
-	    	<div class="clear"></div> 
-	    </div>
+
+{* Remove email field *}
 	
 	{if $form.is_for_organization}
 		<div class="crm-section {$form.is_for_organization.name}-section">

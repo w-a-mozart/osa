@@ -1,0 +1,107 @@
+<?php
+
+/**
+ * @file
+ * Module file for Search by Page CiviCRM Events, a sub-module for Search by Page.
+ * Allows you to add CiviCRM Event pages to Search by Page.
+ *
+ * @ingroup search_by_page
+ */
+
+/**
+ * Implements Search by Page hook_sbp_paths().
+ *
+ * Returns path information for active events.
+ */
+function sbp_civicrm_events_sbp_paths($environment) {
+
+  $paths = array();
+  civicrm_initialize();
+
+  $params = array(
+    'isCurrent' => true,
+    'version'   => '3',
+  );
+
+  $result = civicrm_api('event', 'get', $params);
+  if ($result['is_error']) {
+    CRM_Core_Error::debug_log_message(
+      "Error: " .
+      $result['error_message'] .
+      ts("\nfailed to get current events"));
+    return array();
+  }
+  $events = $result['values'];
+  
+  $languages = array();
+  $language_objects = language_list();
+  foreach ($language_objects as $language_object) {
+    $languages[] = $language_object->language;
+  }
+
+  foreach ($events as $event) {
+    // $event['path'] = CRM_Utils_System::url('civicrm/event/info', 'id=' . $event['id']);
+    $event['path'] = 'civicrm/event/info?id=' . $event['id'];
+    $paths[$event['path']] = array(
+      'id' => $event['id'],
+      'languages' => $languages,
+      'role' => DRUPAL_ANONYMOUS_RID,
+    );
+  }
+
+  return $paths;
+}
+
+/**
+ * Implements Search by Page hook_sbp_details().
+ *
+ * Returns details information about the event
+ */
+function sbp_civicrm_events_sbp_details($id, $environment, $keys = NULL) {
+
+  civicrm_initialize();
+
+  $params = array(
+    'id'      => $id,
+    'version' => '3',
+  );
+
+  $result = civicrm_api('event', 'get', $params);
+  if ($result['is_error']) {
+    CRM_Core_Error::debug_log_message(
+      "Error: " .
+      $result['error_message'] .
+      ts("\nfailed to get event id %1", array(1 => $contact_id)));
+    return NULL;
+  }
+  $event = $result['values'][$id];
+  $event['path'] = 'civicrm/event/info?id=' . $event['id'];
+
+  // TODO: make return details configurable
+  $detail = array(
+    'type'  => 'Page',
+    'title' => search_by_page_strip_tags($event['title'], $environment),
+  );
+  
+  // snippet
+  if ($keys) {
+    $content = search_by_page_page_content($event['path']);
+    $content = search_by_page_strip_tags($content, $environment);
+    // Snippet -- DB either stores "yes", "no", or a custom snippet to use
+    if (!is_int($content)) {
+      $detail['snippet'] = search_by_page_excerpt($keys, $content);
+    }
+  }
+
+  return $detail;
+}
+
+/**
+ * Implements Search by Page hook_sbp_query_modify().
+ *
+ * Adds an access permission check to the search query.
+ */
+function sbp_civicrm_events_sbp_query_modify($environment, $query) {
+  // Pages are indexed based on an anonymonus user, so grant access to all results.
+  return db_and();
+}

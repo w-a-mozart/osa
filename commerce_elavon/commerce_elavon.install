@@ -1,0 +1,20 @@
+<?php 
+/**
+ * @file
+ * Performs install/uninstall used for Commerce Elavon.
+ */
+
+/**
+ * Implements hook_uninstall().
+ */
+function commerce_elavon_uninstall() {
+  variable_del('commerce_elavon_title');  
+  variable_del('commerce_elavon_server');
+  variable_del('commerce_elavon_merchant_id');
+  variable_del('commerce_elavon_user_id');
+  variable_del('commerce_elavon_pin');
+  variable_del('commerce_elavon_optional_fields');
+  variable_del('commerce_elavon_credit_card_types');
+  variable_del('commerce_elavon_verify_peer');
+  variable_del('commerce_elavon_cert_path');
+}

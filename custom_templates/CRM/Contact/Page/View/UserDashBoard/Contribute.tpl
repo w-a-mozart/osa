@@ -18,7 +18,7 @@
         <thead>
           <tr>
             <th>{ts}Contribution{/ts}</th>
-            <th>{ts}Type{/ts}</th>
+            <th>{ts}Name{/ts}</th>
             <th>{ts}Total Amount{/ts}</th>
             <th>{ts}Received date{/ts}</th>
             <th>{ts}Receipt Sent{/ts}</th>
@@ -27,8 +27,8 @@
         </thead>
   {foreach from=$contribute_rows item=row}
         <tr id='rowid{$row.contribution_id}' class="{cycle values="odd-row,even-row"}{if $row.cancel_date} disabled{/if}">
+          <td class="bold">{$row.contribution_type}</td>
           <td>{$row.sort_name}</td>
-          <td>{$row.contribution_type}</td>
           <td>{$row.total_amount|crmMoney:$row.currency} {if $row.amount_level } - {$row.amount_level} {/if}
     {if $row.contribution_recur_id}
             <br /> {ts}(Recurring Contribution){/ts}

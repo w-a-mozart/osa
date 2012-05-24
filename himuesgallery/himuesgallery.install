@@ -1,0 +1,164 @@
+<?php
+/**
+ * @file
+ *
+ */
+
+/**
+ * Implementation of hook_install();
+ */
+function himuesgallery_install() {
+	node_types_rebuild();
+	$types = node_type_get_types();
+	
+	//add the body field to the node type
+	node_add_body_field($types['himuesgallery']);
+	
+	//load the instance definition for our content type's body
+	$body_instance = field_info_instance('node', 'body', 'himuesgallery');
+	
+	//configure the body field
+	$body_instance['type'] = 'This text would be shown in the top of the gallery';
+	
+	//we don't need summary
+	$body_instance['settings']['display_summary'] = false;
+
+	//save the changes to the body field instance
+	field_update_instance($body_instance);
+	
+	//set persistent variable to standard path
+	variable_set('himuesgallery_admin_settigs', 'himuesgallery');
+	
+}
+
+/**
+ * Implementation of hook_uninstall();
+ */
+function himuesgallery_uninstall() {
+	//delete all the nodes (not the pictures!) that have been created with this module before uninstall
+	$sql = 'SELECT nid FROM {node} n WHERE n.type = :type';
+	$result = db_query($sql, array(':type' => 'himuesgallery'));
+	$nids = array();
+	foreach ($result as $row) {
+		$nids[] = $row->nid;
+	}
+	
+	//Delete all the nodes at once
+	node_delete_multiple($nids);
+
+	//Delete persisten variable
+	variable_del('himuesgallery_admin_settigs');
+}
+
+/**
+ * Implementation of hook_update_N();
+ */
+function himuesgallery_update_7100() {
+    db_add_field('himuesgallery', 'thumbnail_aspect_ratio', array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+        'description' => 'respect aspect ratio for thumbnail generation',
+        'initial' => 0)
+    );
+}
+ 
+
+/**
+ * Implementation of hook_schema();
+ */
+function himuesgallery_schema() {
+  $schema['himuesgallery'] = array(
+    'description' => 'Stores filesystem path to gallery relative to webroot',
+
+    'fields' => array(
+      'nid' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+        'description' => "The gallery's {node}.nid.",
+      ),
+
+      'vid' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+        'description' => "The gallery's {node_revisions}.vid.",
+      ),
+
+      'gallerypath' => array(
+        'type' => 'varchar',
+        'length' => 127,
+        'not null' => TRUE,
+        'description' => "The path to the gallery",
+      ),
+
+      'css_path' => array(
+        'type' => 'varchar',
+        'length' => 127,
+        'not null' => TRUE,
+        'description' => 'The css-file for view of thumbnail',
+      ),
+
+      'showtype' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+        'description' => 'Type to show the pictures (e.g. 0=Single Picture, 1=Single Picture - Continue, 2=Lightshow)',
+      ),
+
+      'thumbnail_picture_quality' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 75,
+        'description' => 'jpeg-quality of thumbnail',
+      ),
+
+      'thumbnail_picture_width' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 200,
+        'description' => 'max width of thumbnail for imagejpeg',
+      ),
+
+      'thumbnail_picture_height' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 133,
+        'description' => 'max height of thumbnail for imagejpeg',
+      ),
+
+      'thumbnail_sort_order' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+        'description' => 'Sortorder for thumbnails (0=asc, 1=desc)',
+      ),
+      
+      'thumbnail_aspect_ratio' => array(
+         'type' => 'int',
+         'unsigned' => TRUE,
+         'not null' => TRUE,
+         'default' => 0,
+         'description' => 'respect aspect ratio for thumbnail generation',
+      ),
+    ),
+    'primary key' => array('nid', 'vid'),
+    'unique keys' => array(
+      'vid' => array('vid')
+    ),
+    'indexes' => array(
+      'nid' => array('nid')
+    ),
+  );
+
+  return $schema;
+}

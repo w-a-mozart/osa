@@ -152,7 +152,7 @@ cj(function(){
                 <td>&nbsp;</td>
             {/if}
            <td style="width: auto;">
-                <span class="bold">{if $showRadio }{$row.name} {/if}&nbsp;
+                <span class="bold">{$row.name} &nbsp;
                 {if ($membershipBlock.display_min_fee AND $context EQ "makeContribution") AND $row.minimum_fee GT 0 }
                     {if $is_separate_payment OR ! $form.amount.label}
                         - {$row.minimum_fee|crmMoney}
@@ -160,17 +160,17 @@ cj(function(){
                         {ts 1=$row.minimum_fee|crmMoney}(contribute at least %1 to be eligible for this membership){/ts}
                     {/if}
                 {/if}
-                </span>
-                {if $row.description }<br />{$row.description} &nbsp;{/if}
+                </span><br />
+                {$row.description} &nbsp;                      
            </td>
            <td style="width: auto;">
               {* Check if there is an existing membership of this type (current_membership NOT empty) and if the end-date is prior to today. *}
               {if array_key_exists( 'current_membership', $row ) AND $context EQ "makeContribution" }
                   {if $row.current_membership}
                         {if $row.current_membership|date_format:"%Y%m%d" LT $smarty.now|date_format:"%Y%m%d"}
-                            <em>{ts 1=$row.current_membership|crmDate 2=$row.name}Your <strong>%2</strong> membership expired on %1.{/ts}</em>
+                            <br /><em>{ts 1=$row.current_membership|crmDate 2=$row.name}Your <strong>%2</strong> membership expired on %1.{/ts}</em>
                         {else}
-                            <em>{ts 1=$row.current_membership|crmDate 2=$row.name}Your <strong>%2</strong> membership expires on %1.{/ts}</em>
+                            <br /><em>{ts 1=$row.current_membership|crmDate 2=$row.name}Your <strong>%2</strong> membership expires on %1.{/ts}</em>
                         {/if}
                   {else}
                     {ts 1=$row.name}Your <strong>%1</strong> membership does not expire (you do not need to renew that membership).{/ts}<br />

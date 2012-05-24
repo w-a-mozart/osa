@@ -1,0 +1,17 @@
+<?php
+
+  /**
+   * @file 
+   */
+
+  /**
+   * Implementation of hook_install() 
+   */
+  function sbp_civicrm_events_install() {
+  }
+
+  /**
+   * Implementation of hook_uninstall() 
+   */
+  function sbp_civicrm_events_uninstall() {
+  }

@@ -13,8 +13,8 @@
 *}
 {foreach from=$profileElements item=element}
 <fieldset><legend>{$element.title}</legend>
+<div class='osa-profile-edit'><a title='{$element.title}' class='edit button box-load'  href='{crmURL p='civicrm/profile/edit' q="reset=1&snippet=1&context=boxload&gid=`$element.gid`&id=`$element.cid`"}&width=50%'><span><div class='icon edit-icon'></div> Edit </span></a></div>
 {$element.html}
-<div style='position:relative;top:-45px;right:-90%'><a title='{$element.title}' class='edit button box-load'  href='{crmURL p='civicrm/profile/edit' q="reset=1&snippet=1&context=boxload&gid=`$element.gid`&id=`$element.cid`"}&width=50%'><span><div class='icon edit-icon'></div> Edit </span></a></div>
 </fieldset>
 {/foreach}
 

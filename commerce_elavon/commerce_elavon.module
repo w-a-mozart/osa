@@ -1,0 +1,41 @@
+<?php
+/**
+ * @file
+ * Provides an Elavon Payment Method for Drupal Commerce.
+ */
+require_once 'commerce_elavon.inc';
+
+/**
+ * Implements hook_commerce_payment_method_info() to define the Elavon Payment Method
+ */
+function commerce_elavon_commerce_payment_method_info() {
+  $payment_methods = array();
+
+  $payment_methods['commerce_elavon'] = array(
+    'title' => t('Elavon'),
+    'display_title' => variable_get('commerce_elavon_title', t('Elavon')),
+    'description' => t('Elavon Payment Gateway'),
+    'active' => TRUE,
+    'file' => 'commerce_elavon.callbacks.inc',
+  );
+
+  return $payment_methods;
+}
+
+/**
+ * Implements hook_menu() for Elavon configuration.
+ */
+function commerce_elavon_menu() {
+  $items = array();
+
+  $items['admin/commerce/config/commerce-elavon'] = array(
+    'title' => 'Elavon Payment settings',
+    'description' => 'Configure the Elavon Payment Gateway.',
+    'access arguments' => array('administer payment methods'),
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('commerce_elavon_admin_settings'),
+    'file' => 'commerce_elavon.admin.inc',
+  );
+
+  return $items;
+}

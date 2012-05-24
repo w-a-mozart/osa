@@ -1,0 +1,16 @@
+name = himuesgallery
+description = a very simple gallery that shows pictures in an filesystem-folder
+
+; Information added by drupal.org packaging script on 2010-05-09
+version = "7.x-1.11"
+core = "7.x"
+project = "himuesgallery"
+files[] = himuesgallery.install
+files[] = himuesgallery.module
+
+; Information added by drupal.org packaging script on 2011-05-20
+version = "7.x-1.12"
+core = "7.x"
+project = "himuesgallery"
+datestamp = "1305921115"
+
