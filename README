@@ -11,3 +11,12 @@ civicrm to drupal commerce integration
 paid civicrm relationships
 - extend civicrm to enable end users to create and pay for a time limited relationship with another contact. Our use-case is to allow students to register and pay for private lesson fees with a specific teacher.
 
+drupal commerce payment processor for Elavon
+- Elavon (https://www.myvirtualmerchant.com/) payment processor for drupal commerce using some of the code from the CiviCRM Elavon payment processor.
+
+Search by Page for CiviCRM Events
+- standard Drupal search doesn't search the CiviCRM Events descriptions. This module enables the full text indexing of CiviCRM Events by the drupal Search by Page module.
+
+Very simple media gallery
+- the himuesgallery module provides a simple images gallery module. We wanted to add a simple way to add links to youtube videos along with the photos and have them appear in a Colorbox. Note that this is a copy of the himuesgallery module (7.x-1.12) with our code. A patch has been submitted at http://drupal.org/node/1595716. 
+
