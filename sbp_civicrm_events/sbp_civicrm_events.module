@@ -2,8 +2,8 @@
 
 /**
  * @file
- * Module file for Search by Page CiviCRM Events, a sub-module for Search by Page.
- * Allows you to add CiviCRM Event pages to Search by Page.
+ * Module file for Search by Page CiviCRM Events, a sub-module for
+ * Search by Page. Allows you to add CiviCRM Event pages to Search by Page.
  *
  * @ingroup search_by_page
  */
@@ -19,7 +19,7 @@ function sbp_civicrm_events_sbp_paths($environment) {
   civicrm_initialize();
 
   $params = array(
-    'isCurrent' => true,
+    'isCurrent' => TRUE,
     'version'   => '3',
   );
 
@@ -77,7 +77,7 @@ function sbp_civicrm_events_sbp_details($id, $environment, $keys = NULL) {
   $event = $result['values'][$id];
   $event['path'] = 'civicrm/event/info?id=' . $event['id'];
 
-  // TODO: make return details configurable
+  // @todo make return details configurable
   $detail = array(
     'type'  => 'Page',
     'title' => search_by_page_strip_tags($event['title'], $environment),

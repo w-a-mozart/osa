@@ -41,7 +41,8 @@ function commerce_elavon_submit_form($payment_method, $pane_values, $checkout_pa
 }
 
 /**
- * Payment method submit_form_validate callback; validate the payment submission form.
+ * Payment method submit_form_validate callback; validate the payment
+ * submission form.
  *
  * @param $payment_method
  *   An array of the current settings.
@@ -63,7 +64,8 @@ function commerce_elavon_submit_form_validate($payment_method, $pane_form, $pane
 }
 
 /**
- * Payment method submit_form_submit callback; process the payment submission form.
+ * Payment method submit_form_submit callback; process the payment submission
+ * form.
  *
  * @param $payment_method
  *   An array of the current settings.
@@ -77,6 +79,5 @@ function commerce_elavon_submit_form_validate($payment_method, $pane_form, $pane
  *   A price structure that needs to be charged.
  */
 function commerce_elavon_submit_form_submit($payment_method, $pane_form, $pane_values, $order, $charge) {
-  //$order->data['commerce_elavon'] = $pane_values;
   return commerce_elavon_transaction($payment_method, $pane_values['credit_card'], $order, $charge );
 }

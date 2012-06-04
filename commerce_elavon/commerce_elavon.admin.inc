@@ -14,7 +14,7 @@ function commerce_elavon_admin_settings() {
 
   $form['commerce_elavon'] = array(
     '#type' => 'fieldset',
-    '#title' => t('Elavon Payment Settings'),
+    '#title' => t('Elavon Payment settings'),
     '#collapsible' => TRUE,
     '#collapsed' => FALSE,
   );

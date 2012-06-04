@@ -19,7 +19,7 @@ define('CIVICRM_COMMERCE_PRODUCT_SKU', 'CiviCRM');  // need a product entity
  *   Default profile id.
  */
 function _civicrm_commerce_fields() {
-  static $_fields = null;
+  static $_fields = NULL;
   
   if (! $_fields) {
     $_fields = array(
@@ -130,28 +130,4 @@ function _civicrm_commerce_create_fields($field_names, $entity_type, $bundle) {
       field_create_instance($instance);
     }
   }
-}
-
-/**
- * Wrapper of CiviCRM API to create relationships
- *
- * @param integer $relationship_type_id
- * @param integer $contact_id_a
- * @param integer $contact_id_b
- */
-function _civicrm_commerce_create_relationship($relationship_type_id, $contact_id_a, $contact_id_b) {
-}
-
-/**
- * Wrapper of CiviCRM API to get membership
- *
- * @param integer $contact_id
- */
-function _civicrm_commerce_get_membership($contact_id) {
-}
-
-/**
- *
- */
-function _civicrm_commerce_appendTemplateVar(&$smarty, $varname, &$apiResult) {
 }

@@ -49,7 +49,7 @@ define('OSA_PERM_PEER',  3);
  *   Default profile id.
  */
 function _osa_profileId($entity) {
-  static $_gids = null;
+  static $_gids = NULL;
   
   if (!$_gids) {
     $_gids = array(
@@ -90,36 +90,36 @@ function _osa_manageHouseholdRelationships($cid) {
   $students = array();
   $others = array();
 
-  foreach($family as $person) {
+  foreach ($family as $person) {
     $contact = $person['contact'];
-    $contactType = isset($contact['contact_sub_type']) ? $contact['contact_sub_type'][0] : $contact['contact_type'];
+    $contact_type = isset($contact['contact_sub_type']) ? $contact['contact_sub_type'][0] : $contact['contact_type'];
 
-    if ($contactType == 'Parent') {
+    if ($contact_type == 'Parent') {
       $parents[] = $contact;
     }
-    elseif ($contactType == 'Student') {
+    elseif ($contact_type == 'Student') {
       $students[] = $contact;
     }
-    elseif ($contactType == 'Individual') {
+    elseif ($contact_type == 'Individual') {
       $others[] = $contact;
     }
   }
   
   // make sure relationships exist between parents and parents (spousal), students (child), and others (other)
-  foreach($parents as $parent) {
+  foreach ($parents as $parent) {
     $result = civicrm_api('relationship', 'get', array('contact_id' => $parent['contact_id'], 'version' => 3));
     $relationships = $result['values'];
 
     //  make sure relationships exist between parents
-    foreach($parents as $spouse) {
+    foreach ($parents as $spouse) {
       if ($parent['contact_id'] == $spouse['contact_id']) {
         continue;
       }
-      $found = false;
-      foreach($relationships as $relationship) {
+      $found = FALSE;
+      foreach ($relationships as $relationship) {
         if (($spouse['contact_id'] == $relationship['contact_id_a']) ||
              ($spouse['contact_id'] == $relationship['contact_id_b'])) {
-          $found = true;
+          $found = TRUE;
           break;
         }
       }
@@ -132,12 +132,12 @@ function _osa_manageHouseholdRelationships($cid) {
     }
   
     // make sure relationships exist between parents and students
-    foreach($students as $student) {
-      $found = false;
-      foreach($relationships as $relationship) {
+    foreach ($students as $student) {
+      $found = FALSE;
+      foreach ($relationships as $relationship) {
         if (($student['contact_id'] == $relationship['contact_id_a']) ||
              ($student['contact_id'] == $relationship['contact_id_b'])) {
-          $found = true;
+          $found = TRUE;
           break;
         }
       }
@@ -150,12 +150,12 @@ function _osa_manageHouseholdRelationships($cid) {
     }
 
     // make sure relationships exist between parents and others (used for permissions)
-    foreach($others as $other) {
-      $found = false;
-      foreach($relationships as $relationship) {
+    foreach ($others as $other) {
+      $found = FALSE;
+      foreach ($relationships as $relationship) {
         if (($other['contact_id'] == $relationship['contact_id_a']) ||
              ($other['contact_id'] == $relationship['contact_id_b'])) {
-          $found = true;
+          $found = TRUE;
           break;
         }
       }
@@ -169,20 +169,20 @@ function _osa_manageHouseholdRelationships($cid) {
   }
 
   // make sure relationships exist between students
-  foreach($students as $student) {
+  foreach ($students as $student) {
     $result = civicrm_api('relationship', 'get', array('contact_id' => $student['contact_id'], 'version' => 3));
     $relationships = $result['values'];
 
     // make sure relationships exist between siblings
-    foreach($students as $sibling) {
+    foreach ($students as $sibling) {
       if ($student['contact_id'] == $sibling['contact_id']) {
         continue;
       }
-      $found = false;
-      foreach($relationships as $relationship) {
+      $found = FALSE;
+      foreach ($relationships as $relationship) {
         if (($sibling['contact_id'] == $relationship['contact_id_a']) ||
              ($sibling['contact_id'] == $relationship['contact_id_b'])) {
-          $found = true;
+          $found = TRUE;
           break;
         }
       }
@@ -196,8 +196,8 @@ function _osa_manageHouseholdRelationships($cid) {
   }
 
   // merge duplicate misc. contacts
-  foreach($others as $other) {
-    foreach($others as $dup) {
+  foreach ($others as $other) {
+    foreach ($others as $dup) {
       if ($other['contact_id'] >= $dup['contact_id']) {
         continue;
       }
@@ -213,30 +213,25 @@ function _osa_manageHouseholdRelationships($cid) {
 }
 
 /**
- *  Get the id of the related Household Contact
+ *  Get the id of a Household Contact
  */
-function _osa_getHousehold($cid = null) {
+function _osa_getHousehold($cid = NULL) {
 
-  if (!isset($cid)) {
-    $session = CRM_Core_Session::singleton();
-    $cid = $session->get('userID');
-    if (! isset($cid)) {
-      return null;
-    }
+  // get the contact record
+  $contact = _osa_getContact($cid, FALSE);
+  if (!isset($contact)) {
+    return NULL;
   }
   
-  // get the contact record
-  $result = civicrm_api('contact', 'get', array('id' => $cid, 'version' => 3));
-  $contact = $result['values'][$result['id']];
-  
   // find the household
-  $hid = null;
+  $hid = NULL;
   if ($contact['contact_type'] == 'Household') {
     $hid = $cid;
-  } else {
+  }
+  else {
     $result = civicrm_api('relationship', 'get', array('contact_id' => $cid, 'version' => 3));
     $relationships = $result['values'];
-    foreach($relationships as $relationship) {
+    foreach ($relationships as $relationship) {
       if (($relationship['relationship_type_id'] == OSA_REL_HEAD_HOUSEHOLD) ||
           ($relationship['relationship_type_id'] == OSA_REL_HOUSEHOLD_MEMBER)) {
         $hid = $relationship['cid'];
@@ -251,7 +246,7 @@ function _osa_getHousehold($cid = null) {
 /**
  *  Get the all contacts related to a Household Contact
  */
-function _osa_getHouseholdMembers($cid = null, $field = null) {
+function _osa_getHouseholdMembers($cid = NULL, $field = NULL) {
   $family = array();
 
   // default to logged in user
@@ -275,14 +270,14 @@ function _osa_getHouseholdMembers($cid = null, $field = null) {
   $relationships = $result['values'];
 
   // get the contact records
-  foreach($relationships as $relationship) {
-    $result = civicrm_api('contact', 'get', array('id' => $relationship['cid'], 'version' => 3));
-    $contact = $result['values'][$result['id']];
+  foreach ($relationships as $relationship) {
+    $contact = _osa_getContact($relationship['cid']);
     $contact_id = $contact['contact_id'];
     
     if (isset($field)) {
       $family[$contact_id] = $contact[$field];
-    } else {
+    }
+    else {
 
       // it's possible to have more than one relationship with the household
       // e.g. sometimes civi creates a household member for the head of the household
@@ -293,13 +288,13 @@ function _osa_getHouseholdMembers($cid = null, $field = null) {
         }
       }
       
-      $contactType = isset($contact['contact_sub_type']) ? $contact['contact_sub_type'][0] : $contact['contact_type'];
+      $contact_type = isset($contact['contact_sub_type']) ? $contact['contact_sub_type'][0] : $contact['contact_type'];
       $person = array(
         'contact_id'   => $contact_id,
-        'contact_type' => $contactType,
+        'contact_type' => $contact_type,
         'contact'      => $contact,
         'relationship' => $relationship,
-        'links'        => _osa_related_links($contactType, $contact_id, $relationship['id'] )
+        'links'        => _osa_related_links($contact_type, $contact_id, $relationship['id'] )
       );
       $family[$contact_id] = $person;
     }
@@ -311,7 +306,7 @@ function _osa_getHouseholdMembers($cid = null, $field = null) {
 /**
  * Return links for related contacts.
  *
- * @param string $contactType
+ * @param string $contact_type
  *   Type of the related contact.
  * @param integer $cid
  *   Id of the related contact.
@@ -320,10 +315,10 @@ function _osa_getHouseholdMembers($cid = null, $field = null) {
  * @return
  *   links accociated to the given contact.
  */
-function _osa_related_links($contactType, $cid, $rid) {
+function _osa_related_links($contact_type, $cid, $rid) {
   $links = array();
 
-  if ($contactType == 'Student') {
+  if ($contact_type == 'Student') {
     $links['member'] = array(
       'name'  => ts('Register Membership'),
       'url'   => 'civicrm/contribute/transact',
@@ -344,30 +339,30 @@ function _osa_related_links($contactType, $cid, $rid) {
     );
   }
   
-  $links += array (
+  $links += array(
     CRM_Core_Action::VIEW => array(
       'name'  => ts('View'),
       'url'   => 'civicrm/user',
       'qs'  => "reset=1&id=$cid",
-      'title' => ts("View $contactType")
+      'title' => ts("View $contact_type")
     ),
     CRM_Core_Action::UPDATE => array(
       'name'  => ts('Edit'),
       'url'   => 'civicrm/profile/edit',
-      'qs'  => 'reset=1&snippet=1&context=boxload&gid=' . _osa_profileId($contactType) . "&id=$cid",
+      'qs'  => 'reset=1&snippet=1&context=boxload&gid=' . _osa_profileId($contact_type) . "&id=$cid",
       'class' => 'box-load',
-      'title' => ts("Edit $contactType")
+      'title' => ts("Edit $contact_type")
     ),
     CRM_Core_Action::DELETE => array(
       'name'  => ts('Delete'),
       'url'   => 'civicrm/contact/view/rel',
       'qs'  => "action=delete&reset=1&cid=$cid&id=$rid",
-      'extra' => 'onclick = "if (confirm(\'Are you sure you want to delete this relationship?\')) this.href+=\'&amp;confirmed=1\'; else return false;"',
-      'title' => ts("Delete $contactType")
+      'extra' => 'onclick = "if (confirm(\'Are you sure you want to delete this relationship?\')) this.href+=\'&amp;confirmed=1\'; else return FALSE;"',
+      'title' => ts("Delete $contact_type")
     )
   );
 
-  return CRM_Core_Action::formLink($links, null, array());
+  return CRM_Core_Action::formLink($links, NULL, array());
 }
 
 /**
@@ -383,26 +378,26 @@ function _osa_addHouseholdField(&$form, $hid) {
 
   // get the profile id & title
   $gid = $form->getVar('_gid');
-  $ufGroup = new CRM_Core_DAO_UFGroup();
-  $ufGroup->id = $gid;
-  if (! $ufGroup->find(true)) {
+  $uf_group = new CRM_Core_DAO_UFGroup();
+  $uf_group->id = $gid;
+  if (!$uf_group->find(TRUE)) {
     CRM_Core_Error::fatal();
   }
   
   // create the field used by the CRM/Profile/Form/Dynamic.tpl template
-  $fieldName = 'osa_hid';
+  $field_name = 'osa_hid';
   $field = array(
-    $fieldName => array (
-      'name' => $fieldName,
+    $field_name => array(
+      'name' => $field_name,
       'group_id' => $gid,
-      'groupTitle' => $ufGroup->title,
+      'groupTitle' => $uf_group->title,
       'title' => '',
     )
   );
-  $form->_fields[$fieldName] = $field;
+  $form->_fields[$field_name] = $field;
 
   // add an element to the QuickForm
-  $form->addElement('hidden', $fieldName, $hid);
+  $form->addElement('hidden', $field_name, $hid);
 }
 
 /**
@@ -415,24 +410,24 @@ function _osa_addHouseholdField(&$form, $hid) {
  * @param boolean $required
  *   Add required validation rule.
  */
-function _osa_addRelationshipField(&$form, $cid, $required = true) {
+function _osa_addRelationshipField(&$form, $cid, $required = TRUE) {
 
   // get the profile id & title
   $gid = $form->getVar('_gid');
-  $ufGroup = new CRM_Core_DAO_UFGroup();
-  $ufGroup->id = $gid;
-  if (! $ufGroup->find(true)) {
+  $uf_group = new CRM_Core_DAO_UFGroup();
+  $uf_group->id = $gid;
+  if (! $uf_group->find(TRUE)) {
     CRM_Core_Error::fatal();
   }
   
   // create the field used by the CRM/Profile/Form/Dynamic.tpl template
   $label = ts('Relationship Type');
-  $fieldName = 'rel_id';
+  $field_name = 'rel_id';
   $field = array(
-    $fieldName => array (
-      'name' => $fieldName,
+    $field_name => array(
+      'name' => $field_name,
       'group_id' => $gid,
-      'groupTitle' => $ufGroup->title,
+      'groupTitle' => $uf_group->title,
       'title' => $label,
     )
   );
@@ -441,15 +436,15 @@ function _osa_addRelationshipField(&$form, $cid, $required = true) {
   $form->_fields = $field + $form->_fields;
 
   // get the valid relationship types for this contact
-  $rTypes = CRM_Contact_BAO_Relationship::getContactRelationshipType($cid);
-  $hhVal  = OSA_REL_HEAD_HOUSEHOLD . '_b_a';
-  unset($rTypes[$hhVal]); // head of household is reserved for user who created it
-  $options = array('' => ts('- select -')) + $rTypes; // include a 'none' option
+  $r_types = CRM_Contact_BAO_Relationship::getContactRelationshipType($cid);
+  $hh_val  = OSA_REL_HEAD_HOUSEHOLD . '_b_a';
+  unset($r_types[$hh_val]); // head of household is reserved for user who created it
+  $options = array('' => ts('- select -')) + $r_types; // include a 'none' option
 
   // add an element to the QuickForm
-  $form->add('select', $fieldName, $label, $options, '', $required);
+  $form->add('select', $field_name, $label, $options, '', $required);
   if ($required) {
-    $form->addRule($fieldName, ts('%1 is a required field.', array(1 => $label)), 'required');
+    $form->addRule($field_name, ts('%1 is a required field.', array(1 => $label)), 'required');
   }
 }
 
@@ -461,24 +456,87 @@ function _osa_addRelationshipField(&$form, $cid, $required = true) {
  */
 function _osa_getRelationshipField(&$form) {
   
-  $fieldName = 'rel_id';
-  $selVal = CRM_Utils_Array::value($fieldName, $_POST);
-  if (!isset($selVal)) {
-    return null;
+  $field_name = 'rel_id';
+  $sel_val = CRM_Utils_Array::value($field_name, $_POST);
+  if (!isset($sel_val)) {
+    return NULL;
   }
   
   // relationship types are in the form 999_b_a
-  $tmp = explode('_', $selVal);
+  $tmp = explode('_', $sel_val);
   return $tmp[0];
+}
+
+/**
+ * Wrapper function to return current logged in user's drupal id
+ */
+function _osa_getUserId() {
+  return CRM_Utils_System::getLoggedInUfID();
+}
+
+/**
+ * Wrapper function to return current logged in user's contact id
+ */
+function _osa_getContactId() {
+  $params = array(
+    'uf_id' => _osa_getUserId(),
+    'sequential' => 1,
+    'version' => 3,
+  );
+
+  $result = civicrm_api('UFMatch', 'get', $params);
+  return $result['values'][0]['contact_id'];
+}
+
+/**
+ * Wrapper function to return a contact record
+ */
+function _osa_getContact($cid = NULL, $custom = TRUE) {
+
+  if (!isset($cid)) {
+    $cid = _osa_getContactId();
+  }
+
+  // get the contact record
+  $result = civicrm_api('contact', 'get',  array('id' => $cid, 'version' => 3));
+  if (($result['is_error'] == 0) && ($result['count'] == 1)) {
+    $contact = $result['values'][$cid];
+  }
+  else {
+    return NULL;
+  }
+
+  // fill in any custom fields
+  if ($custom) {
+    static $custom_fields = NULL;
+    if (!isset($custom_fields)) {
+      $result = civicrm_api('CustomField', 'get',  array('version' => 3));
+      $custom_fields = $result['values'];
+    }
+    
+    $result = civicrm_api('CustomValue', 'get',  array('entity_id' => $cid, 'entity_type' => 'Contact', 'version' => 3));
+    if ($result['is_error'] == 0) {
+      foreach ($result['values'] as $fid => $value) {
+        $fname = $custom_fields[$fid]['name'];
+        $contact[$fname] = $value['latest'];
+      }
+    }
+  }
+
+  return $contact;
 }
 
 /**
  * Wrapper of CiviCRM API to create relationships
  *
  * @param integer $relationship_type_id
+ *   relationship type
  * @param integer $contact_id_a
+ *   contact a
  * @param integer $contact_id_b
- * @param integer $permission - defines permissions from b_a
+ *   contact b
+ * @param integer $permission
+ *   defines permissions from b_a
  */
 function _osa_create_relationship($relationship_type_id, $contact_id_a, $contact_id_b, $permission = OSA_PERM_OWNER) {
   // build the relationship entity parameters
@@ -491,7 +549,7 @@ function _osa_create_relationship($relationship_type_id, $contact_id_a, $contact
     'contact_id_b'         => $contact_id_b,
     'is_active'            => 1,
     'start_date'           => date("Ymd", time()),
-    'end_date'             => null,
+    'end_date'             => NULL,
     'is_permission_a_b'    => $is_permission_a_b,
     'is_permission_b_a'    => $is_permission_b_a,
     'version'              => '3',
@@ -513,6 +571,7 @@ function _osa_create_relationship($relationship_type_id, $contact_id_a, $contact
  * Wrapper of CiviCRM API to get membership
  *
  * @param integer $contact_id
+ *   contact who's membership status to get
  */
 function _osa_get_membership($contact_id) {
   // build the  parameters
@@ -523,7 +582,7 @@ function _osa_get_membership($contact_id) {
   
   // Call the CiviCRM API to get the membership
   $result = civicrm_api('membership', 'get', $params);
-  $membership = ($result['count'] > 0) ? $result['values'][$result['id']] : null;
+  $membership = ($result['count'] > 0) ? $result['values'][$result['id']] : NULL;
 
   if (! isset($membership)) {
     return $membership;
@@ -535,12 +594,12 @@ function _osa_get_membership($contact_id) {
   $membership['status'] = $result['status'];
   $membership['is_current_member'] = $result['is_current_member'];
 
-  $renewPageId = CRM_Member_BAO_Membership::getContributionPageId($membership['id']);
-  if (!$renewPageId) {
+  $renew_page_id = CRM_Member_BAO_Membership::getContributionPageId($membership['id']);
+  if (!$renew_page_id) {
     require_once 'CRM/Core/BAO/Setting.php';
-    $renewPageId = CRM_Core_BAO_Setting::getItem(CRM_Core_BAO_Setting::MEMBER_PREFERENCES_NAME, 'default_renewal_contribution_page');
+    $renew_page_id = CRM_Core_BAO_Setting::getItem(CRM_Core_BAO_Setting::MEMBER_PREFERENCES_NAME, 'default_renewal_contribution_page');
   }
-  $membership['renewPageId'] = $renewPageId ;
+  $membership['renewPageId'] = $renew_page_id ;
 
   return $membership;
 }
@@ -549,6 +608,7 @@ function _osa_get_membership($contact_id) {
  * Wrapper of CiviCRM API to get contributions
  *
  * @param integer $contact_id
+ *   contact who's contributions to get
  */
 function _osa_get_contributions($contact_id) {
   // build the  parameters
@@ -575,6 +635,7 @@ function _osa_get_contributions($contact_id) {
  * Wrapper of CiviCRM API to get participant events
  *
  * @param integer $contact_id
+ *   contact who's events we're to get
  */
 function _osa_get_participant_events($contact_id) {
   // build the  parameters
@@ -593,52 +654,4 @@ function _osa_get_participant_events($contact_id) {
         array(1 => $contact_id)));
   }
   return $result['values'];
-}
-
-/**
- * Wrapper function to return current logged in user's drupal id
- */
-function _osa_getUserId() {
-  return CRM_Utils_System::getLoggedInUfID();
-}
-
-/**
- * Wrapper function to return current logged in user's contact id
- */
-function _osa_getContactId() {
-  $params = array(
-    'uf_id' => _osa_getUserId(),
-    'sequential' => 1,
-    'version' => 3,
-  );
-
-  $result = civicrm_api('UFMatch', 'get', $params);
-  return $result['values'][0]['contact_id'];
-}
-
-/**
- * Wrapper function to return current logged in user's contact record
- */
-function _osa_getContact() {
-  $params = array(
-    'id' => _osa_getContactId(),
-    'version' => 3,
-  );
-
-  // get the contact record
-  $result = civicrm_api('contact', 'get', $params);
-  return $result['values'][$result['id']];
-}
-
-/**
- * 
- */
-function _osa_appendTemplateVar(&$smarty, $varname, &$apiResult) {
-  $values = ($apiResult['count'] > 0) ? $apiResult['values'] : null;
-  $var = $smarty->get_template_vars($varname);
-  if (isset($var)) {
-    $smarty->assign($varname, (array)$var + (array)$values);
-  } else {
-    $smarty->assign($varname, $values);
-  }
 }

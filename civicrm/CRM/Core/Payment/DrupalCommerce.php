@@ -83,9 +83,6 @@ class CRM_Core_Payment_DrupalCommerce extends CRM_Core_Payment {
         // Create a new shopping cart line item
         module_load_include('php', 'civicrm_commerce', 'civicrm_line_item');
         $result = civicrm_commerce_line_item_add_new( $params, $component );
-        if ( $result ) {
-            drupal_set_message("Added to Cart", 'status', FALSE);
-        }
     }
 
     /** 

@@ -1,10 +1,9 @@
 name = Commerce Elavon
 description = Integration with Elavon payment gateway.
+core = 7.x
 version = 7.x-dev
+
 package = Commerce (contrib)
 dependencies[] = commerce_payment
-core = 7.x
-
-files[] = commerce_elavon.inc
 
 configure = admin/commerce/config/commerce-elavon

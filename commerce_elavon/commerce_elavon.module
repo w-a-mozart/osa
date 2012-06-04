@@ -6,7 +6,8 @@
 require_once 'commerce_elavon.inc';
 
 /**
- * Implements hook_commerce_payment_method_info() to define the Elavon Payment Method
+ * Implements hook_commerce_payment_method_info() to define the
+ * Elavon Payment Method.
  */
 function commerce_elavon_commerce_payment_method_info() {
   $payment_methods = array();

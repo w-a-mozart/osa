@@ -100,28 +100,19 @@ function civicrm_commerce_line_item_configuration($line_item_type) {
  */
 function civicrm_commerce_line_item_title($line_item) {
   $type = $line_item->type;
-
-  switch ($type) {
-    case "civi_membership":
-      $title = t('Membership');
-    break;
-    case "civi_event":
-      $title = t('Event');
-    break;
-    case "civi_contribution":
-      $title = t('Contribution');
-    break;
-    case "civi_member_discount":
-      $title = t('Member Discount');
-    break;
-    default:
-      $title = t('Unknown');
-    break;
+  $line_item_wrapper = entity_metadata_wrapper('commerce_line_item', $line_item);
+  if (isset($line_item_wrapper->civicrm_commerce_contribution_id)) {
+    $contribution_id = $line_item_wrapper->civicrm_commerce_contribution_id->value();
+    $result = civicrm_api('contribution', 'get', array('id' => $contribution_id, 'version' => 3));
+    $title = $result['values'][$contribution_id]['contribution_type'];
+  }
+  else {
+    $title = t('Discount');
   }
 
   return($title);
 }
-
+ 
 /**
  * Returns the elements necessary to add a line item through a line item manager widget (on the order form).
  */
@@ -217,19 +208,30 @@ function civicrm_commerce_line_item_add_new(&$params, $component) {
   // load the "dummy" civicrm product
   $product = commerce_product_load_by_sku(CIVICRM_COMMERCE_PRODUCT_SKU);
 
+  if (isset($contactID)) {
+    $result = civicrm_api('contact', 'get', array('id' => $contactID, 'version' => 3));
+    $contact = $result['values'][$contactID];
+  }
+  else {
+    $contact['display_name'] = '';
+  }
+  
   // determine the line item type to create
   if ($component == "contribute") {
+    $label = $contact['display_name'];
     if ($membershipID) {
       $type = 'civi_membership';
-      $label = CRM_Utils_Array::value('contributionType_name', $params);
-    } else {
-      $type = 'civi_contribution';
-      $label = CRM_Utils_Array::value('contributionType_name', $params);
     }
-  } elseif ($component == "event") {
+    else {
+      $type = 'civi_contribution';
+    }
+  }
+  elseif ($component == "event") {
     $type = 'civi_event';
     $label = CRM_Utils_Array::value('item_name', $params);
-  } else {
+    $label .= ' - ' . $contact['display_name'];
+  }
+  else {
     CRM_Core_Error::fatal(ts('Unknown shopping cart item.'));
   }
   
@@ -266,7 +268,7 @@ function civicrm_commerce_line_item_add_new(&$params, $component) {
 
   // add it to the current user's cart
   $uid = CRM_Utils_System::getLoggedInUfID();
-  commerce_cart_product_add($uid, $line_item, FALSE);
+  return commerce_cart_product_add($uid, $line_item, FALSE);
 }
 
 /**
@@ -278,7 +280,7 @@ function civicrm_commerce_line_item_add_new(&$params, $component) {
  * @return
  *   The fully loaded line item.
  */
-function _civicrm_commerce_member_discount_new($amount, $currency_code = null, $order_id = 0) {
+function _civicrm_commerce_member_discount_new($amount, $currency_code = NULL, $order_id = 0) {
   $type = 'civi_member_discount';
 
   // clean-up the input parameters

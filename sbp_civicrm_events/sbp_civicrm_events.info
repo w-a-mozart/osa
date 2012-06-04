@@ -1,10 +1,8 @@
 name = Search by Page for CiviCRM Events
 description = Sub-Module for Search by Page: Enables the full text indexing of CiviCRM Events.
-version = 7.x-dev
 core = 7.x
+version = 7.x-dev
 
 package = "Search"
 dependencies[] = search_by_page
 dependencies[] = civicrm
-files[] = sbp_civicrm_events.module
-files[] = sbp_civicrm_events.install
