@@ -76,7 +76,8 @@ function osa_civicrm_page_CRM_Contact_Page_View_UserDashBoard(&$page)
   //   the household of the current user,
   //   or the current user
   // so the get the contact object being displayed
-  $pgContact = _osa_getContact($cid, FALSE);
+  $result = civicrm_api('contact', 'get', array('id' => $cid, 'version' => 3));
+  $pgContact = $result['values'][$result['id']];
   $pgContactType = isset($pgContact['contact_sub_type']) ? $pgContact['contact_sub_type'][0] : $pgContact['contact_type'];
   // FIX: image_URL not currently returned by api
   $pgContact['image_URL'] = CRM_Contact_BAO_Contact_Utils::getImage($pgContactType, false, $cid);
@@ -97,19 +98,10 @@ function osa_civicrm_page_CRM_Contact_Page_View_UserDashBoard(&$page)
   // get all relationships for this contact
   $family = _osa_getHouseholdMembers($cid);
 
+  // separate them by type to display in separate lists
   foreach($family as $person) {
-
-    // get membership status
-    $membership = _osa_get_membership($person['contact_id']);
-    if (isset($membership)) {
-      $person['contact']['is_current_member'] = $membership['is_current_member'];
-      $person['membership']['status'] = $membership['status'];
-      $membership['display_name'] = $person['contact']['display_name'];
-      $members[] = $membership;
-    }
-
-    // separate people by type to display in separate lists
     $contactType = $person['contact_type'];
+
     if ($contactType == 'Parent') {
       $parents[] = $person;
     } elseif ($contactType == 'Student') {
@@ -120,6 +112,14 @@ function osa_civicrm_page_CRM_Contact_Page_View_UserDashBoard(&$page)
       // $homes[] = $person;
     } else {
       $others[] = $person;
+    }
+
+    // set membership status
+    $membership = _osa_get_membership($person['contact_id']);
+    if (isset($membership)) {
+      $person['contact']['is_current_member'] = $membership['is_current_member'];
+      $membership['display_name'] = $person['contact']['display_name'];
+      $members[] = $membership;
     }
 
     // append family member elements to lists in the page
@@ -277,7 +277,7 @@ function osa_civicrm_buildForm_CRM_Profile_Form_Edit(&$form) {
       _osa_addRelationshipField($form, $hid);
     }
   }
-
+  
   // add CSS and javascript to profile forms in a colorbox
   $context = CRM_Utils_Request::retrieve('context', 'String');
   if ($context == 'boxload') {
@@ -292,7 +292,7 @@ function osa_civicrm_buildForm_CRM_Profile_Form_Edit(&$form) {
  * Add custom post procesing to CiviCRM Profile based forms
  *
  * @param $form
- *   The CRM_Profile_Form_Edit object being processed.
+ *   The CRM_Profile_Form_Edit object being rendered.
  */
 function osa_civicrm_postProcess_CRM_Profile_Form_Edit(&$form) {
 
@@ -303,18 +303,14 @@ function osa_civicrm_postProcess_CRM_Profile_Form_Edit(&$form) {
 
   // if we just created a new contact, setup the relationships, etc.
   if ($mode == CRM_Profile_Form::MODE_CREATE) {
-
+  
     // if we are passed a household id, add the new contact to the house
     if (isset($hid)) {
       $type = OSA_REL_HOUSEHOLD_MEMBER;
       if ($gid == OSA_PROFILE_REL_INDIVIDUAL) {
         $type = _osa_getRelationshipField($form);
       }
-
-      $contact     = _osa_getContact($cid, FALSE);
-      $contactType = isset($contact['contact_sub_type']) ? $contact['contact_sub_type'][0] : $contact['contact_type'];
-      $perm        = ($contactType == 'Parent') ? OSA_PERM_OWNED : OSA_PERM_NONE;
-      _osa_create_relationship($type, $cid, $hid, $perm);
+      _osa_create_relationship($type, $cid, $hid, OSA_PERM_NONE);
 
       // set up all of the other relationships
       _osa_manageHouseholdRelationships($hid);
@@ -354,24 +350,15 @@ function osa_civicrm_postProcess_CRM_Profile_Form_Edit(&$form) {
 }
 
 /**
- * Add custom procesing when generating CiviCRM Contribution based forms
+ * Add custom procesing to CiviCRM Contribution forms
  *
  * @param $form
- *   The CRM_Contribute_Form_Contribution_Main object being rendered.
+ *   The CRM_Profile_Form_Edit object being rendered.
  */
 function osa_civicrm_buildForm_CRM_Contribute_Form_Contribution_Main(&$form) {
-
-  // all of our contributions are from authnticated users,
-  // so remove the email for anonymous users
-  $bltID = $form->_bltID;
-  $form->removeElement("email-$bltID");
   
-  // check if this is the membership form (we only use one for memberships)
-  if ($form->_id == OSA_CONTRIB_MEMBER) {
-    return;
-  }
-  // all other contributions can be made on behalf of a family member
-  // so add a drop down of family members
+  // contributions can be made on behalf of a family member
+  // so add a drop down of family members and remove the email for anonymous users
   $family = _osa_getHouseholdMembers(null, 'display_name');
   asort($family);
   $form->addElement('select', 'contact_id', ts('Family Member'), $family);
@@ -379,75 +366,9 @@ function osa_civicrm_buildForm_CRM_Contribute_Form_Contribution_Main(&$form) {
   $session = CRM_Core_Session::singleton();
   $form->setDefaults(array('contact_id' => $session->get('userID')));
   $form->assign('onbehalfFamily', true);
-}
 
-/**
- * Add custom post procesing to CiviCRM Contribution based forms
- *
- * @param $form
- *   The CRM_Contribute_Form_Contribution_Main object being processed.
- */
-function osa_civicrm_postProcess_CRM_Contribute_Form_Contribution_Main(&$form) {
-
-	// since we use a Cart, we can disable the confirmation forms
-  $confirmForm =& $form->controller->_pages['Confirm'];
-  $confirmForm->preProcess();
-
-  // Hack to tell form validator that confirmation page is valid
-  $data     =& $form->controller->container();
-	$data['valid']['Confirm'] = 1;
-
-	// Redirect to thank you page
-  $confirmForm->postProcess();
-  $qfKey = $form->controller->_key;
-	CRM_Utils_System::redirect(CRM_Utils_System::url('civicrm/contribute/transact', "_qf_ThankYou_display=1&qfKey=$qfKey", true, null, false));
-}
-
-/**
- * Add custom procesing when generating CiviCRM Email forms
- *
- * @param $form
- *   The CRM_Contact_Form_Task_Email object being rendered.
- */
-function osa_civicrm_buildForm_CRM_Contact_Form_Task_Email(&$form) {
-
-  // if there are contact's we want to email but they don't have an email
-  // address defined (i.e. Students), try to use their household's email
-  $emailsNotSent = array_diff_assoc( $form->_allContactDetails, $form->_contactDetails );
-	if (empty($emailsNotSent)) {
-    return;
-  }
-  $smarty = $form->getTemplate();
-  $suppressedEmails = $smarty->get_template_vars('suppressedEmails');
-  $toArray = json_decode($smarty->get_template_vars('toContact'), TRUE);
-
-  foreach ($emailsNotSent as $contactId => $value) {
-    if ($value['do_not_email'] || CRM_Utils_Array::value('is_deceased', $value) || CRM_Utils_Array::value('on_hold', $value)) {
-      continue;
-    }
-
-    // find the household
-    $hid = _osa_getHousehold($contactId);
-    if (isset($hid)) {
-      $h_contact = _osa_getContact($hid, FALSE);
-      if (isset($h_contact['email'])) {
-        $email = $h_contact['email'];
-        $toArray[] = array(
-          'name' => '"'. $value['sort_name'] .'" &lt;' .$email .'&gt;',
-          'id'   => "$hid::{$email}",
-        ); 
-        $suppressedEmails--;
-      }
-    }
-  }
-
-  // quit now if there are no emails to add
-	if (empty($toArray)) {
-    return;
-  }
-
-	$form->assign('toContact', json_encode($toArray));
-	$form->assign('suppressedEmails', $suppressedEmails);
+  $bltID = $form->_bltID;
+  $form->removeElement("email-$bltID");
 }
 
 /**
@@ -468,8 +389,6 @@ function osa_form_alter(&$form, &$form_state, $form_id) {
         $form['commerce_payment']['payment_details']['#suffix'] = '</div>';
       }
     }
-    
-    $form['buttons']['continue']['#value'] = t('Pay Now');
   }
 }
 

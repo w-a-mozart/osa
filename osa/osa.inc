@@ -213,15 +213,21 @@ function _osa_manageHouseholdRelationships($cid) {
 }
 
 /**
- *  Get the id of a Household Contact
+ *  Get the id of the related Household Contact
  */
 function _osa_getHousehold($cid = null) {
 
-  // get the contact record
-  $contact = _osa_getContact($cid, FALSE);
-  if (!isset($contact)) {
-    return null;
+  if (!isset($cid)) {
+    $session = CRM_Core_Session::singleton();
+    $cid = $session->get('userID');
+    if (! isset($cid)) {
+      return null;
+    }
   }
+  
+  // get the contact record
+  $result = civicrm_api('contact', 'get', array('id' => $cid, 'version' => 3));
+  $contact = $result['values'][$result['id']];
   
   // find the household
   $hid = null;
@@ -270,7 +276,8 @@ function _osa_getHouseholdMembers($cid = null, $field = null) {
 
   // get the contact records
   foreach($relationships as $relationship) {
-    $contact = _osa_getContact($relationship['cid']);
+    $result = civicrm_api('contact', 'get', array('id' => $relationship['cid'], 'version' => 3));
+    $contact = $result['values'][$result['id']];
     $contact_id = $contact['contact_id'];
     
     if (isset($field)) {
@@ -466,65 +473,6 @@ function _osa_getRelationshipField(&$form) {
 }
 
 /**
- * Wrapper function to return current logged in user's drupal id
- */
-function _osa_getUserId() {
-  return CRM_Utils_System::getLoggedInUfID();
-}
-
-/**
- * Wrapper function to return current logged in user's contact id
- */
-function _osa_getContactId() {
-  $params = array(
-    'uf_id' => _osa_getUserId(),
-    'sequential' => 1,
-    'version' => 3,
-  );
-
-  $result = civicrm_api('UFMatch', 'get', $params);
-  return $result['values'][0]['contact_id'];
-}
-
-/**
- * Wrapper function to return a contact record
- */
-function _osa_getContact($cid = NULL, $custom = TRUE) {
-
-  if (!isset($cid)) {
-    $cid = _osa_getContactId();
-  }
-
-  // get the contact record
-  $result = civicrm_api('contact', 'get',  array('id' => $cid, 'version' => 3));
-  if (($result['is_error'] == 0) && ($result['count'] == 1)) {
-    $contact = $result['values'][$cid];
-  }
-  else {
-    return NULL;
-  }
-
-  // fill in any custom fields
-  if ($custom) {
-    static $custom_fields = NULL;
-    if (!isset($custom_fields)) {
-      $result = civicrm_api('CustomField', 'get',  array('version' => 3));
-      $custom_fields = $result['values'];
-    }
-    
-    $result = civicrm_api('CustomValue', 'get',  array('entity_id' => $cid, 'entity_type' => 'Contact', 'version' => 3));
-    if ($result['is_error'] == 0) {
-      foreach ($result['values'] as $fid => $value) {
-        $fname = $custom_fields[$fid]['name'];
-        $contact[$fname] = $value['latest'];
-      }
-    }
-  }
-
-  return $contact;
-}
-
-/**
  * Wrapper of CiviCRM API to create relationships
  *
  * @param integer $relationship_type_id
@@ -645,6 +593,41 @@ function _osa_get_participant_events($contact_id) {
         array(1 => $contact_id)));
   }
   return $result['values'];
+}
+
+/**
+ * Wrapper function to return current logged in user's drupal id
+ */
+function _osa_getUserId() {
+  return CRM_Utils_System::getLoggedInUfID();
+}
+
+/**
+ * Wrapper function to return current logged in user's contact id
+ */
+function _osa_getContactId() {
+  $params = array(
+    'uf_id' => _osa_getUserId(),
+    'sequential' => 1,
+    'version' => 3,
+  );
+
+  $result = civicrm_api('UFMatch', 'get', $params);
+  return $result['values'][0]['contact_id'];
+}
+
+/**
+ * Wrapper function to return current logged in user's contact record
+ */
+function _osa_getContact() {
+  $params = array(
+    'id' => _osa_getContactId(),
+    'version' => 3,
+  );
+
+  // get the contact record
+  $result = civicrm_api('contact', 'get', $params);
+  return $result['values'][$result['id']];
 }
 
 /**

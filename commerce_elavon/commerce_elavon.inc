@@ -39,6 +39,12 @@ function commerce_elavon_form_fields() {
  */
 function commerce_elavon_transaction($payment_method, $values, $order, $charge) {
 
+  // create a commerce transaction
+  $transaction                 = commerce_payment_transaction_new('commerce_elavon', $order->order_id);
+  $transaction->instance_id    = $payment_method['instance_id'];
+  $transaction->amount         = $charge['amount'];
+  $transaction->currency_code  = $charge['currency_code'];
+
   // do currency conversion
   if ($charge['currency_code'] != commerce_default_currency()) {
     $charge['amount'] = commerce_currency_convert($charge['amount'], $charge['currency_code'], commerce_default_currency());
@@ -103,25 +109,12 @@ function commerce_elavon_transaction($payment_method, $values, $order, $charge) 
     $curl_options[CURLOPT_CAINFO]         = variable_get('commerce_elavon_cert_path');
   }
 
-/*
   $ch = curl_init();
   curl_setopt_array($ch, $curl_options);
   $response = curl_exec($ch);
   $errorno  = curl_errno($ch);
   $errmsg   = curl_error($ch);
   curl_close($ch);
-*/
-  $response = '<txn>
-<ssl_card_number>50********0002</ssl_card_number>
-<ssl_exp_date>1215</ssl_exp_date>
-<ssl_amount>1.00</ssl_amount>
-<ssl_result>0</ssl_result>
-<ssl_result_message>APPROVAL</ssl_result_message>
-<ssl_txn_id>101641221593ACBA6-BAFD-76B7-4948-B3DE68CFD0CC</ssl_txn_id>
-<ssl_approval_code>CMC142</ssl_approval_code>
-<ssl_account_balance>1.00</ssl_account_balance>
-<ssl_txn_time>01/20/2011 01:07:23 PM</ssl_txn_time>
-</txn>';
 
   if (!$response) {
     watchdog('commerce_elavon', 'Error with cURL request: (!error_no). Message: !error_message',
@@ -137,21 +130,22 @@ function commerce_elavon_transaction($payment_method, $values, $order, $charge) 
   watchdog('commerce_elavon', 'Response: !param',
            array('!param' => '<pre>' . check_plain(print_r($response_data, TRUE)) . '</pre>'));
 
-  // create a commerce transaction
-  $transaction                 = commerce_payment_transaction_new('commerce_elavon', $order->order_id);
-  $transaction->instance_id    = $payment_method['instance_id'];
-  $transaction->amount         = $charge['amount'];
-  $transaction->currency_code  = $charge['currency_code'];
-  $transaction->message        = $response_data['ssl_result_message'];
-  $transaction->remote_id      = $response_data['ssl_txn_id'];
-  $transaction->status         = ($response_data['ssl_result'] == 0) ? COMMERCE_PAYMENT_STATUS_SUCCESS : COMMERCE_PAYMENT_STATUS_FAILURE;
-  $transaction->remote_status  = $response_data['ssl_result'];
-  
+  $transaction->message = 'Elavon Result: @code <br />
+                           Elavon Message: @message';
+  $transaction->message_variables = array(
+    '@code' => $response_data['ssl_result'],
+    '@message' => $response_data['ssl_result_message'],
+  );
+
+  // set the remote ID to the Elavon transaction ID
+  $transaction->remote_id = $response_data['ssl_txn_id'];
+  $transaction->status = ($response_data['ssl_result'] == 0) ? COMMERCE_PAYMENT_STATUS_SUCCESS : COMMERCE_PAYMENT_STATUS_FAILURE;
   commerce_payment_transaction_save($transaction);
 
-  
   // If the payment failed, display an error.
   if ($response_data['ssl_result'] != 0) {
+    $msg = t('The following error occured processing your transaction. Please verify your information or contact us to resolve the error.');
+    drupal_set_message($msg, 'error');
     drupal_set_message(check_plain($response_data['ssl_result_message']), 'error');
     return FALSE;
   }
@@ -167,7 +161,7 @@ function commerce_elavon_transaction($payment_method, $values, $order, $charge) 
  */
 function _commerce_elavon_txnXML($txn_array) {
   $xml = '<txn>\n';
-  foreach ($txn_array as $name => $value) {
+  foreach (txn_array as $name => $value) {
     if (isset($value)) {
       $xml .= "  <$name>$value</$name>\n";
     }

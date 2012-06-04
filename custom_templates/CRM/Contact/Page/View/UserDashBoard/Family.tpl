@@ -58,8 +58,7 @@
                         <th>{ts}Students{/ts}</th>
                         <th>{ts}Gender{/ts}</th>
                         <th>{ts}Birth Day{/ts}</th>
-                        <th>Member</th>
-                        <th colspan="2">Primary Instrument</th>
+                        <th>OSA Member</th>
                         <th></th>
                     </tr>
                 </thead>
@@ -69,12 +68,10 @@
                     <td>{$student.contact.gender}</td>
                     <td>{$student.contact.birth_date}</td>
         {if $student.contact.is_current_member}
-                    <td align='center'><img src="/images/Membership.png"></td>
+                    <td align='center'><img src="/images/Membership.jpg"></td>
         {else}
                     <td>{$student.membership.status}</td>
         {/if}
-                    <td>{$student.contact.Primary_Instrument}</td>
-                    <td>{crmAPI var="ContactS" entity="Contact" action="get" id=$student.contact.Primary_Teacher return="display_name" }{$ContactS.values[$student.contact.Primary_Teacher].display_name}</td>
                     <td class="nowrap">
                         {$student.links}
                     </td>
