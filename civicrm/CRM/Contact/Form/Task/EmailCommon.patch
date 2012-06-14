@@ -1,0 +1,16 @@
+*** /C/WAMP/UniServer/www/drupal/sites/all/modules/civicrm/CRM/Contact/Form/Task/EmailCommon.php	Wed May 16 20:55:16 2012
+--- EmailCommon.php	Tue Jun 12 12:13:17 2012
+***************
+*** 227,235 ****
+--- 227,237 ----
+          }
+        }
+  
++       /* Don't fail on no email address, as we use the household email for OSA
+        if (empty($toArray)) {
+          CRM_Core_Error::statusBounce(ts('Selected contact(s) do not have a valid email address, or communication preferences specify DO NOT EMAIL, or they are deceased or Primary email address is On Hold.'));
+        }
++       */
+      }
+  
+      $form->assign('toContact', json_encode($toArray));
