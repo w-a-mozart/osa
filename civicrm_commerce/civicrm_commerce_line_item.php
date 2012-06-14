@@ -103,6 +103,7 @@ function civicrm_commerce_line_item_title($line_item) {
   $line_item_wrapper = entity_metadata_wrapper('commerce_line_item', $line_item);
   if (isset($line_item_wrapper->civicrm_commerce_contribution_id)) {
     $contribution_id = $line_item_wrapper->civicrm_commerce_contribution_id->value();
+    civicrm_initialize();
     $result = civicrm_api('contribution', 'get', array('id' => $contribution_id, 'version' => 3));
     $title = $result['values'][$contribution_id]['contribution_type'];
   }
@@ -228,8 +229,14 @@ function civicrm_commerce_line_item_add_new(&$params, $component) {
   }
   elseif ($component == "event") {
     $type = 'civi_event';
-    $label = CRM_Utils_Array::value('item_name', $params);
-    $label .= ' - ' . $contact['display_name'];
+    if (isset($eventID)) {
+      $result = civicrm_api('event', 'get', array('id' => $eventID, 'version' => 3));
+      $label = $result['values'][$eventID]['title'];
+    }
+    else {
+      $label = CRM_Utils_Array::value('item_name', $params);
+    }
+    $label .= ' (' . $contact['display_name'] . ')';
   }
   else {
     CRM_Core_Error::fatal(ts('Unknown shopping cart item.'));
@@ -300,7 +307,7 @@ function _civicrm_commerce_member_discount_new($amount, $currency_code = NULL, $
 
   // set the line item standard attributes
   $line_item_wrapper = entity_metadata_wrapper('commerce_line_item', $line_item);
-  $line_item_wrapper->line_item_label = t('Member Discount');
+  $line_item_wrapper->line_item_label = t('Discount');
   $line_item_wrapper->commerce_unit_price->amount = $amount;
   $line_item_wrapper->commerce_unit_price->currency_code = $currency_code;
   
@@ -320,31 +327,4 @@ function _civicrm_commerce_member_discount_new($amount, $currency_code = NULL, $
   }
   
   return $line_item;
-}
-
-// Add a member discount for each item when required.
-function civicrm_commerce_commerce_order_presave($order) {
-
-/*
-  
-  $type_exists = FALSE;
-  if (!empty($order->commerce_line_items['und'])) {
-    foreach($order->commerce_line_items['und'] as $delta => $line_item_entry) {
-      if ($line_item = commerce_line_item_load($line_item_entry['line_item_id'])) {
-        if ($line_item->type == 'civi_member_discount') {
-          $type_exists = TRUE;
-          break;
-        }
-      }
-    }
-  }
-
-  // If our line item is not yet in the order and the order has an ID,
-  // create a line item to add to the order.
-  if (!$type_exists && $order->order_id > 0) {
-    $line_item = _civicrm_commerce_member_discount_add_new($order->order_id);
-    commerce_line_item_save($line_item);
-    $order->commerce_line_items['und'][] = array('line_item_id' => $line_item->line_item_id);
-  }
-*/
 }
