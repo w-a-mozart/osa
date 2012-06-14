@@ -8,8 +8,7 @@
 require_once 'osa.inc';
 
 /**
- * This hook is called before a CiviCRM page is rendered and invokes the
- * appropriate customization function.
+ * This hook is called before a CiviCRM page is rendered and invokes the appropriate customization function.
  *
  * @param $page
  *   The page being rendered.
@@ -41,7 +40,7 @@ function osa_civicrm_page_CRM_Contact_Page_View_UserDashBoard(&$page) {
     $session->set('userID', $uid);
   }
   
-  // Use the contact id passed in the URL, or the household of the current user
+  // use the contact id passed in the URL, or the household of the current user
   $cid = CRM_Utils_Request::retrieve('id', 'Positive');
   if (isset($cid)) {
     $hid =_osa_getHousehold($cid);
@@ -74,23 +73,22 @@ function osa_civicrm_page_CRM_Contact_Page_View_UserDashBoard(&$page) {
   // so the get the contact object being displayed
   $pgContact = _osa_getContact($cid, FALSE);
   $pgContactType = isset($pgContact['contact_sub_type']) ? $pgContact['contact_sub_type'][0] : $pgContact['contact_type'];
-  // FIX: image_URL not currently returned by api
+  // @todo image_URL not currently returned by api
   $pgContact['image_URL'] = CRM_Contact_BAO_Contact_Utils::getImage($pgContactType, FALSE, $cid);
   $page->assign('contact', $pgContact);
 
   // init vars & arrays
-  $parents = array();
-  $students = array();
-  $teachers = array();
-  $others = array();
-  // $homes = array(); not used
-  $smarty = $page->getTemplate();
+  $parents         = array();
+  $students        = array();
+  $teachers        = array();
+  $others          = array();
+  $smarty          = $page->getTemplate();
   $members         = array(); // overwrite list to display name
   $event_rows      = $smarty->get_template_vars('event_rows');
   $contribute_rows = $smarty->get_template_vars('contribute_rows');
   $groupIn         = $smarty->get_template_vars('groupIn');
 
-  // get all relationships for this contact
+  // get all the family members for this contact
   $family = _osa_getHouseholdMembers($cid);
 
   foreach ($family as $person) {
@@ -105,18 +103,18 @@ function osa_civicrm_page_CRM_Contact_Page_View_UserDashBoard(&$page) {
     }
 
     // separate people by type to display in separate lists
-    $contactType = $person['contact_type'];
-    if ($contactType == 'Parent') {
+    $contact_type = $person['contact_type'];
+    if ($contact_type == 'Parent') {
       $parents[] = $person;
     }
-    elseif ($contactType == 'Student') {
+    elseif ($contact_type == 'Student') {
       $students[] = $person;
     }
-    elseif ($contactType == 'Teacher') {
+    elseif ($contact_type == 'Teacher') {
       $teachers[] = $person;
     }
-    elseif ($contactType == 'Household') {
-      // $homes[] = $person;
+    elseif ($contact_type == 'Household') {
+      // do nothing
     }
     else {
       $others[] = $person;
@@ -141,7 +139,6 @@ function osa_civicrm_page_CRM_Contact_Page_View_UserDashBoard(&$page) {
   $page->assign('students', $students);
   $page->assign('teachers', $teachers);
   $page->assign('others', $others);
-  // $page->assign('homes', $homes);
   $page->assign('members', $members);
   $page->assign('event_rows', $event_rows);
   $page->assign('contribute_rows', $contribute_rows);
@@ -251,7 +248,7 @@ function osa_civicrm_buildForm_CRM_Profile_Form_Edit(&$form) {
   // if we are passed a household id add it to the form
   $hid = CRM_Utils_Request::retrieve('osa_hid', 'Positive');
   if (isset($hid)) {
-    _osa_addHouseholdField($form, $hid);
+    _osa_addField($form, 'hidden', 'osa_hid', $hid);
   }
   
   // set defaults in the create family profile form
@@ -324,8 +321,8 @@ function osa_civicrm_postProcess_CRM_Profile_Form_Edit(&$form) {
       }
 
       $contact     = _osa_getContact($cid, FALSE);
-      $contactType = isset($contact['contact_sub_type']) ? $contact['contact_sub_type'][0] : $contact['contact_type'];
-      $perm        = ($contactType == 'Parent') ? OSA_PERM_OWNED : OSA_PERM_NONE;
+      $contact_type = isset($contact['contact_sub_type']) ? $contact['contact_sub_type'][0] : $contact['contact_type'];
+      $perm        = ($contact_type == 'Parent') ? OSA_PERM_OWNED : OSA_PERM_NONE;
       _osa_create_relationship($type, $cid, $hid, $perm);
 
       // set up all of the other relationships
@@ -416,6 +413,59 @@ function osa_civicrm_postProcess_CRM_Contribute_Form_Contribution_Main(&$form) {
 }
 
 /**
+ * Add custom procesing when generating CiviCRM Event Registration forms
+ *
+ * @param $form
+ *   The CRM_Event_Form_Registration_Register object being rendered.
+ */
+function osa_civicrm_buildForm_CRM_Event_Form_Registration_Register(&$form) {
+  // remove the email field to identify participant
+  $bltID = $form->_bltID;
+  $form->removeElement("email-$bltID");
+  
+  // registrations can be made on behalf of a family member
+  // so add a drop down of family members
+  $family = _osa_getHouseholdMembers(NULL, 'display_name');
+  asort($family);
+  $form->addElement('select', 'contact_id', ts('Family Member'), $family);
+  $form->addRule('contact_id', ts('Please select a family member.'), 'required');
+  $session = CRM_Core_Session::singleton();
+  $form->setDefaults(array('contact_id' => $session->get('userID')));
+  $form->assign('onbehalfFamily', TRUE);
+}
+
+/**
+ * Add custom post procesing to CiviCRM Event Registration forms
+ *
+ * @param $form
+ *   The CRM_Event_Form_Registration_Register object being processed.
+ */
+function osa_civicrm_postProcess_CRM_Event_Form_Registration_Register(&$form) {
+
+  // since we use a Cart, we want to disable the confirmation form
+  $confirmForm =& $form->controller->_pages['Confirm'];
+
+  // first set the contact id to the selected family member
+  $data =& $form->controller->container();
+  $contact_id = $data['values']['Register']['contact_id'];
+  $params = $confirmForm->get('params');
+  $params[0]['contact_id'] = $contact_id;
+  $confirmForm->set('params', $params);;
+
+  // build the confirmation form to make sure all of the values are set
+  $confirmForm->preProcess();
+  $confirmForm->buildQuickForm();
+
+  // tell form validator that confirmation page is valid
+  $data['valid']['Confirm'] = 1;
+  $confirmForm->postProcess();
+
+  // Redirect to thank you page
+  $qfKey = $form->controller->_key;
+  CRM_Utils_System::redirect(CRM_Utils_System::url('civicrm/event/register', "_qf_ThankYou_display=true&qfKey=$qfKey", TRUE, NULL, FALSE));
+}
+
+/**
  * Add custom procesing when generating CiviCRM Email forms
  *
  * @param $form
@@ -425,7 +475,7 @@ function osa_civicrm_buildForm_CRM_Contact_Form_Task_Email(&$form) {
 
   // if there are contact's we want to email but they don't have an email
   // address defined (i.e. Students), try to use their household's email
-  $emailsNotSent = array_diff_assoc( $form->_allContactDetails, $form->_contactDetails );
+  $emailsNotSent = array_diff_assoc($form->_allContactDetails, $form->_contactDetails);
   if (empty($emailsNotSent)) {
     return;
   }
@@ -445,7 +495,7 @@ function osa_civicrm_buildForm_CRM_Contact_Form_Task_Email(&$form) {
       if (isset($h_contact['email'])) {
         $email = $h_contact['email'];
         $toArray[] = array(
-          'name' => '"'. $value['sort_name'] . '" &lt;' . $email . '&gt;',
+          'name' => '"' . $value['sort_name'] . '" &lt;' . $email . '&gt;',
           'id'   => "$hid::{$email}",
         ); 
         $suppressedEmails--;
@@ -460,6 +510,16 @@ function osa_civicrm_buildForm_CRM_Contact_Form_Task_Email(&$form) {
 
   $form->assign('toContact', json_encode($toArray));
   $form->assign('suppressedEmails', $suppressedEmails);
+}
+
+/**
+ * Add custom procesing when generating CiviCRM Email forms
+ *
+ * @param $form
+ *   The CRM_Event_Form_Task_Email object being rendered.
+ */
+function osa_civicrm_buildForm_CRM_Event_Form_Task_Email(&$form) {
+  osa_civicrm_buildForm_CRM_Contact_Form_Task_Email($form);
 }
 
 /**

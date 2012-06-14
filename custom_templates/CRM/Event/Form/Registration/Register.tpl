@@ -1,26 +1,12 @@
 {*
  +--------------------------------------------------------------------+
- | CiviCRM version 4.1                                                |
+ | Custom OSA Event Registration Form                                 |
  +--------------------------------------------------------------------+
+ | Override Standard CiviCRM Template Register.tpl                    |
+ | - add selection box to register on behalf of family members.       |
+ +--------------------------------------------------------------------+
+ | Copyright Oakville Suzuki Association 2012                         |
  | Copyright CiviCRM LLC (c) 2004-2011                                |
- +--------------------------------------------------------------------+
- | This file is a part of CiviCRM.                                    |
- |                                                                    |
- | CiviCRM is free software; you can copy, modify, and distribute it  |
- | under the terms of the GNU Affero General Public License           |
- | Version 3, 19 November 2007 and the CiviCRM Licensing Exception.   |
- |                                                                    |
- | CiviCRM is distributed in the hope that it will be useful, but     |
- | WITHOUT ANY WARRANTY; without even the implied warranty of         |
- | MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.               |
- | See the GNU Affero General Public License for more details.        |
- |                                                                    |
- | You should have received a copy of the GNU Affero General Public   |
- | License and the CiviCRM Licensing Exception along                  |
- | with this program; if not, contact CiviCRM LLC                     |
- | at info[AT]civicrm[DOT]org. If you have questions about the        |
- | GNU Affero General Public License or the licensing of CiviCRM,     |
- | see the CiviCRM license FAQ at http://civicrm.org/licensing        |
  +--------------------------------------------------------------------+
 *}
 {if $action & 1024}
@@ -44,10 +30,7 @@
   </div>
 {/if}
 
-{if $contact_id}
-<div class="messages status">
-    {ts 1=$display_name}Welcome %1{/ts}. (<a href="{crmURL p='civicrm/event/register' q="cid=0&reset=1&id=`$event.id`"}" title="{ts}Click here to register a different person for this event.{/ts}">{ts 1=$display_name}Not %1, or want to register a different person{/ts}</a>?)</div>
-{/if}
+{* Remove warning message *}
 {if $event.intro_text}
     <div id="intro_text" class="crm-section intro_text-section">
         <p>{$event.intro_text}</p>
@@ -69,6 +52,19 @@
         </div>
         <div class="clear"></div>
     </div>
+{/if}
+
+{* User selection. Rather than typing in an email, select who the registration is for. *}
+{if $onbehalfFamily }
+  <div class="crm-section contact-id-section">
+    <fieldset>
+      <legend>{ts}Register{/ts}</legend>
+      <div class="label">{$form.contact_id.label}</div>
+      <div class="content">
+        {$form.contact_id.html}
+    </fieldset>
+  </div>
+  <div class="clear"></div> 
 {/if}
 
 {if $priceSet}
@@ -136,13 +132,7 @@
     </fieldset>
 {/if}
 
-{assign var=n value=email-$bltID}
-    <div class="crm-section email-section">
-        <div class="label">{$form.$n.label}</div>
-        <div class="content">{$form.$n.html}</div>
-        <div class="clear"></div>
-    </div>
-
+{* Remove email field *}
 
 {* User account registration option. Displays if enabled for one of the profiles on this page. *}
 {include file="CRM/common/CMSUser.tpl"}

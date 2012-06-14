@@ -40,6 +40,12 @@ define('OSA_PERM_NONE',  0);
 define('OSA_PERM_OWNER', 1);
 define('OSA_PERM_OWNED', 2);
 define('OSA_PERM_PEER',  3);
+
+/**
+ * Define constants for CiviCRM Membership Types.
+ */
+define('OSA_MEMBER_STUDENT', 1);
+
 /**
  * Map name to CiviCRM Profile Ids
  *
@@ -320,19 +326,19 @@ function _osa_related_links($contact_type, $cid, $rid) {
 
   if ($contact_type == 'Student') {
     $links['member'] = array(
-      'name'  => ts('Register Membership'),
+      'name'  => ts('Membership'),
       'url'   => 'civicrm/contribute/transact',
       'qs'    => 'reset=1&id=' . OSA_CONTRIB_MEMBER . "&cid=$cid",
       'title' => ts("Register/Renew Membership")
     );
     $links['event'] = array(
-      'name'  => ts('Register Event'),
-      'url'   => 'civicrm/contribute/transact',
-      'qs'    => 'reset=1&id=' . OSA_CONTRIB_EVENT . "&cid=$cid",
+      'name'  => ts('Event'),
+      'url'   => 'events',
+      'qs'    => "reset=1&cid=$cid",
       'title' => ts("Register for Event")
     );
     $links['teacher'] = array(
-      'name'  => ts('Register Teacher'),
+      'name'  => ts('Teacher'),
       'url'   => 'civicrm/contribute/transact',
       'qs'    => 'reset=1&id=' . OSA_CONTRIB_TEACHER . "&cid=$cid",
       'title' => ts("Register/Renew with a Teacher")
@@ -366,15 +372,26 @@ function _osa_related_links($contact_type, $cid, $rid) {
 }
 
 /**
- * Add a hidden Household ID field to a CiviCRM Profile Form in order to
- * create relationships when submitted.
+ * Add a field to a CiviCRM Profile Form.
  *
  * @param object $form
  *   The CRM_Profile_Form_Edit object being modified.
- * @param integer $hid
- *   The contact id of the household.
+ * @param integer $type
+ *   The type field to add.
+ * @param integer $name
+ *   The name of the field.
+ * @param integer $value
+ *   The default value of the field.
+ * @param integer $label
+ *   Optional label to display.
+ * @param boolean $required
+ *   Add required validation rule.
+ * @param integer $position
+ *   The position of the field in the form. Defaults to the bottom.
+ * @param integer $options
+ *   Optional list for selection type fields.
  */
-function _osa_addHouseholdField(&$form, $hid) {
+function _osa_addField(&$form, $type, $name, $value, $label = NULL, $required = FALSE, $position = 0, $options = NULL ) {
 
   // get the profile id & title
   $gid = $form->getVar('_gid');
@@ -385,19 +402,26 @@ function _osa_addHouseholdField(&$form, $hid) {
   }
   
   // create the field used by the CRM/Profile/Form/Dynamic.tpl template
-  $field_name = 'osa_hid';
   $field = array(
     $field_name => array(
-      'name' => $field_name,
+      'name' => $name,
       'group_id' => $gid,
       'groupTitle' => $uf_group->title,
       'title' => '',
     )
   );
-  $form->_fields[$field_name] = $field;
+  
+  if ($position <= 0) {
+    $form->_fields[$name] = $field;
+  }
 
   // add an element to the QuickForm
-  $form->addElement('hidden', $field_name, $hid);
+  $form->addElement($type, $name, $value);
+
+  // add a rule for required fields
+  if ($required) {
+    $form->addRule($name, ts('%1 is a required field.', array(1 => $label)), 'required');
+  }
 }
 
 /**
@@ -568,12 +592,12 @@ function _osa_create_relationship($relationship_type_id, $contact_id_a, $contact
 }
 
 /**
- * Wrapper of CiviCRM API to get membership
+ * Wrapper of CiviCRM API to get OSA membership
  *
  * @param integer $contact_id
  *   contact who's membership status to get
  */
-function _osa_get_membership($contact_id) {
+function _osa_get_membership($contact_id, $membership_type_id = OSA_MEMBER_STUDENT) {
   // build the  parameters
   $params = array(
     'contact_id' => $contact_id,
@@ -582,10 +606,15 @@ function _osa_get_membership($contact_id) {
   
   // Call the CiviCRM API to get the membership
   $result = civicrm_api('membership', 'get', $params);
-  $membership = ($result['count'] > 0) ? $result['values'][$result['id']] : NULL;
-
-  if (! isset($membership)) {
-    return $membership;
+  foreach ($result['values'] as $values) {
+    if ($values['membership_type_id'] == $membership_type_id) {
+      $membership = $values;
+      break;
+    }
+  }
+  
+  if (!isset($membership)) {
+    return NULL;
   }
   
   // FIX: api doesn't return everything

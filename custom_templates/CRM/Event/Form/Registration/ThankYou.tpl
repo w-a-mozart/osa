@@ -1,26 +1,13 @@
 {*
  +--------------------------------------------------------------------+
- | CiviCRM version 4.1                                                |
+ | Custom OSA Thank You page                                          |
  +--------------------------------------------------------------------+
+ | Override Standard CiviCRM Template ThankYou.tpl                    |
+ | - using Drupal Commerce Cart so don't show everything just         |
+ |   thanks and checkout button.                                      |
+ +--------------------------------------------------------------------+
+ | Copyright Oakville Suzuki Association 2012                         |
  | Copyright CiviCRM LLC (c) 2004-2011                                |
- +--------------------------------------------------------------------+
- | This file is a part of CiviCRM.                                    |
- |                                                                    |
- | CiviCRM is free software; you can copy, modify, and distribute it  |
- | under the terms of the GNU Affero General Public License           |
- | Version 3, 19 November 2007 and the CiviCRM Licensing Exception.   |
- |                                                                    |
- | CiviCRM is distributed in the hope that it will be useful, but     |
- | WITHOUT ANY WARRANTY; without even the implied warranty of         |
- | MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.               |
- | See the GNU Affero General Public License for more details.        |
- |                                                                    |
- | You should have received a copy of the GNU Affero General Public   |
- | License and the CiviCRM Licensing Exception along                  |
- | with this program; if not, contact CiviCRM LLC                     |
- | at info[AT]civicrm[DOT]org. If you have questions about the        |
- | GNU Affero General Public License or the licensing of CiviCRM,     |
- | see the CiviCRM license FAQ at http://civicrm.org/licensing        |
  +--------------------------------------------------------------------+
 *}
 {if $action & 1024}
@@ -53,35 +40,43 @@
         </div><br /><br />
     {/if}
     
-    <div id="help">
         {if $isOnWaitlist}
+          <div id="help">
             <p>
                 <span class="bold">{ts}You have been added to the WAIT LIST for this event.{/ts}</span>
                 {ts}If space becomes available you will receive an email with a link to a web page where you can complete your registration.{/ts}
              </p> 
+          </div>
         {elseif $isRequireApproval}
+          <div id="help">
             <p>
                 <span class="bold">{ts}Your registration has been submitted.{/ts}
                 {ts}Once your registration has been reviewed, you will receive an email with a link to a web page where you can complete the registration process.{/ts}</span>
             </p>
+          </div>
         {elseif $is_pay_later and $paidEvent and !$isAmountzero}
+          <div id="help">
             <div class="bold">{$pay_later_receipt}</div>
             {if $is_email_confirm}
                 <p>{ts 1=$email}An email with event details has been sent to %1.{/ts}</p>
             {/if}
+          </div>
         {* PayPal_Standard sets contribution_mode to 'notify'. We don't know if transaction is successful until we receive the IPN (payment notification) *}
         {elseif $contributeMode EQ 'notify' and $paidEvent}
-            <p>{ts 1=$paymentProcessor.processorName}Your registration payment has been submitted to %1 for processing. Please print this page for your records.{/ts}</p>
+            {* Remove message *}
             {if $is_email_confirm}
+          <div id="help">
                 <p>{ts 1=$email}A registration confirmation email will be sent to %1 once the transaction is processed successfully.{/ts}</p>
+          </div>
             {/if}
         {else}
+          <div id="help">
             <p>{ts}Your registration has been processed successfully. Please print this page for your records.{/ts}</p>
             {if $is_email_confirm}
                 <p>{ts 1=$email}A registration confirmation email has also been sent to %1{/ts}</p>
             {/if}
+          </div>
         {/if}
-    </div>
     <div class="spacer"></div>
 
     <div class="crm-group event_info-group">
@@ -151,18 +146,8 @@
         </div>
     {/if}
 
-    <div class="crm-group registered_email-group">
-        <div class="header-dark">
-            {ts}Registered Email{/ts}
-        </div>
-        <div class="crm-section no-label registered_email-section">
-            <div class="content">
-                {$email}
-            </div>
-    		<div class="clear"></div>
-		</div>
-    </div>
-    
+    {* Remove Registered Email *}
+
     {if $event.participant_role neq 'Attendee' and $defaultRole}
         <div class="crm-group participant_role-group">
             <div class="header-dark">
@@ -264,7 +249,10 @@
     {/if}
     
     <div class="action-link section event_info_link-section">
-        <a href="{crmURL p='civicrm/event/info' q="reset=1&id=`$event.id`"}">&raquo; {ts 1=$event.event_title}Back to "%1" event information{/ts}</a>
+        {* Change links to Registration Page *}
+        <a title='Family Profile' class='button' href='{crmURL p='civicrm/user' q='reset=1'}'><span><div class='icon dashboard-icon'></div> Return to Family Profile </span></a>
+        <a title='Register' class='button' href="{crmURL p='civicrm/event/register' q="reset=1&id=`$event.id`"}"><span><div class='icon back-icon'></div> Register Another Participant </span></a>
+        <a title='Check Out' class='button'  href='{$config->userFrameworkBaseURL}checkout/'><span><div class='icon check-icon'></div> Check Out </span></a>
     </div>
 
     {if $event.is_public }
