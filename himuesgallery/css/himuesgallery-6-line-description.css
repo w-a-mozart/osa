@@ -1,0 +1,39 @@
+
+/**
+* @file
+* Shows Gallery with 6 textlines under the picture
+*/
+
+.himuesgallery_outer,
+.himuesgallery_text {
+  clear: both;
+  float: left;
+  width: 100%;
+}
+
+.himuesgallery_text {
+  border-bottom: 1px solid black;
+}
+
+.himuesgallery_picture {
+  float: left;
+  margin: 5pt;
+  text-align: center;
+  vertical-align:middle;
+  width: 200px;
+}
+
+.himuesgallery_picture_image {
+  height: 133px; /* will be used in himuesgallery to create thumbnails */
+  width: 200px;  /* so be shure it is there */
+}
+
+.himuesgallery_picture_description {
+  height: 120px;
+  margin-bottom: 5pt;
+}
+
+.clearer {
+  clear:both;
+}
+
