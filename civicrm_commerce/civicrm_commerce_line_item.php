@@ -229,14 +229,20 @@ function civicrm_commerce_line_item_add_new(&$params, $component) {
   }
   elseif ($component == "event") {
     $type = 'civi_event';
-    if (isset($eventID)) {
-      $result = civicrm_api('event', 'get', array('id' => $eventID, 'version' => 3));
-      $label = $result['values'][$eventID]['title'];
+    if (isset($participantID)) {
+      $result = civicrm_api('participant', 'get', array('id' => $participantID, 'version' => 3));
+      $label = $result['values'][$participantID]['event_title'];
+      $label .= ' (' . $result['values'][$participantID]['display_name']; 
+
+      if (isset($result['values'][$participantID]['participant_fee_level'])) {
+        $label .= ' : ' . $result['values'][$participantID]['participant_fee_level'];
+      }
+      $label .= ')';
     }
     else {
       $label = CRM_Utils_Array::value('item_name', $params);
+      $label .= ' (' . $contact['display_name'] . ')';
     }
-    $label .= ' (' . $contact['display_name'] . ')';
   }
   else {
     CRM_Core_Error::fatal(ts('Unknown shopping cart item.'));

@@ -187,7 +187,8 @@
 	{/if}
 
 
-    {include file="CRM/Custom/Page/CustomDataView.tpl"}
+  {* Override how custom data is displayed. *}
+  {include file="CRM/Event/Page/CustomEventDataView.tpl"}
         
   {* Add message telling user they must login to register. *}
 	{if ($event.is_online_registration) && (!$session || $session->get('userID') <= 0)}
