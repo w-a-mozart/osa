@@ -59,7 +59,7 @@ function clearAmountOther() {
   {if $onbehalfFamily }
     <div class="crm-section contact-id-section">
       <fieldset>
-        <legend>{ts}Contribution{/ts}</legend>
+        <legend>{ts}Individual{/ts}</legend>
         <div class="label">{$form.contact_id.label}</div>
         <div class="content">
           {$form.contact_id.html}
@@ -69,7 +69,7 @@ function clearAmountOther() {
   {/if}
     <div id="priceset"> 
         <fieldset>
-            <legend>{ts}Contribution Options{/ts}</legend>
+            <legend>{ts}Options{/ts}</legend>
             {include file="CRM/Price/Form/PriceSet.tpl" extends="Contribution"}
         </fieldset>
     </div>
@@ -110,9 +110,19 @@ function clearAmountOther() {
 	    {/if} 
 	{/if} 
 {/if}
+
+{* Move legend from BillingBlock.tpl *}
+<fieldset class="billing_mode-group {if $paymentProcessor.payment_type & 2}direct_debit_info-group{else}credit_card_info-group{/if}">
+<legend>{ts}Payment Information{/ts}</legend>
+</fieldset>
+
 	{if $form.is_pay_later}
 	    <div class="crm-section {$form.is_pay_later.name}-section">
-			<div class="content">{$form.is_pay_later.html}&nbsp;{$form.is_pay_later.label}</div>
+      {* Change Pay Later to Radio Buttons to look like Commerce Payment *}
+			  <div class="content">
+          <input type="radio" name="is_pay_later" value="0" onclick="return showHideByValue('is_pay_later','','payment_information','block','radio',false);" /> {if $paymentProcessor.payment_type & 2}{ts}Pay by Debit{/ts}{else}{ts}Pay by Credit Card{/ts}{/if}<br />
+          <input type="radio" name="is_pay_later" value="1" onclick="return showHideByValue('is_pay_later','','payment_information','block','radio',false);" /> {ts}Pay by Cheque{/ts}
+        </div>
 	    </div>
 	{/if} 
 	{if $form.is_recur}
