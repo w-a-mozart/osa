@@ -44,21 +44,28 @@ function commerce_elavon_transaction($payment_method, $values, $order, $charge) 
   if ($charge['currency_code'] != commerce_default_currency()) {
     $charge['amount'] = commerce_currency_convert($charge['amount'], $charge['currency_code'], commerce_default_currency());
   }
+
+  // maybe I'm just paranoid but,
+  // if we are going to call hook_commerce_elavon_transaction_alter
+  // don't allow other modules to see the actual PAN.
+  $clr_card_number = $values['number'];
+  $pci_card_number = sprintf( "%'*16s", substr($clr_card_number, -4));
+  $values['number'] = $pci_card_number;
   
   // create an Elavon transaction
   $txn_array = array(
-    'ssl_merchant_id'      => variable_get('commerce_elavon_merchant_id', ''),
-    'ssl_user_id'          => variable_get('commerce_elavon_user_id', ''),
-    'ssl_pin'              => variable_get('commerce_elavon_pin', ''),
-    'ssl_test_mode'        => variable_get('commerce_elavon_server', 0) == 0 ? 'true' : 'false',
-    'ssl_transaction_type' => "ccsale",
-    'ssl_card_number'      => $values['number'],
-    'ssl_exp_date'         => $values['exp_month'] . $values['exp_year'],
-    'ssl_amount'           => commerce_currency_amount_to_decimal($charge['amount'], commerce_default_currency()),
-
-/* TO DO? everything else is optional and can be done in hook_commerce_elavon_transaction_alter
-    'ssl_cvv2cvc2'		       => $values['code'],
+    'ssl_merchant_id'        => variable_get('commerce_elavon_merchant_id', ''),
+    'ssl_user_id'            => variable_get('commerce_elavon_user_id', ''),
+    'ssl_pin'                => variable_get('commerce_elavon_pin', ''),
+    'ssl_test_mode'          => variable_get('commerce_elavon_server', 0) == 0 ? 'true' : 'false',
+    'ssl_transaction_type'   => "ccsale",
+    'ssl_card_number'        => $pci_card_number,
+    'ssl_exp_date'           => $values['exp_month'] . $values['exp_year'],
+    'ssl_amount'             => commerce_currency_amount_to_decimal($charge['amount'], commerce_default_currency()),
+    'ssl_cvv2cvc2'		       => isset($values['code']) ? $values['code'] : null,
     'ssl_cvv2cvc2_indicator' => isset($values['code']) ? '1' : null,
+
+  /* everything else is optional and must be set in hook_commerce_elavon_transaction_alter
     'ssl_invoice_number'	   => $values['invoiceID'],
     'ssl_description'	       => $values['description'],
     'ssl_email'		           => $values['email'],
@@ -77,11 +84,16 @@ function commerce_elavon_transaction($payment_method, $values, $order, $charge) 
     'ssl_ship_to_country'    => $values['country'],
     'ssl_ship_to_state'		   => $values['state_province'],
     'ssl_ship_to_zip'		     => $values['postal_code'],
-*/
+  */
   );
   
   // Allow other modules to alter the transaction data
   drupal_alter('commerce_elavon_transaction', $txn_array, $values, $order );
+
+  // now use the actual PAN
+  if ($txn_array['ssl_card_number'] == $pci_card_number) {
+    $txn_array['ssl_card_number'] = $clr_card_number;
+  }
   
   // convert to XML
   $request = _commerce_elavon_txnXML($txn_array);
@@ -136,7 +148,7 @@ function commerce_elavon_transaction($payment_method, $values, $order, $charge) 
 
   // log all responses
   watchdog('commerce_elavon', 'Response: !param',
-           array('!param' => '<pre>' . check_plain(print_r($response_data, TRUE)) . '</pre>'));
+           array('!param' => '<pre>' . check_plain(print_r($response_data, TRUE)) . '</pre>'), WATCHDOG_INFO);
 
   // create a commerce transaction
   $transaction                 = commerce_payment_transaction_new('commerce_elavon', $order->order_id);
@@ -150,7 +162,6 @@ function commerce_elavon_transaction($payment_method, $values, $order, $charge) 
   
   commerce_payment_transaction_save($transaction);
 
-  
   // If the payment failed, display an error.
   if ($response_data['ssl_result'] != 0) {
     drupal_set_message(check_plain($response_data['ssl_result_message']), 'error');
