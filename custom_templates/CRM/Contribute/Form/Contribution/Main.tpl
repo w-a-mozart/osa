@@ -5,6 +5,7 @@
  | Override Standard CiviCRM Template Main.tpl                        |
  | - add selection box to make contributions on behalf of family      |
  | members. (OnBehalfOf.tpl only works for organizations)             |
+ | - move custom fields prior to price sets                           |
  +--------------------------------------------------------------------+
  | Copyright Oakville Suzuki Association 2012                         |
  | Copyright CiviCRM LLC (c) 2004-2011                                |
@@ -54,6 +55,7 @@ function clearAmountOther() {
 {if $islifetime or $ispricelifetime }
 <div id="help">You have a current Lifetime Membership which does not need to be renewed.</div> 
 {/if}
+
 {if $priceSet && empty($useForMember)}
   {* User selection. Rather than typing in an email, select who the contribution is from. *}
   {if $onbehalfFamily }
@@ -67,7 +69,12 @@ function clearAmountOther() {
 	  </div>
     <div class="clear"></div> 
   {/if}
-    <div id="priceset"> 
+    {* Move Custom fields *}
+    <div class="crm-group custom_pre_profile-group">
+    	{include file="CRM/UF/Form/Block.tpl" fields=$customPre} 	
+    </div>
+
+    <div id="price-options">
         <fieldset>
             <legend>{ts}Options{/ts}</legend>
             {include file="CRM/Price/Form/PriceSet.tpl" extends="Contribution"}
@@ -111,20 +118,8 @@ function clearAmountOther() {
 	{/if} 
 {/if}
 
-{* Move legend from BillingBlock.tpl *}
-<fieldset class="billing_mode-group {if $paymentProcessor.payment_type & 2}direct_debit_info-group{else}credit_card_info-group{/if}">
-<legend>{ts}Payment Information{/ts}</legend>
-</fieldset>
+{* Move pay later to BillingBlock.tpl *}
 
-	{if $form.is_pay_later}
-	    <div class="crm-section {$form.is_pay_later.name}-section">
-      {* Change Pay Later to Radio Buttons to look like Commerce Payment *}
-			  <div class="content">
-          <input type="radio" name="is_pay_later" value="0" onclick="return showHideByValue('is_pay_later','','payment_information','block','radio',false);" /> {if $paymentProcessor.payment_type & 2}{ts}Pay by Debit{/ts}{else}{ts}Pay by Credit Card{/ts}{/if}<br />
-          <input type="radio" name="is_pay_later" value="1" onclick="return showHideByValue('is_pay_later','','payment_information','block','radio',false);" /> {ts}Pay by Cheque{/ts}
-        </div>
-	    </div>
-	{/if} 
 	{if $form.is_recur}
 	    <div class="crm-section {$form.is_recur.name}-section">
 			<div class="content">
@@ -208,9 +203,7 @@ function clearAmountOther() {
 	</fieldset>
     {/if} 
 
-    <div class="crm-group custom_pre_profile-group">
-    	{include file="CRM/UF/Form/Block.tpl" fields=$customPre} 	
-    </div>
+    {* Move Custom fields *}
 
     {if $pcp}
     <fieldset class="crm-group pcp-group">
@@ -247,9 +240,11 @@ function clearAmountOther() {
     </fieldset>
     {/if} 
 
-    {if $is_monetary} 
+    {if $is_monetary and $paymentProcessor.payment_processor_type neq 'drupalcommerce'} 
+      <div class="crm-group billing_block" id="billing_block">
         {include file='CRM/Core/BillingBlock.tpl'} 
-    {/if} 
+    	</div>
+    {/if}
 
     <div class="crm-group custom_post_profile-group">
     	{include file="CRM/UF/Form/Block.tpl" fields=$customPost}
@@ -311,11 +306,11 @@ function clearAmountOther() {
 {if $form.is_pay_later and $hidePaymentInformation} 
 {include file="CRM/common/showHideByFieldValue.tpl" 
     trigger_field_id    ="is_pay_later"
-    trigger_value       =""
+    trigger_value       = 1
     target_element_id   ="payment_information" 
     target_element_type ="table-row"
     field_type          ="radio"
-    invert              = 1
+    invert              = 0
 }
 {/if}
 
@@ -437,4 +432,58 @@ function showHidePayPalExpressOption()
 }
 {/literal}
 </script>
+{/if}
+
+{* Teacher Registration customizations *}
+{if $contributionPageID eq 2}
+{literal}
+<script type="text/javascript">
+function setLessonAmt() {
+showHideByValue('custom_18','QE Park','price-options','block','radio',false);
+showHideByValue('custom_18','QE Park','billing_block','block','radio',false);
+
+var price30 = {/literal}{$price30}{literal};
+var price45 = {/literal}{$price45}{literal};
+var price60 = {/literal}{$price60}{literal};
+
+var idx = cj('#custom_24').val();
+if (typeof idx === "undefined") idx = 0;
+if (cj('#CIVICRM_QFID_QE_Park_12:checked').val() != 'QE Park') idx = 0;
+
+var price_attr = '[\"price_6\",\"' + price30[idx] + '||\"]';
+cj('#CIVICRM_QFID_11_6').attr('price', price_attr);
+document.getElementById('30min').innerHTML = " - " + symbol + " " + formatMoney( price30[idx], 2, seperator, thousandMarker) + ' / year';
+
+price_attr = '[\"price_6\",\"' + price45[idx] + '||\"]';
+cj('#CIVICRM_QFID_12_8').attr('price', price_attr);
+document.getElementById('45min').innerHTML = " - " + symbol + " " + formatMoney( price45[idx], 2, seperator, thousandMarker) + ' / year';
+
+price_attr = '[\"price_6\",\"' + price60[idx] + '||\"]';
+cj('#CIVICRM_QFID_13_10').attr('price', price_attr);
+document.getElementById('60min').innerHTML = " - " + symbol + " " + formatMoney( price60[idx], 2, seperator, thousandMarker) + ' / year';
+
+calcTotal();
+}
+
+setLessonAmt();
+cj("#custom_24").change(function(){
+setLessonAmt();
+});
+cj("#CIVICRM_QFID_QE_Park_12").change(function(){
+setLessonAmt();
+});
+cj("#CIVICRM_QFID_Other_14").change(function(){
+setLessonAmt();
+});
+
+</script>
+<style type="text/css">
+.yearly-fee {
+  position: relative;
+  top: -1.35em;
+  left: 100px;
+  margin-bottom: -1.2em;
+}
+</style>
+{/literal}
 {/if}

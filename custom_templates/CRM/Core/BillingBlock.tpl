@@ -9,10 +9,27 @@
  | Copyright CiviCRM LLC (c) 2004-2011                                |
  +--------------------------------------------------------------------+
 *}
+{* Move pay later from Main.tpl *}
+
+<fieldset class="billing_mode-group {if $paymentProcessor.payment_type & 2}direct_debit_info-group{else}credit_card_info-group{/if}">
+<legend>{ts}Payment Information{/ts}</legend>
+</fieldset>
+
+	{if $form.is_pay_later}
+	    <div class="crm-section {$form.is_pay_later.name}-section">
+      {* Change Pay Later to Radio Buttons to look like Commerce Payment *}
+			  <div class="content">
+          <input type="radio" name="is_pay_later" value="0" onclick="return showHideByValue('is_pay_later','','payment_information','block','radio',false);" checked /> {if $paymentProcessor.payment_type & 2}{ts}Pay by Debit{/ts}{else}{ts}Pay by Credit Card{/ts}{/if}<br />
+          <input type="radio" name="is_pay_later" value="1" onclick="return showHideByValue('is_pay_later','','payment_information','block','radio',false);" /> {ts}Pay by Cheque{/ts}
+        </div>
+	    </div>
+	{/if} 
+
+
 {if $form.credit_card_number or $form.bank_account_number}
     <div id="payment_information">
 
-{* Move legend to Main.tpl *}
+{* Move legend above payment radio buttons *}
 
             {if $paymentProcessor.billing_mode & 2 and !$hidePayPalExpress }
             <div class="crm-section no-label paypal_button_info-section">	
@@ -75,6 +92,7 @@
                 </fieldset>
 
 {* Remove Billing Address field *}
+
             {else}
                 </fieldset>
             {/if}

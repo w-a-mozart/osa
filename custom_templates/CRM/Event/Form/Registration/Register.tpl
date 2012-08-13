@@ -139,7 +139,7 @@
 
 {include file="CRM/UF/Form/Block.tpl" fields=$customPre} 
 
-{if $paidEvent}   
+{if $paidEvent and $paymentProcessor.payment_processor_type neq 'drupalcommerce'} 
     {include file='CRM/Core/BillingBlock.tpl'} 
 {/if}        
 

@@ -32,7 +32,7 @@
                     <td>{$parent.contact.email}</td>
                     <td>{$parent.contact.phone}</td>
         {if $parent.relationship.relation eq 'Head of Household is'}
-                    <td><img src="/drupal/sites/all/modules/civicrm/i/contact_house.png"> Primary Contact</span></td>
+                    <td><img src="/images/contact_house.png"> Primary Contact</span></td>
         {else}
                     <td>&nbsp;</td>
         {/if}
@@ -58,8 +58,8 @@
                         <th>{ts}Students{/ts}</th>
                         <th>{ts}Gender{/ts}</th>
                         <th>{ts}Birth Day{/ts}</th>
-                        <th>Member</th>
-                        <th colspan="2">Primary Instrument</th>
+                        <th>{ts}Member{/ts}</th>
+                        <th>{ts}Instrument{/ts}</th>
                         <th></th>
                     </tr>
                 </thead>
@@ -73,8 +73,7 @@
         {else}
                     <td>{$student.membership.status}</td>
         {/if}
-                    <td>{$student.contact.Primary_Instrument}</td>
-                    <td>{crmAPI var="ContactS" entity="Contact" action="get" id=$student.contact.Primary_Teacher return="display_name" }{$ContactS.values[$student.contact.Primary_Teacher].display_name}</td>
+                    <td>{$student.contact.instrument_1}{if $student.contact.instrument_2}, {$student.contact.instrument_2}{/if}{if $student.contact.instrument_3}, {$student.contact.instrument_3}{/if}</td>
                     <td class="nowrap">
                         {$student.links}
                     </td>

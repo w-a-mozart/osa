@@ -20,7 +20,6 @@ define('OSA_PROFILE_REL_INDIVIDUAL', 2);
  * Define constants for CiviCRM Contribution Pages.
  */
 define('OSA_CONTRIB_MEMBER', 1);
-define('OSA_CONTRIB_EVENT', 1);
 define('OSA_CONTRIB_TEACHER', 2);
 
 /**
@@ -45,6 +44,12 @@ define('OSA_PERM_PEER',  3);
  * Define constants for CiviCRM Membership Types.
  */
 define('OSA_MEMBER_STUDENT', 1);
+
+/**
+ * Define constants for CiviCRM Membership Types.
+ */
+define('OSA_EVENT_GROUP_CLASS_MASTER', '8');
+define('OSA_EVENT_GROUP_CLASS_CHILD', '9');
 
 /**
  * Map name to CiviCRM Profile Ids
@@ -224,7 +229,7 @@ function _osa_manageHouseholdRelationships($cid) {
 function _osa_getHousehold($cid = NULL) {
 
   // get the contact record
-  $contact = _osa_getContact($cid, FALSE);
+  $contact = _osa_get_contact($cid, FALSE);
   if (!isset($contact)) {
     return NULL;
   }
@@ -257,7 +262,7 @@ function _osa_getHouseholdMembers($cid = NULL, $field = NULL) {
 
   // default to logged in user
   if (!isset($cid)) {
-    $cid = _osa_getContactId();
+    $cid = _osa_get_contact_id();
   }
 
   // get the household
@@ -277,7 +282,7 @@ function _osa_getHouseholdMembers($cid = NULL, $field = NULL) {
 
   // get the contact records
   foreach ($relationships as $relationship) {
-    $contact = _osa_getContact($relationship['cid']);
+    $contact = _osa_get_contact($relationship['cid']);
     $contact_id = $contact['contact_id'];
     
     if (isset($field)) {
@@ -300,7 +305,7 @@ function _osa_getHouseholdMembers($cid = NULL, $field = NULL) {
         'contact_type' => $contact_type,
         'contact'      => $contact,
         'relationship' => $relationship,
-        'links'        => _osa_related_links($contact_type, $contact_id, $relationship['id'] )
+        'links'        => _osa_related_links($contact_type, $contact_id, $relationship['id'])
       );
       $family[$contact_id] = $person;
     }
@@ -331,11 +336,17 @@ function _osa_related_links($contact_type, $cid, $rid) {
       'qs'    => 'reset=1&id=' . OSA_CONTRIB_MEMBER . "&cid=$cid",
       'title' => ts("Register/Renew Membership")
     );
+    $links['group'] = array(
+      'name'  => ts('Group'),
+      'url'   => 'content/group-class-selection',
+      'qs'    => "reset=1&cid=$cid",
+      'title' => ts("Register for Group Class")
+    );
     $links['event'] = array(
       'name'  => ts('Event'),
       'url'   => 'events',
       'qs'    => "reset=1&cid=$cid",
-      'title' => ts("Register for Event")
+      'title' => ts("Register for an Event")
     );
     $links['teacher'] = array(
       'name'  => ts('Teacher'),
@@ -346,12 +357,6 @@ function _osa_related_links($contact_type, $cid, $rid) {
   }
   
   $links += array(
-    CRM_Core_Action::VIEW => array(
-      'name'  => ts('View'),
-      'url'   => 'civicrm/user',
-      'qs'  => "reset=1&id=$cid",
-      'title' => ts("View $contact_type")
-    ),
     CRM_Core_Action::UPDATE => array(
       'name'  => ts('Edit'),
       'url'   => 'civicrm/profile/edit',
@@ -501,7 +506,7 @@ function _osa_getUserId() {
 /**
  * Wrapper function to return current logged in user's contact id
  */
-function _osa_getContactId() {
+function _osa_get_contact_id() {
   $params = array(
     'uf_id' => _osa_getUserId(),
     'sequential' => 1,
@@ -515,10 +520,10 @@ function _osa_getContactId() {
 /**
  * Wrapper function to return a contact record
  */
-function _osa_getContact($cid = NULL, $custom = TRUE) {
+function _osa_get_contact($cid = NULL, $custom = TRUE) {
 
   if (!isset($cid)) {
-    $cid = _osa_getContactId();
+    $cid = _osa_get_contact_id();
   }
 
   // get the contact record
@@ -643,7 +648,7 @@ function _osa_get_contributions($contact_id) {
   // build the  parameters
   $params = array(
     'contact_id' => $contact_id,
-    'sort' => 'receive_date desc',
+    'option.sort' => 'receive_date desc',
     'rowCount' => 6,
     'version'    => '3',
  );
@@ -683,4 +688,37 @@ function _osa_get_participant_events($contact_id) {
         array(1 => $contact_id)));
   }
   return $result['values'];
+}
+
+/**
+ * Helper to get teacher private lesson pay for QEP
+ *
+ * @param integer $contact_id
+ *   contact who's events we're to get
+ */
+function _osa_get_teacher_lists( &$contacts, &$select_options, &$prices30min, &$prices45min, &$prices60min) {
+
+  $contacts = array();
+  $select_options = array();
+  $prices30min = array(0 => 0);
+  $prices45min = array(0 => 0);
+  $prices60min = array(0 => 0);
+
+  $result = civicrm_api('contact', 'get',  array('contact_sub_type' => 'Teacher', 'option.sort' =>'sort_name', 'version' => 3));
+  if ($result['is_error']) {
+    CRM_Core_Error::debug_log_message(
+      "Error: " .
+      $result['error_message'] .
+      ts("\nfailed to get teacher contacts")
+    );
+  }
+
+  foreach ( $result[values] as $teacher_id => $contact ) {
+    $teacher = _osa_get_contact($teacher_id);
+    $contacts[$teacher_id] = $teacher;
+    $select_options[$teacher_id] = $teacher['display_name'];
+    $prices30min[$teacher_id] = $teacher['annual_fee_30'];
+    $prices45min[$teacher_id] = $teacher['annual_fee_45'];
+    $prices60min[$teacher_id] = $teacher['annual_fee_60'];
+  }
 }

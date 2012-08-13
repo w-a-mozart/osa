@@ -5,3 +5,7 @@ version = 7.x-dev
 
 package = OSA
 dependencies[] = civicrm
+dependencies[] = rules
+dependencies[] = webform
+dependencies[] = commerce
+dependencies[] = commerce_elavon

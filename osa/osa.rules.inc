@@ -2,7 +2,7 @@
 
 /**
  * @file
- * Rules integration for the OSA.
+ * Rules integration for the OSA
  */
 
 require_once 'osa.inc';
@@ -57,7 +57,7 @@ function osa_household_members($commerce_line_item, $operator, $value) {
 
   $contact_id = $line_item_wrapper->civicrm_commerce_contact_id->value();
   civicrm_initialize();
-  $contact = _osa_getContact($contact_id, FALSE);
+  $contact = _osa_get_contact($contact_id, FALSE);
   if ((!isset($contact)) || ($contact['contact_type'] <> 'Individual')) {
     // must get a valid Individual contact
     return FALSE;
