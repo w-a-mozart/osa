@@ -60,7 +60,7 @@ function _civicrm_commerce_default_rule_definitions() {
           "commerce_line_item" : [ "commerce-line-item" ],
           "amount" : [ "contribution-amount" ],
           "component_name" : "base_price",
-          "round_mode" : "1"
+          "round_mode" : "0"
         }
       },
       { "commerce_line_item_unit_price_currency_code" : {

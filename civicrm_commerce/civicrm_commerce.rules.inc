@@ -99,23 +99,26 @@ function civicrm_commerce_update_contribution($commerce_payment_transaction) {
   $civi_line_item_types = array_keys(civicrm_commerce_commerce_line_item_type_info());
   $key = array_search('civi_member_discount', $civi_line_item_types);
   unset($civi_line_item_types[$key]);
-  $params = array('version' => 3);
-  $part_params = array('version' => 3);
+  $params = array(
+    'version' => 3,
+    'total_amount' => $commerce_payment_transaction->amount,
+  );
+  $participant_params = array('version' => 3);
   
   // CiviCRM doesn't allow partial payments, so for now set status to last payment
   if ($commerce_payment_transaction->status == COMMERCE_PAYMENT_STATUS_SUCCESS) {
     $params['contribution_status_id'] = 1;
-    $part_params['status_id'] = 1;
+    $participant_params['status_id'] = 1;
   }
   elseif ($commerce_payment_transaction->status == COMMERCE_PAYMENT_STATUS_FAILURE) {
     $params['contribution_status_id'] = 4;
-    $part_params['status_id'] = 4;
+    $participant_params['status_id'] = 4;
   }
   else {
     // assume a recorded payment that is pending, must be a cheque
     $params['is_pay_later'] = TRUE;
     $params['contribution_status_id'] = 2;
-    $part_params['status_id'] = 5;
+    $participant_params['status_id'] = 5;
   }
   
   if (!empty($order)) {
@@ -133,8 +136,8 @@ function civicrm_commerce_update_contribution($commerce_payment_transaction) {
 
         // updating the contribution status doesn't update the participant
         if ($line_item_wrapper->type->value() == 'civi_event') {
-          $part_params['id'] = $line_item_wrapper->civicrm_commerce_participant_id->value();
-          $result = civicrm_api('participant', 'create', $part_params);
+          $participant_params['id'] = $line_item_wrapper->civicrm_commerce_participant_id->value();
+          $result = civicrm_api('participant', 'create', $participant_params);
         }
       }
     }
