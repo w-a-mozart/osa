@@ -532,6 +532,7 @@ class CRM_Core_Block {
     $config = CRM_Core_Config::singleton();
 
     require_once 'CRM/Event/BAO/Event.php';
+    // change to only get 2 months
     $info = CRM_Event_BAO_Event::getCompleteInfo(date("Ymd"), NULL, NULL, date("Ymd", strtotime('+2 months')));
 
     if ($info) {
@@ -543,6 +544,8 @@ class CRM_Core_Block {
         );
       }
 
+      // change to only display 6 events
+      array_splice($info, 6);
       self::setProperty(self::EVENT, 'templateValues', array('eventBlock' => $info));
     }
   }
