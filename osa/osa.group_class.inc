@@ -81,7 +81,7 @@ function osa_node_presave_group_class($node) {
   $event['version'] = 3;
   
   // get existing child event ids
-  $child_event_ids = &$node->field_event_children['und'];
+  $child_event_ids = isset($node->field_event_children['und'][0]['value']) ? json_decode($node->field_event_children['und'][0]['value']) : array();
 
   // loop through all of the session dates and create/update an event
   $session_dates = &$node->field_session_dates['und'];
@@ -110,6 +110,9 @@ function osa_node_presave_group_class($node) {
       unset($child_event_ids[$i]);
     }
   }
+
+  // reencode the child event array
+  $node->field_event_children['und'][0]['value'] = json_encode($child_event_ids);
   
   // update the master event start and end
   if (count($session_dates) > 0) {
@@ -121,6 +124,13 @@ function osa_node_presave_group_class($node) {
       'version' => 3,
     ));
   }
+}
+
+/**
+ * Remove the links to child events when cloning the group class
+ */
+function osa_clone_node_alter_group_class(&$node, $context) {
+  $node->field_event_children['und'][0]['value'] = json_encode(array());
 }
 
 /**

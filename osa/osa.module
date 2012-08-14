@@ -93,7 +93,7 @@ function osa_node_presave($node) {
 }
 
 /**
- * Implements hook_webform_submission_presave() to webform submissions
+ * Implements hook_webform_submission_presave() to process webform submissions
  */
 function osa_webform_submission_presave($node, &$submission) {
 
@@ -101,3 +101,15 @@ function osa_webform_submission_presave($node, &$submission) {
     call_user_func_array("osa_webform_submission_presave_{$node->nid}", array(&$node, &$submission));
   }
 }
+
+/**
+ * Implements hook_clone_node_alter() to process the cloning of content
+ */
+function osa_clone_node_alter(&$node, $context) {
+
+  if (function_exists("osa_clone_node_alter_{$context['original_node']->type}")) {
+    call_user_func_array("osa_clone_node_alter_{$context['original_node']->type}", array(&$node, &$context));
+  }
+}
+
+
