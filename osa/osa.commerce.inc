@@ -7,6 +7,35 @@
 require_once 'osa.inc';
 
 /**
+ * Modify the cart edit form to remove the update cart button, if all of the products have a fixed quantity
+ */
+function osa_form_alter_views_form_commerce_cart_form_default(&$form, &$form_state) {
+
+  global $user;
+  $cart = commerce_cart_order_load($user->uid);
+  $non_civi_line_item_found = FALSE;
+
+  if (!empty($cart)) {
+    $order_wrapper = entity_metadata_wrapper('commerce_order', $cart);
+    
+    foreach ($order_wrapper->commerce_line_items as $delta => $line_item_wrapper) {
+      if (in_array($line_item_wrapper->type->value(), commerce_product_line_item_types())) {
+        // get the SKU.
+        $line_item_sku = $line_item_wrapper->commerce_product->sku->value();
+        if ($line_item_sku != 'CiviCRM') {
+          $non_civi_line_item_found = TRUE;
+          break;
+        }
+      }
+    }
+    
+    if (!$non_civi_line_item_found) {
+      unset($form['actions']['submit']);
+    }
+  }
+}
+
+/**
  * Modify the checkout form
  */
 function osa_form_alter_commerce_checkout_form_checkout(&$form, &$form_state) {

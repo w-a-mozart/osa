@@ -60,7 +60,7 @@
                         <th>{ts}Birth Day{/ts}</th>
                         <th>{ts}Member{/ts}</th>
                         <th>{ts}Instrument{/ts}</th>
-                        <th></th>
+                        <th>{ts}Click to Register for...{/ts}</th>
                     </tr>
                 </thead>
     {foreach from=$students item=student}
