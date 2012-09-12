@@ -159,5 +159,35 @@ function _osa_default_rule_definitions() {
   }
 }';
 
+  // define a rule to restrict access to photo galleries 
+  $rule_defs[] = '{ "osa_restrict_anonymous" : {
+    "LABEL" : "Restrict content to logged in users.",
+    "PLUGIN" : "reaction rule",
+    "REQUIRES" : [ "rules" ],
+    "ON" : [ "node_view" ],
+    "IF" : [
+      { "user_has_role" : {
+          "account" : [ "site:current-user" ],
+          "roles" : { "value" : { "1" : "1" } }
+        }
+      },
+      { "node_is_of_type" : {
+          "node" : [ "node" ],
+          "type" : { "value" : { "himuesgallery" : "himuesgallery" } }
+        }
+      }
+    ],
+    "DO" : [
+      { "redirect" : { "url" : "user\/login?destination=node" } },
+      { "drupal_message" : {
+          "message" : "You must be logged in to view this content.",
+          "type" : "warning",
+          "repeat" : 0
+        }
+      }
+    ]
+  }
+}';
+
   return $rule_defs;
 }

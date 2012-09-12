@@ -100,8 +100,8 @@ function civicrm_commerce_update_contribution($commerce_payment_transaction) {
   $key = array_search('civi_member_discount', $civi_line_item_types);
   unset($civi_line_item_types[$key]);
   $params = array(
+    'receive_date' => format_date($commerce_payment_transaction->created, 'custom', 'Y-m-d H:i:s'),
     'version' => 3,
-    'total_amount' => $commerce_payment_transaction->amount,
   );
   $participant_params = array('version' => 3);
   
@@ -118,6 +118,7 @@ function civicrm_commerce_update_contribution($commerce_payment_transaction) {
     // assume a recorded payment that is pending, must be a cheque
     $params['is_pay_later'] = TRUE;
     $params['contribution_status_id'] = 2;
+    $params['payment_instrument_id'] = 4;
     $participant_params['status_id'] = 5;
   }
   
@@ -129,15 +130,23 @@ function civicrm_commerce_update_contribution($commerce_payment_transaction) {
       if (in_array($line_item_wrapper->type->value(), $civi_line_item_types)) {
 
         if ($line_item_wrapper->civicrm_commerce_contribution_id->value()) {
+          $price = $line_item_wrapper->commerce_total->value();
           $params['id'] = $line_item_wrapper->civicrm_commerce_contribution_id->value();
-          $params['contact_id'] = $line_item_wrapper->civicrm_commerce_contact_id->value();
+          $params['total_amount'] = commerce_currency_amount_to_decimal($price['amount'], $price['currency_code']);
+          $params['trxn_id'] = $commerce_payment_transaction->remote_id . '-' . $line_item_wrapper->line_item_id->value();
           $result = civicrm_api('contribution', 'create', $params);
+          if ($result['is_error'] != 0) {
+            watchdog('civicrm_commerce', 'Error updating civicrm contribution %1: %2', array( '%1' => $params['id'], '%2' => $result['error_message']), WATCHDOG_ERROR);
+          }
         }
 
         // updating the contribution status doesn't update the participant
         if ($line_item_wrapper->type->value() == 'civi_event') {
           $participant_params['id'] = $line_item_wrapper->civicrm_commerce_participant_id->value();
           $result = civicrm_api('participant', 'create', $participant_params);
+          if ($result['is_error'] != 0) {
+            watchdog('civicrm_commerce', 'Error updating civicrm participant %1: %2', array( '%1' => $participant_params['id'], '%2' => $result['error_message']), WATCHDOG_ERROR);
+          }
         }
       }
     }

@@ -17,22 +17,20 @@
       <table id="teachers" class="display">
         <thead>
           <tr>
+            <th>{ts}Student{/ts}</th>
             <th>{ts}Teacher{/ts}</th>
-            <th></th>
             <th>{ts}Start Date{/ts}</th>
             <th>{ts}End Date{/ts}</th>
             <th>{ts}Status{/ts}</th>
-            <th></th>
           </tr>
         </thead>
   {foreach from=$teachers item=teacher}
         <tr class="{cycle values="odd-row,even-row"}">
-          <td class="bold">{$teacher.display_name}</td>
-          <td>{$teacher.membership_name}</td>
+          <td class="bold">{$teacher.student.display_name}</td>
+          <td>{$teacher.display_name}</td>
           <td>{$teacher.start_date|crmDate}</td>
           <td>{$teacher.end_date|crmDate}</td>
           <td>{$teacher.status}</td>
-          <td>{if $teacher.renewPageId}<a href="{crmURL p='civicrm/contribute/transact' q="id=`$teacher.renewPageId`&mid=`$teacher.id`&reset=1"}">[ {ts}Renew Now{/ts} ]</a>{/if}</td>
         </tr>
   {/foreach}
       </table>

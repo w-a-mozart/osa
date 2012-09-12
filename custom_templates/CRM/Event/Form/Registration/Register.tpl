@@ -62,7 +62,11 @@
       <div class="label">{$form.contact_id.label}</div>
       <div class="content">
         {$form.contact_id.html}
-    </fieldset>
+      </div>
+  {if $members_only}
+      <div class="discount-info">Only OSA members may register for this event.</div> 
+  {/if}
+      </fieldset>
   </div>
   <div class="clear"></div> 
 {/if}
@@ -76,7 +80,8 @@
         <div class="crm-section pay_later-section">
 	        <div class="label">&nbsp;</div>
             <div class="content">{$form.is_pay_later.html}&nbsp;{$form.is_pay_later.label}</div>
-            <div class="clear"></div>
+          <div class="discount-info">Applicable discounts will be applied in the shopping cart.</div> 
+          <div class="clear"></div>
         </div>
     {/if}
 
@@ -85,6 +90,7 @@
         <div class="crm-section paid_event-section">
     	    <div class="label">{$event.fee_label} <span class="marker">*</span></div>
     		<div class="content">{$form.amount.html}</div>
+  			<div class="discount-info">Applicable discounts will be applied in the shopping cart.</div> 
             <div class="clear"></div>
      	</div>
         {if $form.is_pay_later}

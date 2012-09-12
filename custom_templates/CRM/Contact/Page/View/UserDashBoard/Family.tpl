@@ -60,7 +60,7 @@
                         <th>{ts}Birth Day{/ts}</th>
                         <th>{ts}Member{/ts}</th>
                         <th>{ts}Instrument{/ts}</th>
-                        <th>{ts}Click to Register for...{/ts}</th>
+                        <th style="color: green; font-weight: bolder; font-size: 1.4em;">{ts}Click below to Register for...{/ts}</th>
                     </tr>
                 </thead>
     {foreach from=$students item=student}
@@ -89,8 +89,8 @@
 {/if}
 {if $contact.contact_type eq 'Household'}
         <div class="action-link">
-            <a title='New Parent' class='add button box-load'  href='{crmURL p='civicrm/profile/create' q="reset=1&snippet=1&context=boxload&gid=13&osa_hid=`$contact.contact_id`"}&width=50%'><span><div class='icon add-icon'></div> Add a Parent/Guardian </span></a>
-            <a title='New Student' class='add button box-load'  href='{crmURL p='civicrm/profile/create' q="reset=1&snippet=1&context=boxload&gid=14&osa_hid=`$contact.contact_id`"}&width=50%'><span><div class='icon add-icon'></div> Add a Student </span></a>
+            <a title='New Parent' class='add button box-load'  href='{crmURL p='civicrm/profile/create' q="reset=1&snippet=1&context=boxload&gid=13&hid=`$contact.contact_id`"}&width=50%'><span><div class='icon add-icon'></div> Add a Parent/Guardian </span></a>
+            <a title='New Student' class='add button box-load'  href='{crmURL p='civicrm/profile/create' q="reset=1&snippet=1&context=boxload&gid=14&hid=`$contact.contact_id`"}&width=50%'><span><div class='icon add-icon'></div> Add a Student </span></a>
         </div>
 {/if}
     </div>

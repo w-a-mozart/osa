@@ -5,6 +5,7 @@
  | Override Standard CiviCRM Template Main.tpl                        |
  | - move custom fields prior to price sets                           |
  | - remove billing address                                           |
+ | - Teacher pay customizations                                       |
  +--------------------------------------------------------------------+
  | Copyright Oakville Suzuki Association 2012                         |
  | Copyright CiviCRM LLC (c) 2004-2011                                |
@@ -18,7 +19,7 @@
 
 <div class="crm-block crm-contribution-confirm-form-block">
     <div id="help">
-        <p>{ts}Please verify the information below carefully. Click <strong>Go Back</strong> if you need to make changes.{/ts}
+        <p>{ts}Please verify the information below carefully. Click <strong>Go Back</strong> if you need to make changes.{/ts}</p><p>
             {if $contributeMode EQ 'notify' and ! $is_pay_later}
                 {if $paymentProcessor.payment_processor_type EQ 'Google_Checkout'} 
                     {ts}Click the <strong>Google Checkout</strong> button to checkout to Google, where you will select your payment method and complete the contribution.{/ts}
@@ -28,7 +29,7 @@
             {elseif ! $is_monetary or $amount LE 0.0 or $is_pay_later}
                 {ts 1=$button}To complete this transaction, click the <strong>%1</strong> button below.{/ts}
             {else}
-                {ts 1=$button}To complete your contribution, click the <strong>%1</strong> button below.{/ts}
+                {ts 1=$button}To complete your transaction, click the <strong>%1</strong> button below.{/ts}
             {/if}
         </p> 
     </div>
@@ -39,11 +40,25 @@
     
     {include file="CRM/Contribute/Form/Contribution/MembershipBlock.tpl" context="confirmContribution"}
 
+{* Show who the contribution is for. *}
+{if $onbehalfFamily}
+  <div class="crm-section contact-id-section">
+    <fieldset class="label-left">
+      <div class="header-dark">Family Member </div>
+      <div class="label">{$contact.contact_type}</div>
+      <div class="content">
+        {$contact.display_name}
+      </div>
+    </fieldset>
+  </div>
+  <div class="clear"></div> 
+{/if}
+    
 {* Move custom fields *}
     {if $customPre}
             <fieldset class="label-left">
                 {include file="CRM/UF/Form/Block.tpl" fields=$customPre}
-            </fieldset>
+{*            </fieldset> *}
     {/if}
 
 {* Don't show zero amounts *}
@@ -151,22 +166,6 @@
       </div>
     {/if}
     
-    {if ( $contributeMode ne 'notify' and ! $is_pay_later and $is_monetary and ( $amount GT 0 OR $minimum_fee GT 0 ) ) or $email }
-        {if $contributeMode ne 'notify' and ! $is_pay_later and $is_monetary and ( $amount GT 0 OR $minimum_fee GT 0 ) }
-            <div class="crm-group billing_name_address-group">
-                <div class="header-dark">
-                    {ts}Billing Name and Address{/ts}
-                </div>
-            	<div class="crm-section no-label billing_name-section">
-            		<div class="content">{$billingName}</div>
-            		<div class="clear"></div>
-            	</div>
-            	<div class="crm-section no-label billing_address-section">
-            		<div class="content">{$address|nl2br}</div>
-            		<div class="clear"></div>
-            	</div>
-        	</div>
-        {/if}
         {if $email}
             <div class="crm-group contributor_email-group">
                 <div class="header-dark">
@@ -178,7 +177,6 @@
                 </div>
             </div>
         {/if}
-    {/if}
     
     {if $contributeMode eq 'direct' and ! $is_pay_later and $is_monetary and ( $amount GT 0 OR $minimum_fee GT 0 ) }
         <div class="crm-group credit_card-group">
@@ -198,7 +196,7 @@
                 </div>
             {else}
                 <div class="crm-section no-label credit_card_details-section">
-                    <div class="content">{$credit_card_type}</div>
+                  <div class="content">{$credit_card_type}</div>
                 	<div class="content">{$credit_card_number}</div>
                 	<div class="content">{ts}Expires{/ts}: {$credit_card_exp_date|truncate:7:''|crmDate}</div>
                 	<div class="clear"></div>
@@ -227,21 +225,12 @@
     {/if}
 
 {* Move pay later instructions *}
+
     {if $is_pay_later}
         <div class="bold pay_later_receipt-section">{$pay_later_receipt}</div>
     {/if}
 
-    {if $contributeMode NEQ 'notify' and $is_monetary and ( $amount GT 0 OR $minimum_fee GT 0 ) } {* In 'notify mode, contributor is taken to processor payment forms next *}
-    <div class="messages status continue_instructions-section">
-        <p>
-        {if $is_pay_later OR $amount LE 0.0}
-            {ts 1=$button}Your transaction will not be completed until you click the <strong>%1</strong> button. Please click the button one time only.{/ts}
-        {else}
-            {ts 1=$button}Your contribution will not be completed until you click the <strong>%1</strong> button. Please click the button one time only.{/ts}
-        {/if}
-        </p>
-    </div>
-    {/if}
+{* Remove second set of instructions to click make payment *}
     
     {if $paymentProcessor.payment_processor_type EQ 'Google_Checkout' and $is_monetary and ( $amount GT 0 OR $minimum_fee GT 0 ) and ! $is_pay_later}
         <fieldset class="crm-group google_checkout-group"><legend>{ts}Checkout with Google{/ts}</legend>

@@ -9,3 +9,5 @@ dependencies[] = rules
 dependencies[] = webform
 dependencies[] = commerce
 dependencies[] = commerce_elavon
+
+configure = admin/config/osa

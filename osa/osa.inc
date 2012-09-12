@@ -31,6 +31,7 @@ define('OSA_REL_SIBLING', 3);
 define('OSA_REL_HEAD_HOUSEHOLD', 6);
 define('OSA_REL_HOUSEHOLD_MEMBER', 7);
 define('OSA_REL_OTHER', 11);
+define('OSA_REL_TEACHER', 12);
 
 /**
  * Define constants for CiviCRM Relationship Permissions.
@@ -46,7 +47,7 @@ define('OSA_PERM_PEER',  3);
 define('OSA_MEMBER_STUDENT', 1);
 
 /**
- * Define constants for CiviCRM Membership Types.
+ * Define constants for CiviCRM Event Types.
  */
 define('OSA_EVENT_GROUP_CLASS_MASTER', '8');
 define('OSA_EVENT_GROUP_CLASS_CHILD', '9');
@@ -74,6 +75,28 @@ function _osa_profileId($entity) {
   }
   
   return $_gids[$entity];
+}
+
+/**
+ * Map name to CiviCRM Custom Data fields
+ */
+function _osa_field($field) {
+
+  static $custom_fields = array();
+  
+  if (empty($custom_fields)) {
+    $custom_fields['member_discount'] = 'custom_7_1';
+    $custom_fields['lesson_location'] = 'custom_18';
+    $custom_fields['selected_teacher'] = 'custom_24';
+    $custom_fields['group_class_nid'] = 'custom_25';
+    $custom_fields['members_only'] = 'custom_26';
+    $custom_fields['lesson_fee_level'] = 'custom_27';
+    $custom_fields['lesson_level'] = 'custom_32';
+    $custom_fields['additional_data'] = 'custom_37';
+    $custom_fields['lesson_length'] = 'price_6';
+  }
+
+  return isset($custom_fields[$field]) ? $custom_fields[$field]: NULL;
 }
 
 /**
@@ -310,8 +333,49 @@ function _osa_getHouseholdMembers($cid = NULL, $field = NULL) {
       $family[$contact_id] = $person;
     }
   }
-  
+
+  // if there are no other family members, and we just want a list, at least return the given id.
+  if (empty($family) && isset($field)) {
+    $contact = _osa_get_contact($cid);
+    $family[$cid] = $contact[$field];
+  }
+
   return $family;
+}
+
+/**
+ *  Get the teachers related to a student
+ */
+function _osa_getTeachers(&$student) {
+  $teachers = array();
+
+  $contact_type = isset($student['contact_sub_type']) ? $student['contact_sub_type'][0] : $student['contact_type'];
+  if ($contact_type != 'Student') {
+    return $teachers;
+  }
+  // get relationships for the student
+  $result = civicrm_api('relationship', 'get', array('contact_id' => $student['id'], 'version' => 3));
+  $relationships = $result['values'];
+
+  // find the teacher relationships
+  foreach ($relationships as $relationship) {
+    if ($relationship['relationship_type_id'] == OSA_REL_TEACHER) {
+      $teachers[$relationship['id']] = $relationship;
+      $teachers[$relationship['id']]['student'] = $student;
+
+      $today = new DateTimeEx('today');
+      $end_date = new DateTimeEx($relationship['end_date']);
+      
+      if ($end_date < $today) {
+        $teachers[$relationship['id']]['status'] = ts('Expired');
+      }
+      else {
+        $teachers[$relationship['id']]['status'] = ($relationship['is_active']) ? ts('Active') : ts('Inactive');
+      }
+    }
+  }
+
+  return $teachers;
 }
 
 /**
@@ -338,21 +402,21 @@ function _osa_related_links($contact_type, $cid, $rid) {
     );
     $links['group'] = array(
       'name'  => ts('Group'),
-      'url'   => 'content/group-class-selection',
-      'qs'    => "reset=1&cid=$cid",
+      'url'   => 'form/group-class-selection',
+      'qs'    => "cid=$cid",
       'title' => ts("Register for Group Class")
     );
     $links['event'] = array(
       'name'  => ts('Event'),
-      'url'   => 'events',
-      'qs'    => "reset=1&cid=$cid",
+      'url'   => CRM_Utils_System::absoluteURL("events/$cid"),
+      'qs'    => '',
       'title' => ts("Register for an Event")
     );
     $links['teacher'] = array(
       'name'  => ts('Teacher'),
       'url'   => 'civicrm/contribute/transact',
       'qs'    => 'reset=1&id=' . OSA_CONTRIB_TEACHER . "&cid=$cid",
-      'title' => ts("Register/Renew with a Teacher")
+      'title' => ts("Register with a Teacher")
     );
   }
   
@@ -373,7 +437,7 @@ function _osa_related_links($contact_type, $cid, $rid) {
     )
   );
 
-  return CRM_Core_Action::formLink($links, NULL, array());
+  return CRM_Core_Action::formLink($links, NULL, array(), 'More');
 }
 
 /**
@@ -497,10 +561,50 @@ function _osa_getRelationshipField(&$form) {
 }
 
 /**
+ * Add a Family Member selection field to forms
+ *
+ * @param object $form
+ *   The Form object being modified.
+ * @param boolean $members_only
+ *   Only include family members that are OSA members.
+ */
+function _osa_addFamilyField(&$form, $members_only = FALSE) {
+
+  $family = _osa_getHouseholdMembers(NULL, 'display_name');
+
+  if ($members_only) {
+    $form->assign('members_only', TRUE);
+    $cids = array_keys($family);
+    foreach ($cids as $contact_id) {
+      $membership = _osa_get_membership($contact_id);
+      $is_member = isset($membership) ? $membership['is_current_member'] : FALSE;
+      if (!$is_member) {
+        unset($family[$contact_id]);
+      }
+    }
+    if (empty($family)) {
+      CRM_Core_Error::statusBounce(ts('Registration for <b>%1</b> is only open to OSA Members.', array(1 => $form->_values['event']['title'])), $_SERVER['HTTP_REFERER']);
+    }
+  }
+
+  asort($family);
+  $family = array( ' - select - ' ) + $family;
+  $form->addElement('select', 'contact_id', ts('Family Member'), $family);
+  $cid = CRM_Utils_Request::retrieve('cid', 'Positive');
+  if (!isset($cid)) {
+    $session = CRM_Core_Session::singleton();
+    $cid = $session->get('userID');
+  }
+  $form->setDefaults(array('contact_id' => $cid));
+  $form->addRule('contact_id', ts('Family Member is a required field.'), 'required');
+  $form->assign('onbehalfFamily', TRUE);
+}
+
+/**
  * Wrapper function to return current logged in user's drupal id
  */
 function _osa_getUserId() {
-  return CRM_Utils_System::getLoggedInUfID();
+  return $GLOBALS['user']->uid;
 }
 
 /**
@@ -545,9 +649,19 @@ function _osa_get_contact($cid = NULL, $custom = TRUE) {
     
     $result = civicrm_api('CustomValue', 'get',  array('entity_id' => $cid, 'entity_type' => 'Contact', 'version' => 3));
     if ($result['is_error'] == 0) {
-      foreach ($result['values'] as $fid => $value) {
+      foreach ($result['values'] as $fid => $fattribs) {
         $fname = $custom_fields[$fid]['name'];
-        $contact[$fname] = $value['latest'];
+        $ignore = array('entity_id' => 0, 'latest' => 0, 'id' => 0,);
+        $values = array_diff_key($fattribs, $ignore);
+        if (isset($values[0])) {
+          $contact[$fname] = $values[0];
+        }
+        else {
+          $contact[$fname] = array();
+          foreach ($values as $vid => $value) {
+            $contact[$fname][$vid] = $value;
+          }
+        }
       }
     }
   }
@@ -568,6 +682,13 @@ function _osa_get_contact($cid = NULL, $custom = TRUE) {
  *   defines permissions from b_a
  */
 function _osa_create_relationship($relationship_type_id, $contact_id_a, $contact_id_b, $permission = OSA_PERM_OWNER) {
+
+  if ($contact_id_a == 1 || $contact_id_b == 1) {
+    watchdog('ahh', "relationship with admin?? relationship_type_id=$relationship_type_id, contact_id_a=$contact_id_a, contact_id_b=$contact_id_b");
+    watchdog('ahh', '<pre>' . print_r(debug_backtrace(), TRUE) . '</pre>');
+    return;
+  }
+  
   // build the relationship entity parameters
   $is_permission_a_b = (($permission == OSA_PERM_OWNED) || ($permission == OSA_PERM_PEER)) ? 1 : 0;
   $is_permission_b_a = (($permission == OSA_PERM_NONE) || ($permission == OSA_PERM_OWNED)) ? 0 : 1;
@@ -587,11 +708,9 @@ function _osa_create_relationship($relationship_type_id, $contact_id_a, $contact
   // Call the CiviCRM API to create the relationship
   $result = civicrm_api('relationship', 'create', $params);
   if ($result['is_error']) {
-    CRM_Core_Error::debug_log_message(
-      "Error: " .
-      $result['error_message'] .
-      ts("\nfailed to create relationship type_id=%1 between cid_a=%2 and cid_b=%3",
-        array(1 => $relationship_type_id, 2 => $contact_id_a, 3 => $contact_id_b)));
+    watchdog('osa', 'Error: %1\nfailed to create relationship type_id=%2 between cid_a=%3 and cid_b=%4', 
+             array(1 => $result['error_message'], 2 => $relationship_type_id, 3 => $contact_id_a, 4 => $contact_id_b),
+             WATCHDOG_ERROR);
     CRM_Core_Error::fatal();
   }
 }
@@ -649,19 +768,16 @@ function _osa_get_contributions($contact_id) {
   $params = array(
     'contact_id' => $contact_id,
     'option.sort' => 'receive_date desc',
-    'rowCount' => 6,
+    'rowCount' => 30,
     'version'    => '3',
  );
 
   // Call the CiviCRM API to get the contributions
   $result = civicrm_api('contribution', 'get', $params);
   if ($result['is_error']) {
-    CRM_Core_Error::debug_log_message(
-      "Error: " .
-      $result['error_message'] .
-      ts("\nfailed to get contributions for contact_id=%1",
-        array(1 => $contact_id)));
+    watchdog('osa', 'Error: %1\nfailed to get contributions for contact_id=%2', array(1 => $result['error_message'], 2 => $contact_id,), WATCHDOG_ERROR);
   }
+
   return $result['values'];
 }
 
@@ -681,44 +797,102 @@ function _osa_get_participant_events($contact_id) {
   // Call the CiviCRM API to get the events
   $result = civicrm_api('participant', 'get', $params);
   if ($result['is_error']) {
-    CRM_Core_Error::debug_log_message(
-      "Error: " .
-      $result['error_message'] .
-      ts("\nfailed to get events for contact_id=%1",
-        array(1 => $contact_id)));
+    watchdog('osa', 'Error: %1\nfailed to get events for contact_id=%2', array(1 => $result['error_message'], 2 => $contact_id,), WATCHDOG_ERROR);
   }
+  
   return $result['values'];
 }
 
 /**
- * Helper to get teacher private lesson pay for QEP
- *
- * @param integer $contact_id
- *   contact who's events we're to get
+ * Returns a component object from a webform node
  */
-function _osa_get_teacher_lists( &$contacts, &$select_options, &$prices30min, &$prices45min, &$prices60min) {
+function &_osa_get_webform_component(&$node, $form_key) {
 
-  $contacts = array();
-  $select_options = array();
-  $prices30min = array(0 => 0);
-  $prices45min = array(0 => 0);
-  $prices60min = array(0 => 0);
+  static $webform_cache = array();
 
-  $result = civicrm_api('contact', 'get',  array('contact_sub_type' => 'Teacher', 'option.sort' =>'sort_name', 'version' => 3));
-  if ($result['is_error']) {
-    CRM_Core_Error::debug_log_message(
-      "Error: " .
-      $result['error_message'] .
-      ts("\nfailed to get teacher contacts")
-    );
+  if (!array_key_exists($node->nid, $webform_cache)) {
+    $webform_cache[$node->nid] = array();
+    foreach ($node->webform['components'] as $id => $component) {
+      $webform_cache[$node->nid][$component['form_key']] = $id;
+    }
   }
 
-  foreach ( $result[values] as $teacher_id => $contact ) {
-    $teacher = _osa_get_contact($teacher_id);
-    $contacts[$teacher_id] = $teacher;
-    $select_options[$teacher_id] = $teacher['display_name'];
-    $prices30min[$teacher_id] = $teacher['annual_fee_30'];
-    $prices45min[$teacher_id] = $teacher['annual_fee_45'];
-    $prices60min[$teacher_id] = $teacher['annual_fee_60'];
+  if (array_key_exists($form_key, $webform_cache[$node->nid])) {
+    return $node->webform['components'][$webform_cache[$node->nid][$form_key]];
+  }
+  else {
+    return NULL;
+  }
+}
+
+/**
+ *  Calculate the next payment date and number of installments
+ *
+ * @param string $rel_start_date
+ *   relative start date of the school year & first payment (ie 'first day of September')
+ * @param integer $num_installments
+ *   total number of installments / months in school year. Will be updated if the school year has begun.
+ */
+function _osa_next_payment_date($rel_start_date, &$num_installments) {
+
+  $start_date = new DateTimeEx($rel_start_date);
+  $end_date = new DateTimeEx($start_date);
+  $tmp = $num_installments - 1;
+  $end_date->modify("first day of +$tmp months");
+
+  $first_month = $start_date->get('month');
+  
+  $today = new DateTimeEx('today');
+  $current_month = $today->get('month');
+  
+  // adjust year to account for non-calendar school year
+  if ($start_date->get('month') > 1) {
+    if ($today->get('month') <= $end_date->get('month')) {
+      $start_date->modify('-1 year');
+      $end_date->modify('-1 year');
+    }
+  }
+
+  // next payment date cannot be in the past
+  if ($today > $start_date) {
+    // reduce the number of installments
+    $num_installments -= $today->diff($start_date)->format('%m');
+    return $today;
+  }
+  
+  return $start_date;
+}
+
+/**
+ * Better DateTime class
+ */
+class DateTimeEx extends DateTime
+{
+  public static $_format = 'Y-m-d H:i:s';
+
+  public function __toString()
+  {
+    return (string)parent::format(static::$_format);
+  }
+
+  public function get($component) {
+    $components = date_parse($this);
+    return $components[$component];
+  }
+}
+
+/**
+ * Find the next date from a repeating Date field
+ */
+function _osa_get_next_date(&$series, &$start_date, &$end_date) {
+  $date = new DateTime(null, new DateTimeZone('America/Toronto'));
+  $now = $date->format('Y-m-d H:i:s');
+
+  foreach ($series as $session_date) {
+    $start_date = date('Y-m-d H:i:s', strtotime($session_date['value'] . ' ' . $session_date['timezone_db']));
+    $end_date = date('Y-m-d H:i:s', strtotime($session_date['value2'] . ' ' . $session_date['timezone_db']));
+    if ($start_date > $now) {
+      return;
+    }
   }
 }
