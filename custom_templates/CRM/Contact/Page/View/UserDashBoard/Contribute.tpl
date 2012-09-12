@@ -21,7 +21,6 @@
             <th>{ts}Name{/ts}</th>
             <th>{ts}Total Amount{/ts}</th>
             <th>{ts}Received date{/ts}</th>
-            <th>{ts}Receipt Sent{/ts}</th>
             <th>{ts}Status{/ts}</th>
           </tr>
         </thead>
@@ -35,7 +34,6 @@
     {/if}
           </td>
           <td>{$row.receive_date|truncate:10:''|crmDate}</td>
-          <td>{$row.receipt_date|truncate:10:''|crmDate}</td>
           <td>{$row.contribution_status}</td>
         </tr>
   {/foreach}

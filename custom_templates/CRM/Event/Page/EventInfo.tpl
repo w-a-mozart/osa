@@ -4,6 +4,7 @@
  +--------------------------------------------------------------------+
  | Override Standard CiviCRM Template EventInfo.tpl                   |
  | - add message to login to register                                 |
+ | - add support for snippets                                         |
  +--------------------------------------------------------------------+
  | Copyright Oakville Suzuki Association 2012                         |
  | Copyright CiviCRM LLC (c) 2004-2012                                |
@@ -70,20 +71,13 @@
 {/if}
 <div class="vevent crm-block crm-event-info-form-block">
 	<div class="event-info">
-	{if $event.summary}
-	    <div class="crm-section event_summary-section">
-        	{if $allowRegistration}
-                <div class="action-link section register_link-section register_link-top">
-                    <a href="{$registerURL}" title="{$registerText}" class="button crm-register-button"><span>{$registerText}</span></a>
-                </div>
-            {/if}
-            {$event.summary}
-	    </div>
-	{/if}
+  
+{* Remove Summary *}
+
 	{if $event.description}
-	    <div class="crm-section event_description-section summary">
-            {* Put the top register link to the right of description if no summary *}
-        	{if $allowRegistration && !$event.summary}
+	    <div class="crm-section event_description-section summary" {if $smarty.get.snippet eq 2}style="width:700px"{/if}>
+          {* Put the top register link to the right of description if no summary *}
+        	{if $allowRegistration && $smarty.get.snippet neq 2}
                 <div class="action-link section register_link-section register_link-top">
                     <a href="{$registerURL}" title="{$registerText}" class="button crm-register-button"><span>{$registerText}</span></a>
                 </div>
@@ -201,7 +195,7 @@
       </div>
   {/if}
   
-	{if $allowRegistration}
+	{if $allowRegistration && $smarty.get.snippet neq 2}
         <div class="action-link section register_link-section register_link-bottom">
             <a href="{$registerURL}" title="{$registerText}" class="button crm-register-button"><span>{$registerText}</span></a>
         </div>

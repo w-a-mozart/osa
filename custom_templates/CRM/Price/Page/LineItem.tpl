@@ -4,6 +4,7 @@
  +--------------------------------------------------------------------+
  | Override Standard CiviCRM Template LineItem.tpl                    |
  | - don't show quantity and amount for zero amount items             |
+ | - Teacher pay customizations                                       |
  +--------------------------------------------------------------------+
  | Copyright Oakville Suzuki Association 2012                         |
  | Copyright CiviCRM LLC (c) 2004-2011                                |
@@ -23,7 +24,7 @@
 	    	{if $context EQ "Membership"}	
 		    <th class="right">{ts}Fee{/ts}</th>
                 {else}
-		    <th class="right">{ts}Qty{/ts}</th>
+		    <th class="right">{if $title eq "Teacher Registration"}{ts}Installments{/ts}{else}{ts}Qty{/ts}{/if}</th>
                     <th class="right">{ts}Unit Price{/ts}</th>
 		    <th class="right">{ts}Total Price{/ts}</th>
 		{/if}
@@ -33,7 +34,7 @@
             </tr>
             {foreach from=$value item=line}
             <tr>
-                <td>{if $line.html_type eq 'Text'}{$line.label}{else}{$line.field_title} - {$line.label}{/if} {if $line.description}<div class="description">{$line.description}</div>{/if}</td>
+              <td>{if $line.html_type eq 'Text'}{$line.label}{else}{$line.field_title} - {$line.label}{/if} {if $line.description}<div class="description">{$line.description}</div>{/if}</td>
 {* Dont show qty and price for no-cost items *}
 		{if $context NEQ "Membership"}
 		    <td class="right">{if $line.qty neq 1 or $line.unit_price neq 0}{$line.qty}{/if}</td>

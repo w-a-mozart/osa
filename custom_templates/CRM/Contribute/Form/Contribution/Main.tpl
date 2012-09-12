@@ -56,24 +56,24 @@ function clearAmountOther() {
 <div id="help">You have a current Lifetime Membership which does not need to be renewed.</div> 
 {/if}
 
-{if $priceSet && empty($useForMember)}
-  {* User selection. Rather than typing in an email, select who the contribution is from. *}
-  {if $onbehalfFamily }
-    <div class="crm-section contact-id-section">
-      <fieldset>
-        <legend>{ts}Individual{/ts}</legend>
-        <div class="label">{$form.contact_id.label}</div>
-        <div class="content">
-          {$form.contact_id.html}
-      </fieldset>
-	  </div>
-    <div class="clear"></div> 
-  {/if}
-    {* Move Custom fields *}
-    <div class="crm-group custom_pre_profile-group">
-    	{include file="CRM/UF/Form/Block.tpl" fields=$customPre} 	
-    </div>
+{* User selection. Rather than typing in an email, select who the contribution is from. *}
+{if $onbehalfFamily }
+  <div class="crm-section contact-id-section">
+    <fieldset>
+      <legend>{ts}Individual{/ts}</legend>
+      <div class="label">{$form.contact_id.label}</div>
+      <div class="content">
+        {$form.contact_id.html}
+    </fieldset>
+  </div>
+  <div class="clear"></div> 
+{/if}
+  {* Move Custom fields *}
+  <div class="crm-group custom_pre_profile-group">
+    {include file="CRM/UF/Form/Block.tpl" fields=$customPre} 	
+  </div>
 
+{if $priceSet && empty($useForMember)}
     <div id="price-options">
         <fieldset>
             <legend>{ts}Options{/ts}</legend>
@@ -87,6 +87,7 @@ function clearAmountOther() {
 	    <div class="crm-section {$form.amount.name}-section">
 			<div class="label">{$form.amount.label}</div>
 			<div class="content">{$form.amount.html}</div>
+			<div class="discount-info">Applicable discounts will be applied in the shopping cart.</div> 
 			<div class="clear"></div> 
 	    </div>
 	{/if} 
@@ -438,44 +439,92 @@ function showHidePayPalExpressOption()
 {if $contributionPageID eq 2}
 {literal}
 <script type="text/javascript">
-function setLessonAmt() {
-showHideByValue('custom_18','QE Park','price-options','block','radio',false);
-showHideByValue('custom_18','QE Park','billing_block','block','radio',false);
+function setLevelOpt() {
+  var pricelvl = {/literal}{$pricelvl}{literal};
+  var tidx = cj('#custom_24').val();
+  if (typeof tidx === "undefined") tidx = 0;
 
-var price30 = {/literal}{$price30}{literal};
-var price45 = {/literal}{$price45}{literal};
-var price60 = {/literal}{$price60}{literal};
+  var el = cj("#custom_32");
+  cj("#custom_32").empty(); // remove old options
 
-var idx = cj('#custom_24').val();
-if (typeof idx === "undefined") idx = 0;
-if (cj('#CIVICRM_QFID_QE_Park_12:checked').val() != 'QE Park') idx = 0;
-
-var price_attr = '[\"price_6\",\"' + price30[idx] + '||\"]';
-cj('#CIVICRM_QFID_11_6').attr('price', price_attr);
-document.getElementById('30min').innerHTML = " - " + symbol + " " + formatMoney( price30[idx], 2, seperator, thousandMarker) + ' / year';
-
-price_attr = '[\"price_6\",\"' + price45[idx] + '||\"]';
-cj('#CIVICRM_QFID_12_8').attr('price', price_attr);
-document.getElementById('45min').innerHTML = " - " + symbol + " " + formatMoney( price45[idx], 2, seperator, thousandMarker) + ' / year';
-
-price_attr = '[\"price_6\",\"' + price60[idx] + '||\"]';
-cj('#CIVICRM_QFID_13_10').attr('price', price_attr);
-document.getElementById('60min').innerHTML = " - " + symbol + " " + formatMoney( price60[idx], 2, seperator, thousandMarker) + ' / year';
-
-calcTotal();
+  if (cj(pricelvl[tidx]).length > 0) {
+    cj.each(pricelvl[tidx], function(value, label) {
+      cj("#custom_32").append(cj("<option></option>")
+        .attr("value", value).text(label));
+    });
+  }
 }
 
-setLessonAmt();
-cj("#custom_24").change(function(){
-setLessonAmt();
-});
-cj("#CIVICRM_QFID_QE_Park_12").change(function(){
-setLessonAmt();
-});
-cj("#CIVICRM_QFID_Other_14").change(function(){
-setLessonAmt();
-});
+function setLessonAmt() {
+  var pricelvl = {/literal}{$pricelvl}{literal};
+  var price30 = {/literal}{$price30}{literal};
+  var price45 = {/literal}{$price45}{literal};
+  var price60 = {/literal}{$price60}{literal};
 
+  showHideByValue('custom_18','QE Park','price-options','block','radio',false);
+  showHideByValue('custom_18','QE Park','billing_block','block','radio',false);
+
+  var tidx = cj('#custom_24').val();
+  var lidx = cj('#custom_32').val();
+  var plvl = pricelvl[tidx];
+
+  if ((typeof tidx === "undefined") || (typeof lidx === "undefined") || (typeof plvl === "undefined")) {
+    tidx = 0;
+    lidx = 0;
+  }
+
+  if (cj('#CIVICRM_QFID_QE_Park_12:checked').val() != 'QE Park') {
+    tidx = 0;
+    lidx = 0;
+  }
+
+  len = cj("select#custom_32 option").length;
+  if (typeof len === "undefined") len = 0;
+
+  if (tidx == 0 || len <= 1) {
+    cj("#custom_32").val(pricelvl[tidx]);
+    cj(".custom_32-section").css("visibility", "hidden");
+  }
+  else {
+    cj(".custom_32-section").css("visibility", "visible");
+  }
+
+  var price_attr = '[\"price_6\",\"' + price30[tidx][lidx] + '||\"]';
+  cj('#CIVICRM_QFID_11_2').attr('price', price_attr);
+  document.getElementById('30min').innerHTML = " - " + symbol + " " + formatMoney( price30[tidx][lidx], 2, seperator, thousandMarker) + ' / year';
+
+  price_attr = '[\"price_6\",\"' + price45[tidx][lidx] + '||\"]';
+  cj('#CIVICRM_QFID_12_4').attr('price', price_attr);
+  document.getElementById('45min').innerHTML = " - " + symbol + " " + formatMoney( price45[tidx][lidx], 2, seperator, thousandMarker) + ' / year';
+
+  price_attr = '[\"price_6\",\"' + price60[tidx][lidx] + '||\"]';
+  cj('#CIVICRM_QFID_13_6').attr('price', price_attr);
+  document.getElementById('60min').innerHTML = " - " + symbol + " " + formatMoney( price60[tidx][lidx], 2, seperator, thousandMarker) + ' / year';
+  
+  calcTotal();
+}
+
+cj(document).ready(function() {
+  calcTotal();
+  setLessonAmt();
+  setLevelOpt();
+  
+  cj("#custom_24").change(function(){
+    setLevelOpt();
+    setLessonAmt();
+  });
+  cj("#custom_32").change(function(){
+    setLessonAmt();
+  });
+  cj("#CIVICRM_QFID_QE_Park_12").change(function(){
+    setLevelOpt();
+    setLessonAmt();
+  });
+  cj("#CIVICRM_QFID_Other_14").change(function(){
+    setLevelOpt();
+    setLessonAmt();
+  });
+});
 </script>
 <style type="text/css">
 .yearly-fee {

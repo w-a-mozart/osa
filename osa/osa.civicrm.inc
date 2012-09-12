@@ -5,6 +5,8 @@
  * Functions that customize CiviCRM pages and forms
  */
 require_once 'osa.inc';
+require_once 'osa.group_class.inc';
+require_once 'osa.teacher.inc';
 
 /**
  * Override what is on the Contact Dashboard to make a 'Family Profile' page
@@ -12,11 +14,14 @@ require_once 'osa.inc';
  * @param object $page
  *   The CRM_Contact_Page_View_UserDashBoard object being rendered.
  */
-function osa_civicrm_page_CRM_Contact_Page_View_UserDashBoard(&$page) {
+function osa_civicrm_pageRun_CRM_Contact_Page_View_UserDashBoard(&$page) {
   require_once 'api/api.php';
-
+  $timestamp = array();
+  
+  $timestamp['before _osa_get_contact_id'] = time() - $_SERVER['REQUEST_TIME'];
   // get current user's contact id
   $uid = _osa_get_contact_id();
+  $timestamp['after _osa_get_contact_id'] = time() - $_SERVER['REQUEST_TIME'];
   
   // reset the session if it got corrupted (opening civicrm forms with different ids)
   if ($uid != $page->_contactId) {
@@ -28,11 +33,15 @@ function osa_civicrm_page_CRM_Contact_Page_View_UserDashBoard(&$page) {
   // use the contact id passed in the URL, or the household of the current user
   $cid = CRM_Utils_Request::retrieve('id', 'Positive');
   if (isset($cid)) {
+    $timestamp['before _osa_getHousehold'] = time() - $_SERVER['REQUEST_TIME'];
     $hid =_osa_getHousehold($cid);
+    $timestamp['after _osa_getHousehold'] = time() - $_SERVER['REQUEST_TIME'];
   }
   else {
     $cid = $uid;
+    $timestamp['before _osa_getHousehold'] = time() - $_SERVER['REQUEST_TIME'];
     $hid =_osa_getHousehold($cid);
+    $timestamp['after _osa_getHousehold'] = time() - $_SERVER['REQUEST_TIME'];
     if (isset($hid)) {
       $cid = $hid;
     }
@@ -48,7 +57,9 @@ function osa_civicrm_page_CRM_Contact_Page_View_UserDashBoard(&$page) {
 
   // take the opportunity to clean house
   if (isset($hid)) {
+    $timestamp['before _osa_manageHouseholdRelationships'] = time() - $_SERVER['REQUEST_TIME'];
     _osa_manageHouseholdRelationships($hid);
+    $timestamp['after _osa_manageHouseholdRelationships'] = time() - $_SERVER['REQUEST_TIME'];
   }
   
   // $cid could be:
@@ -74,12 +85,17 @@ function osa_civicrm_page_CRM_Contact_Page_View_UserDashBoard(&$page) {
   $groupIn         = $smarty->get_template_vars('groupIn');
 
   // get all the family members for this contact
+  $timestamp['before _osa_getHouseholdMembers'] = time() - $_SERVER['REQUEST_TIME'];
   $family = _osa_getHouseholdMembers($cid);
+  $timestamp['after _osa_getHouseholdMembers'] = time() - $_SERVER['REQUEST_TIME'];
 
   foreach ($family as $person) {
-
+    $id = $person['contact_id'];
+    
     // get membership status
+    $timestamp['before _osa_get_membership'][$id] = time() - $_SERVER['REQUEST_TIME'];
     $membership = _osa_get_membership($person['contact_id']);
+    $timestamp['after _osa_get_membership'][$id] = time() - $_SERVER['REQUEST_TIME'];
     if (isset($membership)) {
       $person['contact']['is_current_member'] = $membership['is_current_member'];
       $person['membership']['status'] = $membership['status'];
@@ -94,9 +110,12 @@ function osa_civicrm_page_CRM_Contact_Page_View_UserDashBoard(&$page) {
     }
     elseif ($contact_type == 'Student') {
       $students[] = $person;
+      $timestamp['before _osa_getTeachers'][$id] = time() - $_SERVER['REQUEST_TIME'];
+      $teachers += _osa_getTeachers($person['contact']);
+      $timestamp['after _osa_getTeachers'][$id] = time() - $_SERVER['REQUEST_TIME'];
     }
     elseif ($contact_type == 'Teacher') {
-      $teachers[] = $person;
+      // do nothing
     }
     elseif ($contact_type == 'Household') {
       // do nothing
@@ -107,18 +126,27 @@ function osa_civicrm_page_CRM_Contact_Page_View_UserDashBoard(&$page) {
 
     // append family member elements to lists in the page
     if ($person['contact_id'] != $page->_contactId) {
+      $timestamp['before _osa_get_participant_events'][$id] = time() - $_SERVER['REQUEST_TIME'];
       $events = _osa_get_participant_events($person['contact_id']);
+      $timestamp['after _osa_get_participant_events'][$id] = time() - $_SERVER['REQUEST_TIME'];
       if (isset($events)) {
         $event_rows = $event_rows + $events;
       }
 
+      $timestamp['before _osa_get_contributions'][$id] = time() - $_SERVER['REQUEST_TIME'];
       $contributions = _osa_get_contributions($person['contact_id']);
+      $timestamp['after _osa_get_contributions'][$id] = time() - $_SERVER['REQUEST_TIME'];
       if (isset($contributions)) {
         $contribute_rows = $contribute_rows + $contributions;
       }
     }
   }
 
+  // special processing for group classes
+  $timestamp['before osa_overwrite_class_participants'] = time() - $_SERVER['REQUEST_TIME'];
+  osa_overwrite_class_participants($event_rows);
+  $timestamp['after osa_overwrite_class_participants'] = time() - $_SERVER['REQUEST_TIME'];
+  
   // (re)assign Smarty varibles
   $page->assign('parents', $parents);
   $page->assign('students', $students);
@@ -130,6 +158,7 @@ function osa_civicrm_page_CRM_Contact_Page_View_UserDashBoard(&$page) {
   $page->assign('groupIn', $groupIn);
   
   // use the CiviCRM Profiles to display tombstone info
+  $timestamp['before CRM_Profile_Page_Dynamic'] = time() - $_SERVER['REQUEST_TIME'];
   require_once 'CRM/Profile/Page/Dynamic.php';
   $gids = array('Phone and Email' => OSA_PROFILE_PHONE_EMAIL, 'Address' => OSA_PROFILE_ADDRESS);
   $profileElements = array();
@@ -144,6 +173,7 @@ function osa_civicrm_page_CRM_Contact_Page_View_UserDashBoard(&$page) {
     );
   }
   $page->assign('profileElements', $profileElements);
+  $timestamp['after CRM_Profile_Page_Dynamic'] = time() - $_SERVER['REQUEST_TIME'];
 
   // override the templates used for each dashboard element
   $dashboardElements = array();
@@ -180,15 +210,20 @@ function osa_civicrm_page_CRM_Contact_Page_View_UserDashBoard(&$page) {
     'sectionTitle' => 'Recent Payment(s)',
     'sectionState' => empty($contribute_rows) ? 'closed' : 'open',
   );
+/*
   $dashboardElements[] = array(
     'templatePath' => 'CRM/Contact/Page/View/UserDashBoard/Group.tpl',
     'sectionTitle' => 'Mailing List(s)',
     'sectionState' => empty($groupIn) ? 'closed' : 'open',
   );
+*/
   $page->assign('dashboardElements', $dashboardElements);
 
   // override the page title (do this last as generating profiles also ovrides the title)
   CRM_Utils_System::setTitle($pgContact['display_name'], $pgContact['image_URL'] . ' ' . $pgContact['display_name']);
+
+  $timestamp['END'] = time() - $_SERVER['REQUEST_TIME'] - $timestamp['before _osa_get_contact_id'];
+  watchdog('mytimer', "hid = $hid\n<pre>". print_r($timestamp, TRUE) . '</pre>');
 }
 
 /**
@@ -202,45 +237,48 @@ function osa_civicrm_buildForm_CRM_Profile_Form_Edit(&$form) {
   $gid = $form->getVar('_gid');
   $mode = $form->getVar('_mode');
   
-  // if we are passed a household id add it to the form
-  $hid = CRM_Utils_Request::retrieve('osa_hid', 'Positive');
-  if (isset($hid)) {
-    _osa_addField($form, 'hidden', 'osa_hid', $hid);
-  }
-  
   // set defaults in the create family profile form
   if ($gid == OSA_PROFILE_FAMILY) {
     if ($mode == CRM_Profile_Form::MODE_CREATE) {
       $contact = _osa_get_contact();
-      $defaults = array(
-        'household_name' => $contact['last_name'] . ' Family',
-        'email-Primary' => $contact['email'],
-      );
-      if (isset($contact['phone'])) {
-        $defaults['phone-Primary-1'] = $contact['phone'];
+      // bug???
+      if ($contact['id'] == 1) {
+        watchdog('ahh', "Family for admin??");
+        watchdog('ahh', '<pre>' . print_r(debug_backtrace(), TRUE) . '</pre>');
+        $session = CRM_Core_Session::singleton();
+        $session->reset();
       }
-      if (isset($contact['street_address'])) {
-        $defaults['street_address-1'] = $contact['street_address'];
+      else {
+        $defaults = array(
+          'household_name' => $contact['last_name'] . ' Family',
+          'email-Primary' => $contact['email'],
+        );
+        if (isset($contact['phone'])) {
+          $defaults['phone-Primary-1'] = $contact['phone'];
+        }
+        if (isset($contact['street_address'])) {
+          $defaults['street_address-1'] = $contact['street_address'];
+        }
+        if (isset($contact['city'])) {
+          $defaults['city-1'] = $contact['city'];
+        }
+        if (isset($contact['state_province_id'])) {
+          $defaults['state_province-1'] = $contact['state_province_id'];
+        }
+        if (isset($contact['country_id'])) {
+          $defaults['country-1'] = $contact['country_id'];
+        }
+        if (isset($contact['postal_code'])) {
+          $defaults['postal_code-1'] = $contact['postal_code'];
+        }
+        $form->setDefaults($defaults);
       }
-      if (isset($contact['city'])) {
-        $defaults['city-1'] = $contact['city'];
-      }
-      if (isset($contact['state_province_id'])) {
-        $defaults['state_province-1'] = $contact['state_province_id'];
-      }
-      if (isset($contact['country_id'])) {
-        $defaults['country-1'] = $contact['country_id'];
-      }
-      if (isset($contact['postal_code'])) {
-        $defaults['postal_code-1'] = $contact['postal_code'];
-      }
-      $form->setDefaults($defaults);
     }
   }
   // add a relationship type selection to the Related Individual profile form
   elseif ($gid == OSA_PROFILE_REL_INDIVIDUAL) {
     if ($mode == CRM_Profile_Form::MODE_CREATE) {
-      _osa_addRelationshipField($form, $hid);
+      _osa_addRelationshipField($form, $_GET['hid']);
     }
   }
 
@@ -339,25 +377,11 @@ function osa_civicrm_buildForm_CRM_Contribute_Form_Contribution_Main(&$form) {
 
   // all other contributions can be made on behalf of a family member
   // so add a drop down of family members
-  $family = _osa_getHouseholdMembers(NULL, 'display_name');
-  asort($family);
-  $family = array( ' - select - ' ) + $family;
-  $form->addElement('select', 'contact_id', ts('Family Member'), $family);
-  $form->addRule('contact_id', ts('Please select a family member.'), 'required');
-  $session = CRM_Core_Session::singleton();
-  $form->setDefaults(array('contact_id' => $session->get('userID')));
-  $form->assign('onbehalfFamily', TRUE);
+  _osa_addFamilyField($form);
 
-  // custom  processing for the teacher registration form
+  // custom processing for the teacher registration form
   if ($form->_id == OSA_CONTRIB_TEACHER) {
-    // populate the teacher QE Park pricing
-    _osa_get_teacher_lists( $contacts, $select_options, $prices30min, $prices45min, $prices60min);
-    $form->assign('price30', json_encode($prices30min));
-    $form->assign('price45', json_encode($prices45min));
-    $form->assign('price60', json_encode($prices60min));
-    
-    // @TODO not sure why this is needed, but form validation fails wothout it
-    $form->addElement('hidden', 'amount_other', '0.01');
+    osa_civicrm_buildForm_teacher_registration($form);
   }
 
   // if using the direct payment, remove the unused fields
@@ -386,25 +410,18 @@ function osa_civicrm_buildForm_CRM_Contribute_Form_Contribution_Main(&$form) {
 
 /**
  * Add custom validation to CiviCRM Contribution based forms
- *
  */
 function osa_civicrm_validate_CRM_Contribute_Form_Contribution_Main(&$fields, &$files, &$form) {
   $errors = array();
   
   // custom processing for the teacher registration form
   if ($form->_id == OSA_CONTRIB_TEACHER) {
-    $values = $form->_submitValues;
-
-    // check to make sure the selected teacher teaches at the selected location
-    if (isset($values['custom_24']) && isset($values['custom_18']) && ($values['custom_18'] == 'QE Park')) {
-      $teacher = _osa_get_contact($values['custom_24']);
-      if ($teacher['uses_qep'] == '0') {
-        $errors['custom_18'] = ts('%1 does not teach private lessons at QE Park', array( 1 => $teacher['display_name'] ));
-        $form->setElementError('custom_18', $errors['custom_18']);
-      }
+    $tmp = osa_civicrm_validate_teacher_registration($fields, $files, $form);
+    if (is_array($tmp)) {
+      $errors += $tmp;
     }
   }
-  
+
   return empty($errors) ? true : $errors;
 }
 
@@ -434,26 +451,160 @@ function osa_civicrm_postProcess_CRM_Contribute_Form_Contribution_Main(&$form) {
 }
 
 /**
+ * Add custom procesing when generating Contribution Confirmation form
+ *
+ * @param $form
+ *   The CRM_Contribute_Form_Contribution_Confirm object being rendered.
+ */
+function osa_civicrm_buildForm_CRM_Contribute_Form_Contribution_Confirm(&$form) {
+
+  if (isset($form->_params['contact_id'])) {
+    $cid = $form->_params['contact_id'];
+    $contact = _osa_get_contact($cid, FALSE);
+    $contact['contact_type'] = isset($contact['contact_sub_type']) ? $contact['contact_sub_type'][0] : $contact['contact_type'];
+
+    $form->assign('contact', $contact);
+    $form->assign('onbehalfFamily', TRUE);
+    _osa_addField($form, 'hidden', "contact_id", $cid);
+  }
+  
+  // custom processing for the teacher registration form
+  if ($form->_id == OSA_CONTRIB_TEACHER) {
+    osa_civicrm_buildForm_teacher_registration_confirm($form);
+  }
+}
+
+/**
+ * Add custom procesing when processing the Contribution Confirmation form
+ *
+ * @param $form
+ *   The CRM_Contribute_Form_Contribution_Confirm object being rendered.
+ */
+function osa_civicrm_postProcess_CRM_Contribute_Form_Contribution_Confirm(&$form) {
+  // custom processing for the teacher registration form
+  if ($form->_id == OSA_CONTRIB_TEACHER) {
+    osa_civicrm_postProcess_teacher_registration_confirm($form);
+  }
+}
+
+/**
+ * Add custom procesing when generating Contribution Thankyou page
+ *
+ * @param $form
+ *   The CRM_Contribute_Form_Contribution_Confirm object being rendered.
+ */
+function osa_civicrm_buildForm_CRM_Contribute_Form_Contribution_ThankYou(&$form) {
+
+  // we need the ID of contact
+  $session = CRM_Core_Session::singleton();
+  $form->assign('cid', $session->get('userID'));
+  
+  // custom processing for the teacher registration form
+  if ($form->_id == OSA_CONTRIB_TEACHER) {
+    osa_civicrm_buildForm_teacher_registration_thankyou($form);
+  }
+}
+
+/**
+ * Customize the Event Info page
+ *
+ * @param object $page
+ *   The CRM_Event_Page_EventInfo object being rendered.
+ */
+function osa_civicrm_pageRun_CRM_Event_Page_EventInfo(&$page) {
+
+  // get the custom data fields we want to customize
+  $template = &$page->getTemplate();
+	$event_custom_data = &$template->_tpl_vars['viewCustomData'];
+  $cd_keys = array_keys($event_custom_data);
+  
+	foreach ($cd_keys as $cd_key) {
+    $custom_data = current($event_custom_data[$cd_key]);
+    $ecd_key = key($event_custom_data[$cd_key]);
+
+    // hide zero discounts
+    if ($custom_data['name'] == 'Discounts') {
+      $fld_keys = array_keys($custom_data['fields']);
+      foreach ($fld_keys as $fld_key) {
+        if (($custom_data['fields'][$fld_key]['field_title'] == 'Member Discount') &&
+            ($custom_data['fields'][$fld_key]['field_value'] == '0.00')) {
+          unset($event_custom_data[$cd_key]);
+          break;
+        }
+      }
+    }
+
+    // show/hide Members Only flag
+    if ($custom_data['name'] == 'Event_Details') {
+      $event_custom_data[$cd_key][$ecd_key]['title'] = '';
+      $fld_keys = array_keys($custom_data['fields']);
+      foreach ($fld_keys as $fld_key) {
+        if ($custom_data['fields'][$fld_key]['field_title'] == 'Members Only') {
+          if ($custom_data['fields'][$fld_key]['field_value'] == "No\n") {
+            unset($event_custom_data[$cd_key]);
+          }
+          else {
+            $event_custom_data[$cd_key][$ecd_key]['fields'][$fld_key]['field_title'] = ts('Restricted to OSA Members Only');
+            $event_custom_data[$cd_key][$ecd_key]['fields'][$fld_key]['field_value'] = '';
+          }
+          break;
+        }
+      }
+    }
+  }
+
+  // customize for group classes
+  $event = $template->get_template_vars('event');
+  if ($event['event_type_id'] == OSA_EVENT_GROUP_CLASS_MASTER) {
+    osa_civicrm_pageRun_group_class_info($page);
+  }
+}
+
+/**
  * Add custom procesing when generating CiviCRM Event Registration forms
  *
  * @param $form
  *   The CRM_Event_Form_Registration_Register object being rendered.
  */
 function osa_civicrm_buildForm_CRM_Event_Form_Registration_Register(&$form) {
+
   // remove the email field to identify participant
   $bltID = $form->_bltID;
   $form->removeElement("email-$bltID");
+
+  // determine if this event is members only
+  $result = civicrm_api("event", "get", array('id' => $form->_eventId, 'version' => 3));
+  $members_only = $result['values'][$form->_eventId][_osa_field('members_only')];
   
   // registrations can be made on behalf of a family member
   // so add a drop down of family members
-  $family = _osa_getHouseholdMembers(NULL, 'display_name');
-  asort($family);
-  $family = array(' - select - ') + $family;
-  $form->addElement('select', 'contact_id', ts('Family Member'), $family);
-  $form->addRule('contact_id', ts('Please select a family member.'), 'required');
-  $session = CRM_Core_Session::singleton();
-  $form->setDefaults(array('contact_id' => $session->get('userID')));
-  $form->assign('onbehalfFamily', TRUE);
+  _osa_addFamilyField($form, $members_only);
+
+  if ($form->_paymentProcessor['payment_processor_type'] == 'drupalcommerce') {
+    $group = $form->getElement('buttons');
+    $buttons = $group->getElements();
+    $buttons[0]->setValue(ts('Add to Cart'));
+  }
+
+  // special processing for group classes
+  if ($form->_values['event']['event_type_id'] == OSA_EVENT_GROUP_CLASS_MASTER) {
+    osa_civicrm_buildForm_group_class_registration($form);
+  }
+}
+
+/**
+ * Add custom validation to Event registration forms
+ */
+function osa_civicrm_validate_CRM_Event_Form_Registration_Register(&$fields, &$files, &$form) {
+  $errors = array();
+  
+  // ensure a contact_id was selected
+  if (!isset($fields['contact_id']) || $fields['contact_id'] == '0') {
+    $errors['contact_id'] = ts('Family Member is a required field.');
+    $form->setElementError('contact_id', $errors['contact_id']);
+  }
+
+  return empty($errors) ? true : $errors;
 }
 
 /**
@@ -467,14 +618,14 @@ function osa_civicrm_postProcess_CRM_Event_Form_Registration_Register(&$form) {
   // check if we are using the Drupal Commerce Cart
   if ($form->_paymentProcessor['payment_processor_type'] == 'drupalcommerce') {
     // since we use a Cart, we want to disable the confirmation form
-    $confirmForm =& $form->controller->_pages['Confirm'];
+    $confirmForm = &$form->controller->_pages['Confirm'];
 
     // first set the contact id to the selected family member
     $data =& $form->controller->container();
     $contact_id = $data['values']['Register']['contact_id'];
     $params = $confirmForm->get('params');
     $params[0]['contact_id'] = $contact_id;
-    $confirmForm->set('params', $params);;
+    $confirmForm->set('params', $params);
 
     // build the confirmation form to make sure all of the values are set
     $confirmForm->preProcess();
@@ -484,9 +635,27 @@ function osa_civicrm_postProcess_CRM_Event_Form_Registration_Register(&$form) {
     $data['valid']['Confirm'] = 1;
     $confirmForm->postProcess();
 
+    // special processing for group classes
+    if ($confirmForm->_values['event']['event_type_id'] == OSA_EVENT_GROUP_CLASS_MASTER) {
+      osa_civicrm_postProcess_group_class_registration($confirmForm);
+    }
+    
     // Redirect to thank you page
     $qfKey = $form->controller->_key;
     CRM_Utils_System::redirect(CRM_Utils_System::url('civicrm/event/register', "_qf_ThankYou_display=true&qfKey=$qfKey", TRUE, NULL, FALSE));
+  }
+}
+
+/**
+ * Add custom procesing when generating Event Registration Thank you
+ *
+ * @param $form
+ *   The CRM_Event_Form_Registration_ThankYou object being rendered.
+ */
+function osa_civicrm_buildForm_CRM_Event_Form_Registration_ThankYou(&$form) {
+  // special processing for group classes
+  if ($form->_values['event']['event_type_id'] == OSA_EVENT_GROUP_CLASS_MASTER) {
+    osa_civicrm_buildForm_group_class_thankyou($form);
   }
 }
 
@@ -503,25 +672,29 @@ function osa_civicrm_buildAmount($pageType, &$form, &$amount) {
     }
     
     // check if QEP
-    if (isset($values['price_6']) && isset($values['custom_24']) && isset($values['custom_18']) && ($values['custom_18'] == 'QE Park')) {
-      // set the amounts for each lesson length based on the teacher
-      $teacher = _osa_get_contact($values['custom_24']);
-      $amount[6]['options'][11]['amount'] = $teacher['annual_fee_30'];
-      $amount[6]['options'][12]['amount'] = $teacher['annual_fee_45'];
-      $amount[6]['options'][13]['amount'] = $teacher['annual_fee_60'];
+    if (isset($values[_osa_field('lesson_length')]) &&
+        isset($values[_osa_field('selected_teacher')]) &&
+        isset($values[_osa_field('lesson_level')]) &&
+        isset($values[_osa_field('lesson_location')]) &&
+        ($values[_osa_field('lesson_location')] == 'QE Park')) {
+      // set the amounts for each lesson length based on the teacher & level
+      $teacher = _osa_get_contact($values[_osa_field('selected_teacher')]);
+      $amount[6]['options'][11]['amount'] = $teacher[$values[_osa_field('lesson_level')]]['Price_for_30_minutes'];
+      $amount[6]['options'][12]['amount'] = $teacher[$values[_osa_field('lesson_level')]]['Price_for_45_minutes'];
+      $amount[6]['options'][13]['amount'] = $teacher[$values[_osa_field('lesson_level')]]['Price_for_60_minutes'];
     }
   }
 }
 
 /**
- * Implements hook_civicrm_customFieldOptions() to dynamically populate custom selection boxes
+ * Implements hook_civicrm_customFieldOptions to dynamically populate custom selection boxes
  */
 function osa_civicrm_customFieldOptions($fieldID, &$options, $detailedFormat = false ) {
 
-  // teachers selection
+  // Teachers selection
   if ($fieldID == 24) {
     // populate the teacher list
-    _osa_get_teacher_lists( $contacts, $select_options, $prices30min, $prices45min, $prices60min);
+    _osa_get_teacher_lists($contacts, $select_options, $pricelevel, $prices30min, $prices45min, $prices60min);
     if ($detailedFormat) {
       foreach ($select_options as $value => $label) {
         $options['teacher_' . $value] = array(
@@ -533,6 +706,44 @@ function osa_civicrm_customFieldOptions($fieldID, &$options, $detailedFormat = f
     }
     else {
       $options += $select_options;
+    }
+  }
+
+  // Group Node selection
+  if ($fieldID == 25) {
+    // find all of the group class nodes
+    $nodes = &_osa_get_class_nodes();
+    foreach($nodes as $class) {
+      if ($detailedFormat) {
+        $options['class_' . $class->nid] = array(
+          'id'    => 'class_' . $class->nid,
+          'value' => $class->nid,
+          'label' => $class->title,
+        );
+      }
+      else {
+        $options[$class->nid] = $class->title;
+      }
+    }
+  }
+
+  // Lesson Fee Level
+  if ($fieldID == 32) {
+    // populate the teacher list
+    _osa_get_teacher_lists($contacts, $select_options, $pricelevel, $prices30min, $prices45min, $prices60min);
+    foreach ($pricelevel as $teacher_id => $levels) {
+      foreach ($levels as $value => $label) {
+        if ($detailedFormat) {
+          $options['pricelvl_' . $value] = array(
+            'id'    => 'pricelvl_' . $value,
+            'value' => $value,
+            'label' => $label,
+          );
+        }
+        else {
+          $options[$value] = $label;
+        }
+      }
     }
   }
 }
@@ -587,4 +798,24 @@ function osa_civicrm_buildForm_CRM_Contact_Form_Task_EmailCommon(&$form) {
 
   $form->assign('toContact', json_encode($toArray));
   $form->assign('suppressedEmails', $suppressedEmails);
+}
+
+
+/**
+ * Implements hook_civicrm_alterPaymentProcessorParams to customize payment processing
+ *
+ */
+function osa_civicrm_alterPaymentProcessorParams($paymentObj, &$rawParams, &$cookedParams) {
+
+  if ($paymentObj->_processorName == 'Elavon') {
+    $contact = _osa_get_contact(NULL, FALSE);
+    $cookedParams['osa_name_card'] = $contact['display_name'];
+    $cookedParams['osa_card_type'] = $rawParams['credit_card_type'];
+    unset($cookedParams['ssl_customer_number']);
+  }
+  
+  // customize private lesson payments
+  if ($rawParams['contributionPageID'] == OSA_CONTRIB_TEACHER) {
+    osa_civicrm_alterPaymentProcessorParams_teacher_registration($paymentObj, $rawParams, $cookedParams);
+  }
 }

@@ -10,34 +10,8 @@
  +--------------------------------------------------------------------+
 *}
 
-{* hate putting logic here but what can you do *}
-{* first figure out if we should show discounts *}
-{assign var="showDiscounts" value=0}
 {foreach from=$viewCustomData item=customValues key=customGroupId}
   {foreach from=$customValues item=cd_edit key=cvID}
-    {if $cd_edit.name == 'Discounts'}
-      {foreach from=$cd_edit.fields item=element key=field_id}
-        {if $element.field_data_type == 'Money'}
-          {if $element.field_type == 'Text'}
-            {if $element.field_value != '0.00'}
-              {assign var="showDiscounts" value=1}
-            {/if}
-          {else}
-              {assign var="showDiscounts" value=1}
-          {/if}
-        {else}
-            {assign var="showDiscounts" value=1}
-        {/if}
-      {/foreach}
-    {/if}
-  {/foreach}
-{/foreach}
-
-{foreach from=$viewCustomData item=customValues key=customGroupId}
-  {foreach from=$customValues item=cd_edit key=cvID}
-
-    {if $cd_edit.name != 'Discounts' || $showDiscounts == 1}
-
 <div class="crm-section {$cd_edit.name}-section">
   <div class="label"><label>{$cd_edit.title}</label></div>
   <div class="content">
@@ -83,8 +57,5 @@
     </table>
   </div>
 </div>
-
-    {/if}
-
   {/foreach}
 {/foreach}

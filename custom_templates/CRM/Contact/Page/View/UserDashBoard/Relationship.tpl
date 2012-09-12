@@ -47,7 +47,7 @@
 {/if}
 {if $contact.contact_type eq 'Household'}
         <div class="action-link">
-            <a title='New Person' class='add button box-load'  href='{crmURL p='civicrm/profile/create' q="reset=1&snippet=1&context=boxload&gid=2&osa_hid=`$contact.contact_id`"}&width=50%'><span><div class='icon add-icon'></div> Add an Individual </span></a>
+            <a title='New Person' class='add button box-load'  href='{crmURL p='civicrm/profile/create' q="reset=1&snippet=1&context=boxload&gid=2&hid=`$contact.contact_id`"}&width=50%'><span><div class='icon add-icon'></div> Add an Individual </span></a>
         </div>
 {/if}
     </div>

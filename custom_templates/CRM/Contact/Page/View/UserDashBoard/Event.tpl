@@ -43,7 +43,6 @@
     {if $event.showConfirmUrl}
             <a href="{crmURL p='civicrm/event/confirm' q="reset=1&participantId=`$event.participant_id`"}">{ts}Confirm{/ts}</a>
     {/if}
-            {$event.action}
           </td>
         </tr>
   {/foreach}

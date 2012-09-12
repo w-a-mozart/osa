@@ -12,12 +12,27 @@ require_once 'osa.inc';
 function osa_options_class_types() {
 
   $options = array();
-  $options['violin'] = 'Violin';
-  $options['viace_violin'] = 'Viace Violin';
   $options['cello'] = 'Cello';
+  $options['bass'] = 'Double Bass';
   $options['koday'] = 'Koday Only';
-  $options['theory'] = 'Theory';
   $options['ecm'] = 'Suzuki Baby';
+  $options['theory'] = 'Theory';
+  $options['viace'] = 'Viace Violin';
+  $options['violin'] = 'Violin';
+
+  return $options;
+}
+
+function osa_options_class_sessions() {
+
+  $options = array();
+  $options[1] = 'Monday';
+  $options[2] = 'Tuesday';
+  $options[3] = 'Wednesday';
+  $options[4] = 'Thursday';
+  $options[5] = 'Friday';
+  $options[6] = 'Saturday';
+  $options[7] = 'Sunday';
 
   return $options;
 }
@@ -30,10 +45,13 @@ function osa_form_alter_group_class_node_form(&$form, &$form_state) {
   // hide fields that are auto populated
   hide($form['field_event_summary']);
   hide($form['body']);
-  hide($form['field_event_children']);
+  //hide($form['field_event_children']);
 
 }
 
+/**
+ * Modify the selection options on the group class admin form
+ */
 function osa_field_widget_options_select_form_alter(&$element, &$form_state, $context) {
 
   // This code, while it works to populate the selection boxes when built, fails on validation
@@ -58,7 +76,7 @@ function osa_field_widget_options_select_form_alter(&$element, &$form_state, $co
 }
 
 /**
- * Process the saving of the group class, and create CiviCRM events for each date
+ * Process the saving of the group class definition, and create CiviCRM events for each date
  */
 function osa_node_presave_group_class($node) {
   // get the master event
@@ -117,12 +135,22 @@ function osa_node_presave_group_class($node) {
   // update the master event start and end
   if (count($session_dates) > 0) {
     $last = count($session_dates) - 1;
-    $results = civicrm_api('event', 'create', array(
+    $group_start = date('Y-m-d H:i:s', strtotime($session_dates[0]['value'] . ' ' . $session_dates[0]['timezone_db']));
+    $group_end = date('Y-m-d H:i:s', strtotime($session_dates[$last]['value2'] . ' ' . $session_dates[$last]['timezone_db']));
+    
+    $params = array(
       'id' => $master_event_id,
-      'start_date' => date('Y-m-d H:i:s', strtotime($session_dates[0]['value'] . ' ' . $session_dates[0]['timezone_db'])),
-      'end_date' => date('Y-m-d H:i:s', strtotime($session_dates[$last]['value2'] . ' ' . $session_dates[$last]['timezone_db'])),
       'version' => 3,
-    ));
+    );
+    
+    if ($group_start < $master_event['start_date']) {
+      $params['start_date'] = $group_start;
+    }
+    if ($group_end > $master_event['end_date']) {
+      $params['end_date'] = $group_end;
+    }
+
+    $results = civicrm_api('event', 'create', $params);
   }
 }
 
@@ -146,7 +174,7 @@ function osa_form_alter_webform_client_form_6(&$form, &$form_state) {
   $form['submitted']['display_name']['#markup'] = str_replace('%display_name%', $contact['display_name'], $form['submitted']['display_name']['#markup']);
   
   // get the list of defined group classes (nodes)
-  $nodes = &_osa_get_class_nodes();
+  $nodes = &_osa_get_class_nodes($cid);
 
   // populate the class description, with the event descriptions
   $descs = array();
@@ -188,6 +216,14 @@ jQuery(document).ready(function() {
 EOD;
 
   drupal_add_js($js, 'inline');
+
+  // set the default values for the group class lists
+  $types = osa_options_class_types();
+  foreach($types as $type => $label) {
+    reset($form['submitted']["{$type}_fieldset"][$type]['#options']);
+    $first_option = key($form['submitted']["{$type}_fieldset"][$type]['#options']);
+    $form['submitted']["{$type}_fieldset"][$type]['#default_value'] = isset($first_option) ? $first_option : '';
+  }
 }
 
 /**
@@ -224,33 +260,99 @@ function osa_webform_submission_presave_6(&$node, &$submission) {
 }
 
 /**
- * Define types of options lists used in drop downs on the webform
+ * Custom processing for the group class registration form 
  */
-function osa_webform_select_options_info() {
-  $items = array();
-
-  $items['class_type'] = array(
-    'title' => t('Group Class Types'), 
-    'options callback' => 'osa_webform_options_class_types', 
-    'file' => 'osa.group_class.inc',
-  );
-
-  $items['class_list'] = array(
-    'title' => t('Group Class'), 
-    'options callback' => 'osa_webform_options_class_list', 
-    'file' => 'osa.group_class.inc',
-  );
-
-  return $items;
+function osa_civicrm_buildForm_group_class_registration(&$form) {
+  $sid = $_GET['sid'];
+  
+  if ($sid > 0) {
+    $session_names = osa_options_class_sessions();
+    $event_title = $form->_values['event']['title'] . ' [' . $session_names[$sid] . ']';
+    CRM_Utils_System::setTitle($event_title);
+    $form->assign('title', $event_title);
+  }
 }
 
 /**
- * Define options for the class type drop down
+ * Custom processing after adding the group class reg to the cart 
+ */
+function osa_civicrm_postProcess_group_class_registration(&$confirmForm) {
+
+  $primaryParticipant = $confirmForm->get('primaryParticipant');
+  $sid = ($primaryParticipant['osa_sid'] > 0) ? $primaryParticipant['osa_sid'] : NULL;
+  $nodes = &_osa_get_class_nodes(NULL, NULL, $primaryParticipant['eventID'], $sid);
+  $node = current($nodes);
+
+  $params = array(
+    'id' => $primaryParticipant['participantID'],
+    _osa_field('group_class_nid') => $node->nid,
+    'version' => '3',
+  );
+
+  if ($primaryParticipant['osa_kl']) {
+    $params[_osa_field('additional_data')] = 'Koday - ' . $primaryParticipant['osa_kl'];
+  }
+  
+  $result = civicrm_api('participant', 'update', $params);
+}
+
+/**
+ * Custom processing for the group class registration thank you
+ */
+function osa_civicrm_buildForm_group_class_thankyou(&$form) {
+  $params = $form->getVar('_params');
+  $sid = ($params[0]['osa_sid'] > 0) ? $params[0]['osa_sid'] : NULL;
+  
+  if ($sid) {
+    $session_names = osa_options_class_sessions();
+    $event = $form->_values['event'];
+    $event['event_title'] .= ' [' . $session_names[$sid] . ']';
+    
+    $nodes = &_osa_get_class_nodes(NULL, NULL, $event['id'], $sid);
+    $group_class = current($nodes);
+    $session_dates = $group_class->field_session_dates['und'];
+    $last = count($session_dates) - 1;
+    $event['event_start_date'] = date('Y-m-d H:i:s', strtotime($session_dates[0]['value'] . ' ' . $session_dates[0]['timezone_db']));
+    $event['event_end_date'] = date('Y-m-d H:i:s', strtotime($session_dates[$last]['value2'] . ' ' . $session_dates[$last]['timezone_db']));
+    $form->assign('event', $event);
+  }
+}
+
+/**
+ * Custom processing for the group class info
+ */
+function osa_civicrm_pageRun_group_class_info(&$page) {
+  $template = &$page->getTemplate();
+  $event = $template->get_template_vars('event');
+  $session_names = osa_options_class_sessions();
+
+  $nodes = &_osa_get_class_nodes(NULL, NULL, $event['id'], NULL);
+  
+  if (count($nodes) > 1) {
+    $group_classes = array();
+    foreach ($nodes as $group_class) {
+      $sid = $group_class->field_session_id['und'][0]['value'];
+      $group_classes[$sid]['session_name'] = $session_names[$sid];
+
+      $session_dates = $group_class->field_session_dates['und'];
+      $last = count($session_dates) - 1;
+      $group_classes[$sid]['start_date'] = date('Y-m-d H:i:s', strtotime($session_dates[0]['value'] . ' ' . $session_dates[0]['timezone_db']));
+      $group_classes[$sid]['end_date'] = date('Y-m-d H:i:s', strtotime($session_dates[$last]['value2'] . ' ' . $session_dates[$last]['timezone_db']));
+    }
+    $page->assign('group_classes', $group_classes);
+  }
+  
+  $page->assign('registerURL', $GLOBALS['base_path'] . 'civicrm/user?reset=1');
+}
+
+/**
+ * Define options for the class type drop down on the class selection form
  */
 function osa_webform_options_class_types($component, $flat, $filter, $arguments) {
 
   // get the list of group classes and make a list of types
-  $nodes = &_osa_get_class_nodes();
+  $cid = $_GET['cid'];
+  $nodes = &_osa_get_class_nodes($cid);
   
   $options = array();
   $option_labels = osa_options_class_types();
@@ -258,16 +360,17 @@ function osa_webform_options_class_types($component, $flat, $filter, $arguments)
     $options[$class->field_class_type['und'][0]['value']] = $option_labels[$class->field_class_type['und'][0]['value']];
   }
 
+  asort($options);
   return $options;
 }
 
 /**
- * Define options for the group class list.
+ * Define options for the group class list (list of master events, which have schedules defined).
  */
 function osa_webform_options_class_list($component, $flat, $filter, $arguments) {
-
   // Only include classes whos type is equal to the name (form_key) of the dropdown
-  $nodes = &_osa_get_class_nodes($component['form_key']);
+  $cid = $_GET['cid'];
+  $nodes = &_osa_get_class_nodes($cid, $component['form_key']);
     
   civicrm_initialize();
   $options = array();
@@ -278,17 +381,59 @@ function osa_webform_options_class_list($component, $flat, $filter, $arguments) 
     $options[$event_id] = $event['title'];
   }
 
+  asort($options);
   return $options;
 }
 
 /**
+ * Define options for the session list (days of the week with schedules defined).
+ */
+function osa_webform_options_session_list($component, $flat, $filter, $arguments) {
+
+  // Only include classes whos type is equal to the name (form_key) of the dropdown
+  $cid = $_GET['cid'];
+  $nodes = &_osa_get_class_nodes($cid, strstr($component['form_key'], '_', TRUE));
+
+  $options = array();
+  $option_labels = osa_options_class_sessions();
+  foreach($nodes as $class) {
+    $options[$class->field_session_id['und'][0]['value']] = $option_labels[$class->field_session_id['und'][0]['value']];
+  }
+
+  ksort($options);
+  return $options;
+}
+
+/**
+ * Rewrite group class participant info
+ */
+function osa_overwrite_class_participants(&$participants) {
+  $session_names = osa_options_class_sessions();
+
+  foreach($participants as $participant_id => $participant) {
+    if ($participant['event_type'] != 'Group Class (Master)') {
+      continue;
+    }
+    
+    $nid = $participant[_osa_field('group_class_nid')];
+    $group_class = node_load($nid);
+    $class_type = $group_class->field_class_type['und'][0]['value'];
+    
+    if ($class_type == 'violin' || $class_type == 'koday') {
+      $session = $group_class->field_session_id['und'][0]['value'];
+      $participants[$participant_id]['event_title'] .= ' [' . $session_names[$session] . ']';
+      _osa_get_next_date($group_class->field_session_dates['und'], $participants[$participant_id]['event_start_date'], $participants[$participant_id]['event_end_date']);
+    }
+  }
+}
+ 
+/**
  * Return a list of Group Class nodes
  */
-function &_osa_get_class_nodes($class_type = NULL) {
+function &_osa_get_class_nodes($cid = NULL, $class_type = NULL, $event_master = NULL, $session_id = NULL) {
 
   static $class_nodes = array();
-
-  $cache_key = isset($class_type) ? $class_type : '*';
+  $cache_key = implode('|', array($cid, $class_type, $event_master, $session_id));
   
   if (!array_key_exists($cache_key, $class_nodes)) {
     // get the list of group class nodes
@@ -302,13 +447,24 @@ function &_osa_get_class_nodes($class_type = NULL) {
       $query->fieldCondition('field_class_type', 'value', $class_type, '=');
     }
     
-    // most group classes require membership
-    civicrm_initialize();
-    $cid = $_GET['cid'];
-    $membership = _osa_get_membership($cid);
-    $is_member = isset($membership['is_current_member']) ? $membership['is_current_member'] : FALSE;
-    if (!$is_member) {
-      $query->fieldCondition('field_req_membership', 'value', FALSE, '=');
+    // most group classes require membership so filter if the cid is past
+    if (isset($cid)) {
+      civicrm_initialize();
+      $membership = _osa_get_membership($cid);
+      $is_member = isset($membership['is_current_member']) ? $membership['is_current_member'] : FALSE;
+      if (!$is_member) {
+        $query->fieldCondition('field_req_membership', 'value', FALSE, '=');
+      }
+    }
+
+    // filter based on master event
+    if (isset($event_master)) {
+      $query->fieldCondition('field_event_master', 'civicrm_reference_id', $event_master, '=');
+    }
+
+    // filter based on session (day of week)
+    if (isset($session_id)) {
+      $query->fieldCondition('field_session_id', 'value', $session_id, '=');
     }
     
     $entities = $query->execute();
@@ -316,26 +472,4 @@ function &_osa_get_class_nodes($class_type = NULL) {
   }
   
   return $class_nodes[$cache_key];
-}
-
-/**
- * No longer used.
- */
-function &_osa_get_webform_component(&$node, $form_key) {
-
-  static $webform_cache = array();
-
-  if (!array_key_exists($node->nid, $webform_cache)) {
-    $webform_cache[$node->nid] = array();
-    foreach ($node->webform['components'] as $id => $component) {
-      $webform_cache[$node->nid][$component['form_key']] = $id;
-    }
-  }
-
-  if (array_key_exists($form_key, $webform_cache[$node->nid])) {
-    return $node->webform['components'][$webform_cache[$node->nid][$form_key]];
-  }
-  else {
-    return NULL;
-  }
 }

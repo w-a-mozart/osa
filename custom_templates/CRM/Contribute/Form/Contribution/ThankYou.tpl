@@ -61,7 +61,7 @@
 		</div>
             {/if}
         {else}
-            <div>{ts}Your transaction has been processed successfully. Please print this page for your records.{/ts}</div>
+            <div>{ts}Your transaction has been processed successfully.{/ts}{if $amount > 0} {ts}Please print this page for your records.{/ts}{/if}</div>
             {if $is_email_receipt}
                 <div>		    
 		    {if $onBehalfEmail AND ($onBehalfEmail neq $email)}
@@ -80,16 +80,18 @@
     {if $amount GT 0 OR $minimum_fee GT 0 OR ( $priceSetID and $lineItem ) }
     <div class="crm-group amount_display-group">
        {if !$useForMember}
+          {if $amount > 0}
         <div class="header-dark">
             {if !$membershipBlock AND $amount OR ( $priceSetID and $lineItem )}{ts}Contribution Information{/ts}{else}{ts}Membership Fee{/ts}{/if}
         </div>
+          {/if}
         {/if}
         <div class="display-block">
             {if !$useForMember}
             {if $lineItem and $priceSetID}
     	    {if !$amount}{assign var="amount" value=0}{/if}
     	    {assign var="totalAmount" value=$amount}
-                {include file="CRM/Price/Page/LineItem.tpl" context="Contribution"}
+                {if $amount > 0}{include file="CRM/Price/Page/LineItem.tpl" context="Contribution"}{/if}
             {elseif $membership_amount } 
                 {$membership_name} {ts}Membership{/ts}: <strong>{$membership_amount|crmMoney}</strong><br />
                 {if $amount}
@@ -106,7 +108,7 @@
             {/if}
 	    {/if}
             {if $receive_date}
-            {ts}Date{/ts}: <strong>{$receive_date|crmDate}</strong><br />
+            {if $amount > 0}{ts}Date{/ts}: <strong>{$receive_date|crmDate}</strong><br />{/if}
             {/if}
             {if $contributeMode ne 'notify' and $is_monetary and ! $is_pay_later and $trxn_id}
     	    {ts}Transaction #{/ts}: {$trxn_id}<br />
@@ -205,29 +207,16 @@
       </div>
     {/if}
     
-    {if $contributeMode ne 'notify' and ! $is_pay_later and $is_monetary and ( $amount GT 0 OR $minimum_fee GT 0 )}    
-    <div class="crm-group billing_name_address-group">
-        <div class="header-dark">
-            {ts}Billing Name and Address{/ts}
-        </div>
-    	<div class="crm-section no-label billing_name-section">
-    		<div class="content">{$billingName}</div>
-    		<div class="clear"></div>
-    	</div>
-    	<div class="crm-section no-label billing_address-section">
-    		<div class="content">{$address|nl2br}</div>
-    		<div class="clear"></div>
-    	</div>
-        <div class="crm-section no-label contributor_email-section">
-        	<div class="content">{$email}</div>
-        	<div class="clear"></div>
-        </div>
-    </div>
-    {/if}
+{* Remove Billing Info *}
 
     <div class="action-link">
         <a title='Family Profile' class='button' href='{crmURL p='civicrm/user' q='reset=1'}'><span><div class='icon dashboard-icon'></div> Return to Family Profile </span></a>
+    {if $membershipBlock}
+        <a title='Group Class' class='button'  href='{$config->userFrameworkBaseURL}form/group-class-selection?cid={$cid}'><span><div class='icon next-icon'></div> Register for Group Class </span></a>
+    {/if}
+    {if $paymentProcessor.payment_processor_type eq 'drupalcommerce'} 
         <a title='Check Out' class='button'  href='{$config->userFrameworkBaseURL}checkout/'><span><div class='icon check-icon'></div> Check Out </span></a>
+    {/if}
     </div>
 
     <div class="spacer"></div>

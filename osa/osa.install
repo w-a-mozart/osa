@@ -14,4 +14,7 @@
    * Implementation of hook_uninstall() 
    */
   function osa_uninstall() {
+    variable_del('osa_start_date');  
+    variable_del('osa_num_installments');
+    variable_del('osa_prorate_teacher_pay');
   }

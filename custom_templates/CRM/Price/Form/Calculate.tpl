@@ -27,7 +27,8 @@ var optionSep      = '|';
 var priceSet = price = Array( );
 
 function calcTotal() {
-cj("input,#priceset select,#priceset").each(function () {
+
+  cj("input,#priceset select,#priceset").each(function () {
 
   if ( cj(this).attr('price') ) {
   var eleType =  cj(this).attr('type');
@@ -209,7 +210,7 @@ var n = amount,
 	return s + (j ? i.substr(0, j) + t : "") + i.substr(j).replace(/(\d{3})(?=\d)/g, "$1" + t) + (c ? d + Math.abs(n - i).toFixed(c).slice(2) : "");
 }
 
-calcTotal();
+// calcTotal();
 
 {/literal}
 </script>
