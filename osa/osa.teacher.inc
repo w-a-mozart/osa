@@ -197,27 +197,38 @@ function osa_civicrm_buildForm_teacher_registration_thankyou(&$form) {
  */
 function _osa_get_teacher_lists( &$contacts, &$select_options, &$pricelevel, &$prices30min, &$prices45min, &$prices60min) {
 
-  $contacts = array();
-  $select_options = array();
-  $pricelevel[0] = array(0 => 'Standard');
-  $prices30min[0] = array(0 => 0);
-  $prices45min[0] = array(0 => 0);
-  $prices60min[0] = array(0 => 0);
+  static $cache = array();
+  
+  if (empty($cache)) {
+    $cache['contacts'] = array();
+    $cache['select_options'] = array();
+    $cache['pricelevel'][0] = array(0 => 'Standard');
+    $cache['prices30min'][0] = array(0 => 0);
+    $cache['prices45min'][0] = array(0 => 0);
+    $cache['prices60min'][0] = array(0 => 0);
 
-  $result = civicrm_api('contact', 'get',  array('contact_sub_type' => 'Teacher', 'option.sort' =>'sort_name', 'version' => 3));
-  if ($result['is_error']) {
-    watchdog('osa', 'Error: %1\nfailed to get teacher contacts', array(1 => $result['error_message'],), WATCHDOG_ERROR);
-  }
+    $result = civicrm_api('contact', 'get',  array('contact_sub_type' => 'Teacher', 'option.sort' =>'sort_name', 'version' => 3));
+    if ($result['is_error']) {
+      watchdog('osa', 'Error: %1\nfailed to get teacher contacts', array(1 => $result['error_message'],), WATCHDOG_ERROR);
+    }
 
-  foreach ( $result['values'] as $teacher_id => $contact ) {
-    $teacher = _osa_get_contact($teacher_id);
-    $contacts[$teacher_id] = $teacher;
-    $select_options[$teacher_id] = $teacher['display_name'];
-    if ($teacher['uses_qep']) {
-      $pricelevel[$teacher_id] = $teacher['lesson_fee_level'];
-      $prices30min[$teacher_id] = $teacher['Price_for_30_minutes'];
-      $prices45min[$teacher_id] = $teacher['Price_for_45_minutes'];
-      $prices60min[$teacher_id] = $teacher['Price_for_60_minutes'];
+    foreach ( $result['values'] as $teacher_id => $contact ) {
+      $teacher = _osa_get_contact($teacher_id);
+      $cache['contacts'][$teacher_id] = $teacher;
+      $cache['select_options'][$teacher_id] = $teacher['display_name'];
+      if ($teacher['uses_qep']) {
+        $cache['pricelevel'][$teacher_id] = $teacher['lesson_fee_level'];
+        $cache['prices30min'][$teacher_id] = $teacher['Price_for_30_minutes'];
+        $cache['prices45min'][$teacher_id] = $teacher['Price_for_45_minutes'];
+        $cache['prices60min'][$teacher_id] = $teacher['Price_for_60_minutes'];
+      }
     }
   }
+  
+  $contacts = $cache['contacts'];
+  $select_options = $cache['select_options'];
+  $pricelevel = $cache['pricelevel'];
+  $prices30min = $cache['prices30min'];
+  $prices45min = $cache['prices45min'];
+  $prices60min = $cache['prices60min'];
 }

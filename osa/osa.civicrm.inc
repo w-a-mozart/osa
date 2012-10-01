@@ -16,12 +16,9 @@ require_once 'osa.teacher.inc';
  */
 function osa_civicrm_pageRun_CRM_Contact_Page_View_UserDashBoard(&$page) {
   require_once 'api/api.php';
-  $timestamp = array();
   
-  $timestamp['before _osa_get_contact_id'] = time() - $_SERVER['REQUEST_TIME'];
   // get current user's contact id
   $uid = _osa_get_contact_id();
-  $timestamp['after _osa_get_contact_id'] = time() - $_SERVER['REQUEST_TIME'];
   
   // reset the session if it got corrupted (opening civicrm forms with different ids)
   if ($uid != $page->_contactId) {
@@ -33,15 +30,11 @@ function osa_civicrm_pageRun_CRM_Contact_Page_View_UserDashBoard(&$page) {
   // use the contact id passed in the URL, or the household of the current user
   $cid = CRM_Utils_Request::retrieve('id', 'Positive');
   if (isset($cid)) {
-    $timestamp['before _osa_getHousehold'] = time() - $_SERVER['REQUEST_TIME'];
     $hid =_osa_getHousehold($cid);
-    $timestamp['after _osa_getHousehold'] = time() - $_SERVER['REQUEST_TIME'];
   }
   else {
     $cid = $uid;
-    $timestamp['before _osa_getHousehold'] = time() - $_SERVER['REQUEST_TIME'];
     $hid =_osa_getHousehold($cid);
-    $timestamp['after _osa_getHousehold'] = time() - $_SERVER['REQUEST_TIME'];
     if (isset($hid)) {
       $cid = $hid;
     }
@@ -57,9 +50,7 @@ function osa_civicrm_pageRun_CRM_Contact_Page_View_UserDashBoard(&$page) {
 
   // take the opportunity to clean house
   if (isset($hid)) {
-    $timestamp['before _osa_manageHouseholdRelationships'] = time() - $_SERVER['REQUEST_TIME'];
     _osa_manageHouseholdRelationships($hid);
-    $timestamp['after _osa_manageHouseholdRelationships'] = time() - $_SERVER['REQUEST_TIME'];
   }
   
   // $cid could be:
@@ -85,17 +76,13 @@ function osa_civicrm_pageRun_CRM_Contact_Page_View_UserDashBoard(&$page) {
   $groupIn         = $smarty->get_template_vars('groupIn');
 
   // get all the family members for this contact
-  $timestamp['before _osa_getHouseholdMembers'] = time() - $_SERVER['REQUEST_TIME'];
   $family = _osa_getHouseholdMembers($cid);
-  $timestamp['after _osa_getHouseholdMembers'] = time() - $_SERVER['REQUEST_TIME'];
 
   foreach ($family as $person) {
     $id = $person['contact_id'];
     
     // get membership status
-    $timestamp['before _osa_get_membership'][$id] = time() - $_SERVER['REQUEST_TIME'];
     $membership = _osa_get_membership($person['contact_id']);
-    $timestamp['after _osa_get_membership'][$id] = time() - $_SERVER['REQUEST_TIME'];
     if (isset($membership)) {
       $person['contact']['is_current_member'] = $membership['is_current_member'];
       $person['membership']['status'] = $membership['status'];
@@ -110,9 +97,7 @@ function osa_civicrm_pageRun_CRM_Contact_Page_View_UserDashBoard(&$page) {
     }
     elseif ($contact_type == 'Student') {
       $students[] = $person;
-      $timestamp['before _osa_getTeachers'][$id] = time() - $_SERVER['REQUEST_TIME'];
       $teachers += _osa_getTeachers($person['contact']);
-      $timestamp['after _osa_getTeachers'][$id] = time() - $_SERVER['REQUEST_TIME'];
     }
     elseif ($contact_type == 'Teacher') {
       // do nothing
@@ -126,16 +111,12 @@ function osa_civicrm_pageRun_CRM_Contact_Page_View_UserDashBoard(&$page) {
 
     // append family member elements to lists in the page
     if ($person['contact_id'] != $page->_contactId) {
-      $timestamp['before _osa_get_participant_events'][$id] = time() - $_SERVER['REQUEST_TIME'];
       $events = _osa_get_participant_events($person['contact_id']);
-      $timestamp['after _osa_get_participant_events'][$id] = time() - $_SERVER['REQUEST_TIME'];
       if (isset($events)) {
         $event_rows = $event_rows + $events;
       }
 
-      $timestamp['before _osa_get_contributions'][$id] = time() - $_SERVER['REQUEST_TIME'];
       $contributions = _osa_get_contributions($person['contact_id']);
-      $timestamp['after _osa_get_contributions'][$id] = time() - $_SERVER['REQUEST_TIME'];
       if (isset($contributions)) {
         $contribute_rows = $contribute_rows + $contributions;
       }
@@ -143,9 +124,7 @@ function osa_civicrm_pageRun_CRM_Contact_Page_View_UserDashBoard(&$page) {
   }
 
   // special processing for group classes
-  $timestamp['before osa_overwrite_class_participants'] = time() - $_SERVER['REQUEST_TIME'];
   osa_overwrite_class_participants($event_rows);
-  $timestamp['after osa_overwrite_class_participants'] = time() - $_SERVER['REQUEST_TIME'];
   
   // (re)assign Smarty varibles
   $page->assign('parents', $parents);
@@ -158,7 +137,6 @@ function osa_civicrm_pageRun_CRM_Contact_Page_View_UserDashBoard(&$page) {
   $page->assign('groupIn', $groupIn);
   
   // use the CiviCRM Profiles to display tombstone info
-  $timestamp['before CRM_Profile_Page_Dynamic'] = time() - $_SERVER['REQUEST_TIME'];
   require_once 'CRM/Profile/Page/Dynamic.php';
   $gids = array('Phone and Email' => OSA_PROFILE_PHONE_EMAIL, 'Address' => OSA_PROFILE_ADDRESS);
   $profileElements = array();
@@ -173,7 +151,6 @@ function osa_civicrm_pageRun_CRM_Contact_Page_View_UserDashBoard(&$page) {
     );
   }
   $page->assign('profileElements', $profileElements);
-  $timestamp['after CRM_Profile_Page_Dynamic'] = time() - $_SERVER['REQUEST_TIME'];
 
   // override the templates used for each dashboard element
   $dashboardElements = array();
@@ -221,9 +198,6 @@ function osa_civicrm_pageRun_CRM_Contact_Page_View_UserDashBoard(&$page) {
 
   // override the page title (do this last as generating profiles also ovrides the title)
   CRM_Utils_System::setTitle($pgContact['display_name'], $pgContact['image_URL'] . ' ' . $pgContact['display_name']);
-
-  $timestamp['END'] = time() - $_SERVER['REQUEST_TIME'] - $timestamp['before _osa_get_contact_id'];
-  watchdog('mytimer', "hid = $hid\n<pre>". print_r($timestamp, TRUE) . '</pre>');
 }
 
 /**
@@ -240,7 +214,7 @@ function osa_civicrm_buildForm_CRM_Profile_Form_Edit(&$form) {
   // set defaults in the create family profile form
   if ($gid == OSA_PROFILE_FAMILY) {
     if ($mode == CRM_Profile_Form::MODE_CREATE) {
-      $contact = _osa_get_contact();
+      $contact = _osa_get_contact(NULL, FALSE);
       // bug???
       if ($contact['id'] == 1) {
         watchdog('ahh', "Family for admin??");
@@ -691,60 +665,68 @@ function osa_civicrm_buildAmount($pageType, &$form, &$amount) {
  */
 function osa_civicrm_customFieldOptions($fieldID, &$options, $detailedFormat = false ) {
 
-  // Teachers selection
-  if ($fieldID == 24) {
-    // populate the teacher list
-    _osa_get_teacher_lists($contacts, $select_options, $pricelevel, $prices30min, $prices45min, $prices60min);
-    if ($detailedFormat) {
+  static $cache = array();
+  
+  if (!isset($cache[$fieldID])) {
+    $cache[$fieldID]['detail'] = array();
+    $cache[$fieldID]['std'] = array();
+
+    // Teachers selection
+    if ($fieldID == 24) {
+      // populate the teacher list
+      _osa_get_teacher_lists($contacts, $select_options, $pricelevel, $prices30min, $prices45min, $prices60min);
       foreach ($select_options as $value => $label) {
-        $options['teacher_' . $value] = array(
+        $cache[$fieldID]['detail']['teacher_' . $value] = array(
           'id'    => 'teacher_' . $value,
           'value' => $value,
           'label' => $label,
         );
+        $cache[$fieldID]['std'][$value] = $label;
       }
+      uasort($cache[$fieldID]['detail'], function ($a, $b) {return strcmp($a['label'], $b['label']);});
+      asort($cache[$fieldID]['std']);
     }
-    else {
-      $options += $select_options;
-    }
-  }
 
-  // Group Node selection
-  if ($fieldID == 25) {
-    // find all of the group class nodes
-    $nodes = &_osa_get_class_nodes();
-    foreach($nodes as $class) {
-      if ($detailedFormat) {
-        $options['class_' . $class->nid] = array(
+    // Group Node selection
+    if ($fieldID == 25) {
+      // find all of the group class nodes
+      $nodes = &_osa_get_class_nodes();
+      foreach($nodes as $class) {
+        $cache[$fieldID]['detail']['class_' . $class->nid] = array(
           'id'    => 'class_' . $class->nid,
           'value' => $class->nid,
           'label' => $class->title,
         );
+        $cache[$fieldID]['std'][$class->nid] = $class->title;
       }
-      else {
-        $options[$class->nid] = $class->title;
-      }
+      uasort($cache[$fieldID]['detail'], function ($a, $b) {return strcmp($a['label'], $b['label']);});
+      asort($cache[$fieldID]['std']);
     }
-  }
 
-  // Lesson Fee Level
-  if ($fieldID == 32) {
-    // populate the teacher list
-    _osa_get_teacher_lists($contacts, $select_options, $pricelevel, $prices30min, $prices45min, $prices60min);
-    foreach ($pricelevel as $teacher_id => $levels) {
-      foreach ($levels as $value => $label) {
-        if ($detailedFormat) {
-          $options['pricelvl_' . $value] = array(
+    // Lesson Fee Level
+    if ($fieldID == 32) {
+      // populate the teacher list
+      _osa_get_teacher_lists($contacts, $select_options, $pricelevel, $prices30min, $prices45min, $prices60min);
+      foreach ($pricelevel as $teacher_id => $levels) {
+        foreach ($levels as $value => $label) {
+          $cache[$fieldID]['detail']['pricelvl_' . $value] = array(
             'id'    => 'pricelvl_' . $value,
             'value' => $value,
             'label' => $label,
           );
-        }
-        else {
-          $options[$value] = $label;
+          $cache[$fieldID]['std'][$value] = $label;
         }
       }
+      uasort($cache[$fieldID]['detail'], function ($a, $b) {return strcmp($a['label'], $b['label']);});
+      asort($cache[$fieldID]['std']);
     }
+  }
+
+  if ($detailedFormat) {
+    $options += $cache[$fieldID]['detail'];
+  }
+  else {
+    $options += $cache[$fieldID]['std'];
   }
 }
 
