@@ -17,7 +17,7 @@ function osa_options_class_types() {
   $options['koday'] = 'Koday Only';
   $options['ecm'] = 'Suzuki Baby';
   $options['theory'] = 'Theory';
-  $options['viace'] = 'Viace Violin';
+  $options['viace'] = 'Vivace Violin';
   $options['violin'] = 'Violin';
 
   return $options;
@@ -71,6 +71,7 @@ function osa_field_widget_options_select_form_alter(&$element, &$form_state, $co
     foreach($results['values'] as $class) {
       $options[$class['id']] = $class['event_title'];
     }
+    asort($options);
     $element['#options'] = array('_none' => '- Select a value -') + $options;
   }
 }

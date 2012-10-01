@@ -305,7 +305,7 @@ function _osa_getHouseholdMembers($cid = NULL, $field = NULL) {
 
   // get the contact records
   foreach ($relationships as $relationship) {
-    $contact = _osa_get_contact($relationship['cid']);
+    $contact = _osa_get_contact($relationship['cid'], FALSE);
     $contact_id = $contact['contact_id'];
     
     if (isset($field)) {
@@ -336,7 +336,7 @@ function _osa_getHouseholdMembers($cid = NULL, $field = NULL) {
 
   // if there are no other family members, and we just want a list, at least return the given id.
   if (empty($family) && isset($field)) {
-    $contact = _osa_get_contact($cid);
+    $contact = _osa_get_contact($cid, FALSE);
     $family[$cid] = $contact[$field];
   }
 
