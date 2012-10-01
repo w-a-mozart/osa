@@ -16,34 +16,24 @@
 function sbp_civicrm_events_sbp_paths($environment) {
 
   $paths = array();
-  civicrm_initialize();
-
-  $params = array(
-    'isCurrent' => TRUE,
-    'version'   => '3',
-  );
-
-  $result = civicrm_api('event', 'get', $params);
-  if ($result['is_error']) {
-    CRM_Core_Error::debug_log_message(
-      "Error: " .
-      $result['error_message'] .
-      ts("\nfailed to get current events"));
-    return array();
-  }
-  $events = $result['values'];
-  
   $languages = array();
   $language_objects = language_list();
   foreach ($language_objects as $language_object) {
     $languages[] = $language_object->language;
   }
 
-  foreach ($events as $event) {
-    // $event['path'] = CRM_Utils_System::url('civicrm/event/info', 'id=' . $event['id']);
-    $event['path'] = 'civicrm/event/info?id=' . $event['id'];
-    $paths[$event['path']] = array(
-      'id' => $event['id'],
+  civicrm_initialize();
+  require_once 'CRM/Event/BAO/Event.php';
+
+  $eventDAO = new CRM_Event_BAO_Event();
+  $eventDAO->whereAdd('(start_date >= CURDATE() || end_date >= CURDATE())');
+  $eventDAO->whereAdd('( is_template IS NULL ) OR ( is_template = 0 )');
+  $eventDAO->whereAdd('event_type_id <> 9');
+  $eventDAO->find();
+  while ($eventDAO->fetch()) {
+    $path = 'civicrm/event/info?id=' . $eventDAO->id;
+    $paths[$path] = array(
+      'id' => $eventDAO->id,
       'languages' => $languages,
       'role' => DRUPAL_ANONYMOUS_RID,
     );
