@@ -88,7 +88,7 @@ function osa_civicrm_buildForm_teacher_registration_confirm(&$form) {
     $total_installments = $num_installments = variable_get('osa_num_installments', 10);
     $start_date = _osa_next_payment_date(variable_get('osa_start_date', 'first day of September'), $num_installments);
     $pro_rate = variable_get('osa_prorate_teacher_pay', TRUE);
-    $unit_price = ($pro_rate) ? ($ann_price / $total_installments) : ($ann_price / $num_installments);
+    $unit_price = ($pro_rate) ? round($ann_price / $total_installments, 2) : round($ann_price / $num_installments, 2);
 
 
     // this function is called by the thankyou form as well, so check before changing the button
@@ -128,7 +128,7 @@ function osa_civicrm_alterPaymentProcessorParams_teacher_registration($paymentOb
     // determine the amount
     $pro_rate = variable_get('osa_prorate_teacher_pay', TRUE);
     $ann_price = $rawParams['amount'];
-    $unit_price = ($pro_rate) ? ($ann_price / $total_installments) : ($ann_price / $num_installments);
+    $unit_price = ($pro_rate) ? round($ann_price / $total_installments, 2) : round($ann_price / $num_installments, 2);
     $cookedParams['ssl_amount'] = $unit_price;
 
     // set the Elavon installment parameters

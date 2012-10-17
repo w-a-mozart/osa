@@ -234,7 +234,8 @@ function civicrm_commerce_line_item_add_new(&$params, $component) {
       $label = $result['values'][$participantID]['event_title'];
       $label .= ' (' . $result['values'][$participantID]['display_name']; 
 
-      if (isset($result['values'][$participantID]['participant_fee_level'])) {
+      if ((isset($result['values'][$participantID]['participant_fee_level'])) &&
+          (!is_array($result['values'][$participantID]['participant_fee_level']))){
         $label .= ' : ' . $result['values'][$participantID]['participant_fee_level'];
       }
       $label .= ')';
