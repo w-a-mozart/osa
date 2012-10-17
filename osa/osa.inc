@@ -93,6 +93,7 @@ function _osa_field($field) {
     $custom_fields['lesson_fee_level'] = 'custom_27';
     $custom_fields['lesson_level'] = 'custom_32';
     $custom_fields['additional_data'] = 'custom_37';
+    $custom_fields['open_to_public'] = 'custom_42';
     $custom_fields['lesson_length'] = 'price_6';
   }
 
@@ -296,7 +297,8 @@ function _osa_getHouseholdMembers($cid = NULL, $field = NULL) {
   
   // should never happen this should only be available to authenticated users
   if (!isset($hid)) {
-    CRM_Core_Error::fatal(ts("An unexpected error has occurred. Please contact the OSA and report the error."));
+    //CRM_Core_Error::fatal(ts("An unexpected error has occurred. Please contact the OSA and report the error."));
+    return $family;
   }
   
   // get all relationships for the household/contact
@@ -588,7 +590,7 @@ function _osa_addFamilyField(&$form, $members_only = FALSE) {
   }
 
   asort($family);
-  $family = array( ' - select - ' ) + $family;
+  $family = array(0 => ' - select - ') + $family;
   $form->addElement('select', 'contact_id', ts('Family Member'), $family);
   $cid = CRM_Utils_Request::retrieve('cid', 'Positive');
   if (!isset($cid)) {

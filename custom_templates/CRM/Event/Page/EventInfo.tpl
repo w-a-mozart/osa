@@ -185,7 +185,7 @@
   {include file="CRM/Event/Page/CustomEventDataView.tpl"}
         
   {* Add message telling user they must login to register. *}
-	{if ($event.is_online_registration) && (!$session || $session->get('userID') <= 0)}
+	{if ($event.is_online_registration) && (!$session || $session->get('userID') <= 0) && (!$open_to_public)}
       <br/>
        <div class="messages help cms_user_help-section">
          {assign var=loginURL value="`$config->userFrameworkBaseURL`user"}

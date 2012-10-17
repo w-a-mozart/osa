@@ -212,22 +212,6 @@
         {/foreach}
     {/if}
 
-    {if $contributeMode ne 'notify' and $paidEvent and ! $is_pay_later and ! $isAmountzero and !$isOnWaitlist and !$isRequireApproval}   
-        <div class="crm-group billing_name_address-group">
-            <div class="header-dark">
-                {ts}Billing Name and Address{/ts}
-            </div>
-        	<div class="crm-section no-label billing_name-section">
-        		<div class="content">{$billingName}</div>
-        		<div class="clear"></div>
-        	</div>
-        	<div class="crm-section no-label billing_address-section">
-        		<div class="content">{$address|nl2br}</div>
-        		<div class="clear"></div>
-        	</div>
-        </div>
-    {/if}
-
     {if $contributeMode eq 'direct' and $paidEvent and ! $is_pay_later and !$isAmountzero and !$isOnWaitlist and !$isRequireApproval}
         <div class="crm-group credit_card-group">
             <div class="header-dark">
@@ -250,9 +234,13 @@
     
     <div class="action-link section event_info_link-section">
         {* Change links to Registration Page *}
+    {if $paymentProcessor.payment_processor_type eq 'drupalcommerce'} 
         <a title='Family Profile' class='button' href='{crmURL p='civicrm/user' q='reset=1'}'><span><div class='icon dashboard-icon'></div> Return to Family Profile </span></a>
-        <a title='Register' class='button' href="{crmURL p='civicrm/event/register' q="reset=1&id=`$event.id`"}"><span><div class='icon back-icon'></div> Register Another Participant </span></a>
+    {/if}
+        <a title='Register' class='button' href="{crmURL p='civicrm/event/register' q="reset=1&cid=0&id=`$event.id`"}"><span><div class='icon back-icon'></div> Register Another Participant </span></a>
+    {if $paymentProcessor.payment_processor_type eq 'drupalcommerce'} 
         <a title='Check Out' class='button'  href='{$config->userFrameworkBaseURL}checkout/'><span><div class='icon check-icon'></div> Check Out </span></a>
+    {/if}
     </div>
 
     {if $event.is_public }

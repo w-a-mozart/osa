@@ -26,7 +26,7 @@ function osa_civicrm_pageRun_CRM_Contact_Page_View_UserDashBoard(&$page) {
     $session->reset();
     $session->set('userID', $uid);
   }
-  
+
   // use the contact id passed in the URL, or the household of the current user
   $cid = CRM_Utils_Request::retrieve('id', 'Positive');
   if (isset($cid)) {
@@ -508,11 +508,13 @@ function osa_civicrm_pageRun_CRM_Event_Page_EventInfo(&$page) {
       }
     }
 
-    // show/hide Members Only flag
+    // process custom fields we created for all events
     if ($custom_data['name'] == 'Event_Details') {
       $event_custom_data[$cd_key][$ecd_key]['title'] = '';
       $fld_keys = array_keys($custom_data['fields']);
+      
       foreach ($fld_keys as $fld_key) {
+        // show/hide 'Members Only' flag and 'Open to Public' flag
         if ($custom_data['fields'][$fld_key]['field_title'] == 'Members Only') {
           if ($custom_data['fields'][$fld_key]['field_value'] == "No\n") {
             unset($event_custom_data[$cd_key]);
@@ -521,9 +523,27 @@ function osa_civicrm_pageRun_CRM_Event_Page_EventInfo(&$page) {
             $event_custom_data[$cd_key][$ecd_key]['fields'][$fld_key]['field_title'] = ts('Restricted to OSA Members Only');
             $event_custom_data[$cd_key][$ecd_key]['fields'][$fld_key]['field_value'] = '';
           }
-          break;
+        }
+        if ($custom_data['fields'][$fld_key]['field_title'] == 'Open to General Public') {
+          if ($custom_data['fields'][$fld_key]['field_value'] == "Yes\n") {
+            $open_to_public = TRUE;
+            $page->assign('open_to_public', TRUE);
+          }
+          else {
+            $open_to_public = FALSE;
+          }
+          unset($event_custom_data[$cd_key]);
         }
       }
+    }
+  }
+
+  // we have to set permissions to allow annonynous registration, but realy we want it for only some events
+  $allowRegistration = $template->get_template_vars('allowRegistration');
+  if ($allowRegistration) {
+    $uid = _osa_getUserId();
+    if (!(uid > 0) && !$open_to_public) {
+      $page->assign('allowRegistration', FALSE);
     }
   }
 
@@ -546,20 +566,74 @@ function osa_civicrm_buildForm_CRM_Event_Form_Registration_Register(&$form) {
   $bltID = $form->_bltID;
   $form->removeElement("email-$bltID");
 
-  // determine if this event is members only
+  // get the details of the event
   $result = civicrm_api("event", "get", array('id' => $form->_eventId, 'version' => 3));
-  $members_only = $result['values'][$form->_eventId][_osa_field('members_only')];
-  
-  // registrations can be made on behalf of a family member
-  // so add a drop down of family members
-  _osa_addFamilyField($form, $members_only);
 
+  // we have to set permissions to allow annonynous registration, but realy we want it for only some events
+  $uid = _osa_getUserId();
+  $open_to_public = $result['values'][$form->_eventId][_osa_field('open_to_public')];
+  if (!($uid > 0) && !$open_to_public) {
+    drupal_set_message('You must be logged in to register for this event.', 'warning');
+    drupal_goto('user/login');
+    return;
+  }
+
+  // registrations can be made on behalf of a family member
+  // so if the user is logged in, add a drop down of family members
+  if ($uid > 0) {
+    $members_only = $result['values'][$form->_eventId][_osa_field('members_only')];
+    _osa_addFamilyField($form, $members_only);
+    // remove the profiles related to contacts
+    $smarty = $form->getTemplate();
+    $customPre = $smarty->get_template_vars('customPre');
+    foreach ($customPre as $field) {
+      if (($field['field_type'] == 'Student') ||
+          ($field['field_type'] == 'Individual') ||
+          ($field['field_type'] == 'Contact')) {
+        unset($form->_fields[$field['name']]);
+        $form->removeElement($field['name']);
+        unset($customPre[$field['name']]);
+      }
+    }
+    $form->assign('customPre', $customPre);
+    
+    $customPost = $smarty->get_template_vars('customPost');
+    foreach ($customPre as $field) {
+      if (($field['field_type'] == 'Student') ||
+          ($field['field_type'] == 'Individual') ||
+          ($field['field_type'] == 'Contact')) {
+        unset($form->_fields[$field['name']]);
+        $form->removeElement($field['name']);
+        unset($customPost[$field['name']]);
+      }
+    }
+    $form->assign('customPost', $customPost);
+  }
+  
   if ($form->_paymentProcessor['payment_processor_type'] == 'drupalcommerce') {
     $group = $form->getElement('buttons');
     $buttons = $group->getElements();
     $buttons[0]->setValue(ts('Add to Cart'));
   }
-
+  else {
+    // if using the direct payment, remove the unused fields
+    $remove_fields = array(
+      'billing_first_name',
+      'billing_middle_name',
+      'billing_last_name',
+      "billing_street_address-$bltID",
+      "billing_city-$bltID",
+      "billing_state_province_id-$bltID",
+      "billing_postal_code-$bltID",
+      "billing_country_id-$bltID",
+      'cvv2',
+    );
+    foreach ($remove_fields as $field) {
+      unset($form->_fields[$field]);
+      $form->removeElement($field);
+    }
+  }
+  
   // special processing for group classes
   if ($form->_values['event']['event_type_id'] == OSA_EVENT_GROUP_CLASS_MASTER) {
     osa_civicrm_buildForm_group_class_registration($form);
@@ -571,9 +645,9 @@ function osa_civicrm_buildForm_CRM_Event_Form_Registration_Register(&$form) {
  */
 function osa_civicrm_validate_CRM_Event_Form_Registration_Register(&$fields, &$files, &$form) {
   $errors = array();
-  
+
   // ensure a contact_id was selected
-  if (!isset($fields['contact_id']) || $fields['contact_id'] == '0') {
+  if (isset($fields['contact_id']) && $fields['contact_id'] == '0') {
     $errors['contact_id'] = ts('Family Member is a required field.');
     $form->setElementError('contact_id', $errors['contact_id']);
   }
@@ -589,23 +663,45 @@ function osa_civicrm_validate_CRM_Event_Form_Registration_Register(&$fields, &$f
  */
 function osa_civicrm_postProcess_CRM_Event_Form_Registration_Register(&$form) {
 
+  // if we are logged in, use the Family member selection to fill missing parameters
+  $contact = _osa_get_contact();
+  if ($contact) {
+    $params = $form->get('params');
+    $data =& $form->controller->container();
+    $contact_id = $data['values']['Register']['contact_id'];
+    $params[0]['contact_id'] = $contact_id;
+    
+    if ($form->_values['custom_pre_id']) {
+      $profileFields = CRM_Core_BAO_UFGroup::getFields($form->_values['custom_pre_id']);
+      $values = array();
+      CRM_Core_BAO_UFGroup::setProfileDefaults($contact_id, $profileFields, $values);
+      $params[0] += $values;
+    }
+    if ($form->_values['custom_post_id']) {
+      $profileFields = CRM_Core_BAO_UFGroup::getFields($form->_values['custom_post_id']);
+      $values = array();
+      CRM_Core_BAO_UFGroup::setProfileDefaults($contact_id, $profileFields, $values);
+      $params[0] += $values;
+    }
+    $bltID = $form->_bltID;
+    $params[0]["email-$bltID"] = $contact['email'];
+    $data['values']['Register']["email-$bltID"] = $contact['email'];
+    
+    $form->set('params', $params);
+//    $form->set("email-$bltID", $contact['email']);
+  }
+  
   // check if we are using the Drupal Commerce Cart
   if ($form->_paymentProcessor['payment_processor_type'] == 'drupalcommerce') {
     // since we use a Cart, we want to disable the confirmation form
     $confirmForm = &$form->controller->_pages['Confirm'];
-
-    // first set the contact id to the selected family member
-    $data =& $form->controller->container();
-    $contact_id = $data['values']['Register']['contact_id'];
-    $params = $confirmForm->get('params');
-    $params[0]['contact_id'] = $contact_id;
-    $confirmForm->set('params', $params);
 
     // build the confirmation form to make sure all of the values are set
     $confirmForm->preProcess();
     $confirmForm->buildQuickForm();
 
     // tell form validator that confirmation page is valid
+    $data =& $form->controller->container();
     $data['valid']['Confirm'] = 1;
     $confirmForm->postProcess();
 
@@ -617,6 +713,23 @@ function osa_civicrm_postProcess_CRM_Event_Form_Registration_Register(&$form) {
     // Redirect to thank you page
     $qfKey = $form->controller->_key;
     CRM_Utils_System::redirect(CRM_Utils_System::url('civicrm/event/register', "_qf_ThankYou_display=true&qfKey=$qfKey", TRUE, NULL, FALSE));
+  }
+}
+
+/**
+ * Add custom procesing when generating Event Registration Confirm
+ *
+ * @param $form
+ *   The CRM_Event_Form_Registration_Confirm object being rendered.
+ */
+function osa_civicrm_buildForm_CRM_Event_Form_Registration_Confirm(&$form) {
+  // Mark all fields as not required
+  foreach($form->_fields as $name => $field) {
+    if (isset($field['is_required']) && $field['is_required']) {
+      $form->_fields[$name]['is_required'] = FALSE;
+      $form->_required = array_diff($form->_required, array($name));
+      unset($form->_rules[$name], $form->_errors[$name]);
+    }
   }
 }
 
