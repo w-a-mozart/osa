@@ -138,7 +138,7 @@ class CRM_Contact_BAO_Contact extends CRM_Contact_DAO_Contact {
     else {
       // reset the value
       // CRM-101XX
-      $params['contact_sub_type'] = 'null';
+      // $params['contact_sub_type'] = 'null';
     }
 
     //fixed contact source
@@ -1464,7 +1464,11 @@ WHERE id={$id}; ";
 
     // we dont know the contents of return properties, but we need the lower level ids of the contact
     // so add a few fields
-    $returnProperties['first_name'] = $returnProperties['organization_name'] = $returnProperties['household_name'] = $returnProperties['contact_type'] = 1;
+    $returnProperties['first_name'] =
+      $returnProperties['organization_name'] =
+      $returnProperties['household_name'] =
+      $returnProperties['contact_type'] =
+      $returnProperties['contact_sub_type'] = 1;
     return list($query, $options) = CRM_Contact_BAO_Query::apiQuery($params, $returnProperties, $options);
   }
 
