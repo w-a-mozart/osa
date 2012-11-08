@@ -93,7 +93,7 @@ function _osa_field($field) {
     $custom_fields['lesson_fee_level'] = 'custom_27';
     $custom_fields['lesson_level'] = 'custom_32';
     $custom_fields['additional_data'] = 'custom_37';
-    $custom_fields['open_to_public'] = 'custom_42';
+    $custom_fields['open_to_public'] = 'custom_46';
     $custom_fields['lesson_length'] = 'price_6';
   }
 

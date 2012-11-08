@@ -542,7 +542,7 @@ function osa_civicrm_pageRun_CRM_Event_Page_EventInfo(&$page) {
   $allowRegistration = $template->get_template_vars('allowRegistration');
   if ($allowRegistration) {
     $uid = _osa_getUserId();
-    if (!(uid > 0) && !$open_to_public) {
+    if (!($uid > 0) && !$open_to_public) {
       $page->assign('allowRegistration', FALSE);
     }
   }
@@ -586,28 +586,32 @@ function osa_civicrm_buildForm_CRM_Event_Form_Registration_Register(&$form) {
     // remove the profiles related to contacts
     $smarty = $form->getTemplate();
     $customPre = $smarty->get_template_vars('customPre');
-    foreach ($customPre as $field) {
-      if (($field['field_type'] == 'Student') ||
-          ($field['field_type'] == 'Individual') ||
-          ($field['field_type'] == 'Contact')) {
-        unset($form->_fields[$field['name']]);
-        $form->removeElement($field['name']);
-        unset($customPre[$field['name']]);
+    if (is_array($customPre)) {
+      foreach ($customPre as $field) {
+        if (($field['field_type'] == 'Student') ||
+            ($field['field_type'] == 'Individual') ||
+            ($field['field_type'] == 'Contact')) {
+          unset($form->_fields[$field['name']]);
+          $form->removeElement($field['name']);
+          unset($customPre[$field['name']]);
+        }
       }
+      $form->assign('customPre', $customPre);
     }
-    $form->assign('customPre', $customPre);
     
     $customPost = $smarty->get_template_vars('customPost');
-    foreach ($customPre as $field) {
-      if (($field['field_type'] == 'Student') ||
-          ($field['field_type'] == 'Individual') ||
-          ($field['field_type'] == 'Contact')) {
-        unset($form->_fields[$field['name']]);
-        $form->removeElement($field['name']);
-        unset($customPost[$field['name']]);
+    if (is_array($customPost)) {
+      foreach ($customPost as $field) {
+        if (($field['field_type'] == 'Student') ||
+            ($field['field_type'] == 'Individual') ||
+            ($field['field_type'] == 'Contact')) {
+          unset($form->_fields[$field['name']]);
+          $form->removeElement($field['name']);
+          unset($customPost[$field['name']]);
+        }
       }
+      $form->assign('customPost', $customPost);
     }
-    $form->assign('customPost', $customPost);
   }
   
   if ($form->_paymentProcessor['payment_processor_type'] == 'drupalcommerce') {
