@@ -27,6 +27,7 @@ function sbp_civicrm_events_sbp_paths($environment) {
 
   $eventDAO = new CRM_Event_BAO_Event();
   $eventDAO->whereAdd('(start_date >= CURDATE() || end_date >= CURDATE())');
+  $eventDAO->whereAdd('is_active = 1');
   $eventDAO->whereAdd('( is_template IS NULL ) OR ( is_template = 0 )');
   $eventDAO->whereAdd('event_type_id <> 9');
   $eventDAO->find();
