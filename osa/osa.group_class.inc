@@ -45,8 +45,6 @@ function osa_form_alter_group_class_node_form(&$form, &$form_state) {
   // hide fields that are auto populated
   hide($form['field_event_summary']);
   hide($form['body']);
-  //hide($form['field_event_children']);
-
 }
 
 /**
@@ -68,7 +66,7 @@ function osa_field_widget_options_select_form_alter(&$element, &$form_state, $co
     civicrm_initialize();
     $results = civicrm_api('event', 'get', array('event_type_id' => OSA_EVENT_GROUP_CLASS_MASTER, 'version' => 3));
     $options = array();
-    foreach($results['values'] as $class) {
+    foreach ($results['values'] as $class) {
       $options[$class['id']] = $class['event_title'];
     }
     asort($options);
@@ -179,7 +177,7 @@ function osa_form_alter_webform_client_form_6(&$form, &$form_state) {
 
   // populate the class description, with the event descriptions
   $descs = array();
-  foreach($nodes as $class) {
+  foreach ($nodes as $class) {
     $event_id = $class->field_event_master['und'][0]['civicrm_reference_id'];
     $results = civicrm_api('event', 'get', array('id' => $event_id, 'version' => 3));
     $event = $results['values'][$event_id];
@@ -220,7 +218,7 @@ EOD;
 
   // set the default values for the group class lists
   $types = osa_options_class_types();
-  foreach($types as $type => $label) {
+  foreach ($types as $type => $label) {
     reset($form['submitted']["{$type}_fieldset"][$type]['#options']);
     $first_option = key($form['submitted']["{$type}_fieldset"][$type]['#options']);
     $form['submitted']["{$type}_fieldset"][$type]['#default_value'] = isset($first_option) ? $first_option : '';
@@ -357,7 +355,7 @@ function osa_webform_options_class_types($component, $flat, $filter, $arguments)
   
   $options = array();
   $option_labels = osa_options_class_types();
-  foreach($nodes as $class) {
+  foreach ($nodes as $class) {
     $options[$class->field_class_type['und'][0]['value']] = $option_labels[$class->field_class_type['und'][0]['value']];
   }
 
@@ -375,7 +373,7 @@ function osa_webform_options_class_list($component, $flat, $filter, $arguments) 
     
   civicrm_initialize();
   $options = array();
-  foreach($nodes as $class) {
+  foreach ($nodes as $class) {
     $event_id = $class->field_event_master['und'][0]['civicrm_reference_id'];
     $results = civicrm_api('event', 'get', array('id' => $event_id, 'version' => 3));
     $event = $results['values'][$event_id];
@@ -397,7 +395,7 @@ function osa_webform_options_session_list($component, $flat, $filter, $arguments
 
   $options = array();
   $option_labels = osa_options_class_sessions();
-  foreach($nodes as $class) {
+  foreach ($nodes as $class) {
     $options[$class->field_session_id['und'][0]['value']] = $option_labels[$class->field_session_id['und'][0]['value']];
   }
 
@@ -411,7 +409,7 @@ function osa_webform_options_session_list($component, $flat, $filter, $arguments
 function osa_overwrite_class_participants(&$participants) {
   $session_names = osa_options_class_sessions();
 
-  foreach($participants as $participant_id => $participant) {
+  foreach ($participants as $participant_id => $participant) {
     if ($participant['event_type'] != 'Group Class (Master)') {
       continue;
     }

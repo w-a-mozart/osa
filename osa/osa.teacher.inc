@@ -44,7 +44,7 @@ function osa_civicrm_validate_teacher_registration(&$fields, &$files, &$form) {
     }
   }
 
-  return empty($errors) ? true : $errors;
+  return empty($errors) ? TRUE : $errors;
 }
 
 /**
@@ -176,7 +176,7 @@ function osa_civicrm_postProcess_teacher_registration_confirm(&$form) {
   $result = civicrm_api('relationship', 'create', $params);
   if ($result['is_error']) {
     watchdog('osa', 'Error: %1\nfailed to create student/teacher relationship between cid_a=%2 and cid_b=%3', 
-             array(1 => $result['error_message'], 2 => $contact_id_a, 3 => $contact_id_b,),
+             array(1 => $result['error_message'], 2 => $contact_id_a, 3 => $contact_id_b),
              WATCHDOG_ERROR);
   }
 }
@@ -207,9 +207,9 @@ function _osa_get_teacher_lists( &$contacts, &$select_options, &$pricelevel, &$p
     $cache['prices45min'][0] = array(0 => 0);
     $cache['prices60min'][0] = array(0 => 0);
 
-    $result = civicrm_api('contact', 'get',  array('contact_sub_type' => 'Teacher', 'option.sort' =>'sort_name', 'version' => 3));
+    $result = civicrm_api('contact', 'get',  array('contact_sub_type' => 'Teacher', 'option.sort' => 'sort_name', 'version' => 3));
     if ($result['is_error']) {
-      watchdog('osa', 'Error: %1\nfailed to get teacher contacts', array(1 => $result['error_message'],), WATCHDOG_ERROR);
+      watchdog('osa', 'Error: %1\nfailed to get teacher contacts', array(1 => $result['error_message']), WATCHDOG_ERROR);
     }
 
     foreach ( $result['values'] as $teacher_id => $contact ) {
