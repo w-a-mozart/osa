@@ -24,6 +24,38 @@ function civicrm_commerce_rules_condition_info() {
     'module' => 'civicrm_commerce',
   );
   
+  $conditions['civicrm_commerce_contains_contribution_type'] = array(
+    'label' => t('Order contains a particular contribution type'),
+    'parameter' => array(
+      'commerce_order' => array(
+        'type' => 'commerce_order',
+        'label' => t('Order'),
+        'description' => t('The order whose line items should be checked for the specified contribution type. If the specified order does not exist, the comparison will act as if it is against a quantity of 0.'),
+      ),
+      'contribution_type' => array(
+        'type' => 'text',
+        'label' => t('Contribution Type'),
+        'description' => t('The type of contibution to look for on the order.'),
+      ),
+      'operator' => array(
+        'type' => 'text',
+        'label' => t('Operator'),
+        'description' => t('The operator used with the quantity value below to compare the quantity of the specified contribution type on the order.'),
+        'default value' => '>=',
+        'options list' => 'commerce_numeric_comparison_operator_options_list',
+        'restriction' => 'input',
+      ),
+      'value' => array(
+        'type' => 'text',
+        'label' => t('Quantity'),
+        'default value' => '1',
+        'description' => t('The value to compare against the quantity of the specified contribution type on the order.'),
+      ),
+    ),
+    'group' => t('CiviCRM Commerce'),
+    'module' => 'civicrm_commerce',
+  );
+
   return $conditions;
 }
 
@@ -56,7 +88,49 @@ function civicrm_commerce_is_member($commerce_line_item) {
   }
 }
 
- /**
+/**
+ * Rules condition: a particular contribution type exists on an order in the specified quantity.
+ */
+function civicrm_commerce_contains_contribution_type($order, $contribution_type, $operator, $value) {
+  $contribution_type_qty = 0;
+
+  // If we actually received a valid order...
+  if (!empty($order)) {
+    $order_wrapper = entity_metadata_wrapper('commerce_order', $order);
+
+    civicrm_initialize();
+    // Count the quantities of the in each line item with the specified contribution type
+    foreach ($order_wrapper->commerce_line_items as $delta => $line_item_wrapper) {
+      if (!isset($line_item_wrapper->civicrm_commerce_contribution_id)) {
+        continue;
+      }
+
+      $contribution_id = $line_item_wrapper->civicrm_commerce_contribution_id->value();
+      $result = civicrm_api('contribution', 'get', array('id' => $contribution_id, 'version' => 3));
+      if (isset($result['values'][$contribution_id]['contribution_type']) && ($result['values'][$contribution_id]['contribution_type'] == $contribution_type)) {
+        $contribution_type_qty += $line_item_wrapper->quantity->value();
+      }
+    }
+  }
+
+  // Make a quantity comparison based on the operator.
+  switch ($operator) {
+    case '<':
+      return $contribution_type_qty < $value;
+    case '<=':
+      return $contribution_type_qty <= $value;
+    case '=':
+      return $contribution_type_qty == $value;
+    case '>=':
+      return $contribution_type_qty >= $value;
+    case '>':
+      return $contribution_type_qty > $value;
+  }
+
+  return FALSE;
+}
+
+/**
  * Implements hook_rules_action_info()
  */
 function civicrm_commerce_rules_action_info() {
