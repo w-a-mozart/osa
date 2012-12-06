@@ -14,7 +14,7 @@ function osa_admin_settings() {
 
   $form['osa'] = array(
     '#type' => 'fieldset',
-    '#title' => t('OSA Configuration'),
+    '#title' => t('OSA configuration'),
     '#collapsible' => FALSE,
     '#collapsed' => FALSE,
   );
@@ -57,6 +57,15 @@ function osa_admin_settings() {
     '#required' => TRUE,
     '#description' => t('Pro-rate teacher pay by %1 / %2 of annual pay', array('%1' => $num_installments, '%2' => variable_get('osa_num_installments', 10))),
   );
-  
+
+  $form['osa']['teacher_pay']['osa_teacher_pay_override'] = array(
+    '#type' => 'textarea',
+    '#title' => t('Teacher pay overrides'),
+    '#default_value' => variable_get('osa_teacher_pay_override'),
+    '#description' => '<p>' . t('This field can be used to override the teacher fee for a specific student.') . '<br />' .
+                      t('Enter one value per line, in the format student-contact-id|total-amount') . '<br />' .
+                      t('E.g. 123|987.65  will override the total teacher fee for student 123 to $987.65') . '</p>',
+  );
+
   return system_settings_form($form);
 }
