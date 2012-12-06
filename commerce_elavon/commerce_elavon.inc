@@ -125,17 +125,20 @@ function commerce_elavon_transaction($payment_method, $values, $order, $charge) 
   curl_close($ch);
 
 /*
-  $response = '<txn>
-<ssl_card_number>50********0002</ssl_card_number>
-<ssl_exp_date>1215</ssl_exp_date>
-<ssl_amount>1.00</ssl_amount>
+  $now = date('Y/m/d h:i:s A'); 
+  $response = <<<EOD
+<txn>
+<ssl_card_number>$pci_card_number</ssl_card_number>
+<ssl_exp_date>{$txn_array['ssl_exp_date']}</ssl_exp_date>
+<ssl_amount>{$txn_array['ssl_amount']}</ssl_amount>
 <ssl_result>0</ssl_result>
 <ssl_result_message>APPROVAL</ssl_result_message>
 <ssl_txn_id>101641221593ACBA6-BAFD-76B7-4948-B3DE68CFD0CC</ssl_txn_id>
 <ssl_approval_code>CMC142</ssl_approval_code>
-<ssl_account_balance>1.00</ssl_account_balance>
-<ssl_txn_time>01/20/2011 01:07:23 PM</ssl_txn_time>
-</txn>';
+<ssl_account_balance>0</ssl_account_balance>
+<ssl_txn_time>$now</ssl_txn_time>
+</txn>
+EOD;
 */
 
   if (!$response) {
@@ -144,11 +147,11 @@ function commerce_elavon_transaction($payment_method, $values, $order, $charge) 
     return FALSE;
   }
 
+  // log all responses
+  watchdog('commerce_elavon', 'Response: !1', array('!1' => '<pre>' . check_plain(print_r($response, TRUE)) . '</pre>'), WATCHDOG_INFO);
+
   // Parse the response XML
   $response_data = _commerce_elavon_responseXML($response);
-
-  // log all responses
-  watchdog('commerce_elavon', 'Response: !1', array('!1' => '<pre>' . check_plain(print_r($response_data, TRUE)) . '</pre>'), WATCHDOG_INFO);
 
   // Fail on error from Virtual Merchant
   if ($response_data['errorCode']) {
