@@ -113,7 +113,7 @@ function osa_household_members($commerce_line_item, $operator, $value) {
 
     if (($result['is_error'] == 0) &&
         ($result['count'] == 1) &&
-        (!in_array($result['id'],$ignore_membership_ids))) {
+        (!in_array($result['id'], $ignore_membership_ids))) {
       $number_members++;
     }
   }
@@ -133,4 +133,35 @@ function osa_household_members($commerce_line_item, $operator, $value) {
   }
 
   return FALSE;
+}
+
+/**
+ * Implements hook_rules_action_info()
+ */
+function osa_rules_action_info() {
+  $actions = array();
+
+  // action to update contributions in CiviCRM when a payment is made
+  $actions['osa_email_tickets'] = array(
+    'label' => t('Email tickets'),
+    'parameter' => array(
+      'commerce_order' => array(
+        'type' => 'commerce_order',
+        'label' => t('Order'),
+        'description' => t('The order whose line items contain at least one <em>Concert Ticket</em> contribution type.'),
+      ),
+    ),
+    'group' => t('OSA'),
+    'module' => 'osa',
+  );
+
+  return $actions;
+}
+
+/**
+ * Rules action: Email Tickets
+ */
+function osa_email_tickets($commerce_order) {
+  // this will invoke osa_mail_ticket() to generate the message
+  drupal_mail('osa', 'ticket', $commerce_order->mail, language_default(), array('commerce_order' => $commerce_order));
 }

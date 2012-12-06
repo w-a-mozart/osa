@@ -23,6 +23,11 @@ define('OSA_CONTRIB_MEMBER', 1);
 define('OSA_CONTRIB_TEACHER', 2);
 
 /**
+ * Define constants for CiviCRM Contribution Types.
+ */
+define('OSA_CONTYPE_CONCERT_TICKET', 5);
+
+/**
  * Define constants for CiviCRM Relationship Types.
  */
 define('OSA_REL_PARENT', 1);
@@ -49,6 +54,7 @@ define('OSA_MEMBER_STUDENT', 1);
 /**
  * Define constants for CiviCRM Event Types.
  */
+define('OSA_EVENT_CONCERT', '5');
 define('OSA_EVENT_GROUP_CLASS_MASTER', '8');
 define('OSA_EVENT_GROUP_CLASS_CHILD', '9');
 
@@ -295,9 +301,8 @@ function _osa_getHouseholdMembers($cid = NULL, $field = NULL) {
     $hid = $cid;
   }
   
-  // should never happen this should only be available to authenticated users
+  // should never happen as this should only be available to authenticated users
   if (!isset($hid)) {
-    //CRM_Core_Error::fatal(ts("An unexpected error has occurred. Please contact the OSA and report the error."));
     return $family;
   }
   
@@ -653,7 +658,7 @@ function _osa_get_contact($cid = NULL, $custom = TRUE) {
     if ($result['is_error'] == 0) {
       foreach ($result['values'] as $fid => $fattribs) {
         $fname = $custom_fields[$fid]['name'];
-        $ignore = array('entity_id' => 0, 'latest' => 0, 'id' => 0,);
+        $ignore = array('entity_id' => 0, 'latest' => 0, 'id' => 0);
         $values = array_diff_key($fattribs, $ignore);
         if (isset($values[0])) {
           $contact[$fname] = $values[0];
@@ -777,7 +782,7 @@ function _osa_get_contributions($contact_id) {
   // Call the CiviCRM API to get the contributions
   $result = civicrm_api('contribution', 'get', $params);
   if ($result['is_error']) {
-    watchdog('osa', 'Error: %1\nfailed to get contributions for contact_id=%2', array(1 => $result['error_message'], 2 => $contact_id,), WATCHDOG_ERROR);
+    watchdog('osa', 'Error: %1\nfailed to get contributions for contact_id=%2', array(1 => $result['error_message'], 2 => $contact_id), WATCHDOG_ERROR);
   }
 
   return $result['values'];
@@ -799,7 +804,7 @@ function _osa_get_participant_events($contact_id) {
   // Call the CiviCRM API to get the events
   $result = civicrm_api('participant', 'get', $params);
   if ($result['is_error']) {
-    watchdog('osa', 'Error: %1\nfailed to get events for contact_id=%2', array(1 => $result['error_message'], 2 => $contact_id,), WATCHDOG_ERROR);
+    watchdog('osa', 'Error: %1\nfailed to get events for contact_id=%2', array(1 => $result['error_message'], 2 => $contact_id), WATCHDOG_ERROR);
   }
   
   return $result['values'];
@@ -831,7 +836,7 @@ function &_osa_get_webform_component(&$node, $form_key) {
  *  Calculate the next payment date and number of installments
  *
  * @param string $rel_start_date
- *   relative start date of the school year & first payment (ie 'first day of September')
+ *   relative start of the school year & first payment (ie 'first day of September')
  * @param integer $num_installments
  *   total number of installments / months in school year. Will be updated if the school year has begun.
  */
@@ -868,13 +873,11 @@ function _osa_next_payment_date($rel_start_date, &$num_installments) {
 /**
  * Better DateTime class
  */
-class DateTimeEx extends DateTime
-{
+class DateTimeEx extends DateTime {
   public static $_format = 'Y-m-d H:i:s';
 
-  public function __toString()
-  {
-    return (string)parent::format(static::$_format);
+  public function __toString() {
+    return (string)parent::format('Y-m-d H:i:s');
   }
 
   public function get($component) {
@@ -897,4 +900,117 @@ function _osa_get_next_date(&$series, &$start_date, &$end_date) {
       return;
     }
   }
+}
+/*
+ * Called to create the email with eTicket attachments
+ */
+function osa_mail_ticket(&$message, $params) {
+
+  $commerce_order = $params['commerce_order'];
+  
+  $message['subject'] = "Your eTicket(s) from The Oakville Suzuki Association for order #{$commerce_order->order_id}";
+  $message['body'][] = <<<EOD
+This email contains your <strong>eTicket(s)</strong> for order #{$commerce_order->order_id}.<br />
+<br />
+<span style="font-size: 150%;"><strong><em>Please print this email and bring it to the concert.</em></strong></span><br />
+<br />
+<br />
+EOD;
+
+//  $tickets_html = array();
+  $order_wrapper = entity_metadata_wrapper('commerce_order', $commerce_order);
+  foreach ($order_wrapper->commerce_line_items as $line_item_wrapper) {
+    $line_item = $line_item_wrapper->value();
+    if (($line_item->type == 'civi_event') && ($line_item->data['contributionTypeID'] == OSA_CONTYPE_CONCERT_TICKET)) {
+      $event_id = $line_item_wrapper->civicrm_commerce_event_id->value();
+      $contribution_id = $line_item_wrapper->civicrm_commerce_contribution_id->value();
+      $quantity = $line_item->quantity;
+      for ($i = 1; $i <= $quantity; $i++) {
+//        $tickets_html[] = _osa_create_ticket($event_id, $contribution_id, $i); 
+        $message['body'][] = _osa_create_ticket($event_id, $contribution_id, $i); 
+      }
+    }
+  }
+
+/*
+  require_once 'CRM/Utils/PDF/Utils.php';
+  $message['params']['attachments'][] = array(
+    'filecontent' => CRM_Utils_PDF_Utils::html2pdf($tickets_html, 'eTicket.pdf', TRUE),
+    'filename' => 'eTicket.pdf',
+    'filemime' => 'application/pdf',
+  );
+*/
+
+  $message['body'][] = <<<EOD
+<br />
+<br />
+Thank you for supporting The Oakville Suzuki Association.<br />
+<br />
+<br />
+<strong>The Oakville Suzuki Association</strong><br />
+<em>"Music exists for the purpose of growing an admirable heart." - Shinichi Suzuki</em><br />
+http://oakvillesuzuki.org<br />
+admin@oakvillesuzuki.org<br />
+EOD;
+
+}
+
+function _osa_create_ticket($event_id, $contribution_id, $number) {
+  $ticket_number = sprintf('%05d-%05d-%03d', $event_id, $contribution_id, $number);
+
+  // get the contact record
+  civicrm_initialize();
+  $result = civicrm_api('event', 'get',  array('id' => $event_id, 'version' => 3));
+  if (($result['is_error'] == 0) && ($result['count'] == 1)) {
+    $event = $result['values'][$event_id];
+  }
+  else {
+    return '';
+  }
+
+  $start_date = strftime('%A %B %#d, %I:%M %p', strtotime($event['start_date']));
+  require_once 'CRM/Core/BAO/Location.php';
+  $location = CRM_Core_BAO_Location::getValues(array('entity_id' => $event_id, 'entity_table' => 'civicrm_event'), TRUE);
+  $address = $location['address'][1];
+  $address_html = "{$address['supplemental_address_1']}<br />";
+  $address_html .= str_replace($address['supplemental_address_1'] . PHP_EOL, '', $address['display_text']);
+  
+  $ticket_html = <<<EOD
+<br />
+<hr />
+<table>
+  <tbody>
+    <tr>
+      <td rowspan="4">
+        <img alt="The Oakville Suzuki Association" src="http://oakvillesuzuki.org/osa/sites/default/files/logo.jpg" style="margin-left: 10px; margin-right: 10px;" /></td>
+      <td>
+        <span style="font-size: 125%;"><strong>{$event['title']}</strong></span><br />
+        <br />
+        {$event['description']}
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <hr />
+        $start_date
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <hr />
+        <strong>Location: </strong>$address_html<br />
+        <hr />
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <span style="color:#ff0000; font-size:125%;"><strong>Ticket Number: $ticket_number</strong></span></td>
+    </tr>
+  </tbody>
+</table>
+<hr />
+<br />
+EOD;
+
+  return $ticket_html;
 }

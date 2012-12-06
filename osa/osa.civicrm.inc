@@ -58,11 +58,11 @@ function osa_civicrm_pageRun_CRM_Contact_Page_View_UserDashBoard(&$page) {
   //   the household of the current user,
   //   or the current user
   // so the get the contact object being displayed
-  $pgContact = _osa_get_contact($cid, FALSE);
-  $pgContactType = isset($pgContact['contact_sub_type']) ? $pgContact['contact_sub_type'][0] : $pgContact['contact_type'];
+  $pg_contact = _osa_get_contact($cid, FALSE);
+  $pg_contact_type = isset($pg_contact['contact_sub_type']) ? $pg_contact['contact_sub_type'][0] : $pg_contact['contact_type'];
   // @todo image_URL not currently returned by api
-  $pgContact['image_URL'] = CRM_Contact_BAO_Contact_Utils::getImage($pgContactType, FALSE, $cid);
-  $page->assign('contact', $pgContact);
+  $pg_contact['image_URL'] = CRM_Contact_BAO_Contact_Utils::getImage($pg_contact_type, FALSE, $cid);
+  $page->assign('contact', $pg_contact);
 
   // init vars & arrays
   $parents         = array();
@@ -73,7 +73,6 @@ function osa_civicrm_pageRun_CRM_Contact_Page_View_UserDashBoard(&$page) {
   $members         = array(); // overwrite list to display name
   $event_rows      = $smarty->get_template_vars('event_rows');
   $contribute_rows = $smarty->get_template_vars('contribute_rows');
-  $groupIn         = $smarty->get_template_vars('groupIn');
 
   // get all the family members for this contact
   $family = _osa_getHouseholdMembers($cid);
@@ -134,15 +133,14 @@ function osa_civicrm_pageRun_CRM_Contact_Page_View_UserDashBoard(&$page) {
   $page->assign('members', $members);
   $page->assign('event_rows', $event_rows);
   $page->assign('contribute_rows', $contribute_rows);
-  $page->assign('groupIn', $groupIn);
   
   // use the CiviCRM Profiles to display tombstone info
   require_once 'CRM/Profile/Page/Dynamic.php';
   $gids = array('Phone and Email' => OSA_PROFILE_PHONE_EMAIL, 'Address' => OSA_PROFILE_ADDRESS);
-  $profileElements = array();
+  $profile_elements = array();
   foreach ($gids as $title => $gid) {
     $profile = new CRM_Profile_Page_Dynamic($cid, $gid, 'Profile');
-    $profileElements[] =
+    $profile_elements[] =
       array(
         'cid'   => $cid,
         'gid'   => $gid,
@@ -150,54 +148,47 @@ function osa_civicrm_pageRun_CRM_Contact_Page_View_UserDashBoard(&$page) {
         'html'  => $profile->run(),
     );
   }
-  $page->assign('profileElements', $profileElements);
+  $page->assign('profileElements', $profile_elements);
 
   // override the templates used for each dashboard element
-  $dashboardElements = array();
+  $dashboard_elements = array();
   if (isset($hid)) {
-    $dashboardElements[] = array(
+    $dashboard_elements[] = array(
       'templatePath' => 'CRM/Contact/Page/View/UserDashBoard/Family.tpl',
       'sectionTitle' => 'Family Members',
       'sectionState' => 'open'
     );
-    $dashboardElements[] = array(
+    $dashboard_elements[] = array(
       'templatePath' => 'CRM/Contact/Page/View/UserDashBoard/Relationship.tpl',
       'sectionTitle' => 'Other Related Individual(s)',
       'sectionState' => empty($others) ? 'closed' : 'open',
     );
   }
 
-  $dashboardElements[] = array(
+  $dashboard_elements[] = array(
     'templatePath' => 'CRM/Contact/Page/View/UserDashBoard/Membership.tpl',
     'sectionTitle' => 'Membership Registration(s)',
     'sectionState' => empty($members) ? 'closed' : 'open',
   );
-  $dashboardElements[] = array(
+  $dashboard_elements[] = array(
     'templatePath' => 'CRM/Contact/Page/View/UserDashBoard/Teacher.tpl',
     'sectionTitle' => 'Teacher Registration(s)',
     'sectionState' => empty($teachers) ? 'closed' : 'open',
   );
-  $dashboardElements[] = array(
+  $dashboard_elements[] = array(
     'templatePath' => 'CRM/Contact/Page/View/UserDashBoard/Event.tpl',
     'sectionTitle' => 'Event Registration(s)',
     'sectionState' => empty($event_rows) ? 'closed' : 'open',
   );
-  $dashboardElements[] = array(
+  $dashboard_elements[] = array(
     'templatePath' => 'CRM/Contact/Page/View/UserDashBoard/Contribute.tpl',
     'sectionTitle' => 'Recent Payment(s)',
     'sectionState' => empty($contribute_rows) ? 'closed' : 'open',
   );
-/*
-  $dashboardElements[] = array(
-    'templatePath' => 'CRM/Contact/Page/View/UserDashBoard/Group.tpl',
-    'sectionTitle' => 'Mailing List(s)',
-    'sectionState' => empty($groupIn) ? 'closed' : 'open',
-  );
-*/
-  $page->assign('dashboardElements', $dashboardElements);
+  $page->assign('dashboardElements', $dashboard_elements);
 
   // override the page title (do this last as generating profiles also ovrides the title)
-  CRM_Utils_System::setTitle($pgContact['display_name'], $pgContact['image_URL'] . ' ' . $pgContact['display_name']);
+  CRM_Utils_System::setTitle($pg_contact['display_name'], $pg_contact['image_URL'] . ' ' . $pg_contact['display_name']);
 }
 
 /**
@@ -215,10 +206,9 @@ function osa_civicrm_buildForm_CRM_Profile_Form_Edit(&$form) {
   if ($gid == OSA_PROFILE_FAMILY) {
     if ($mode == CRM_Profile_Form::MODE_CREATE) {
       $contact = _osa_get_contact(NULL, FALSE);
-      // bug???
+      // catch this error
       if ($contact['id'] == 1) {
-        watchdog('ahh', "Family for admin??");
-        watchdog('ahh', '<pre>' . print_r(debug_backtrace(), TRUE) . '</pre>');
+        watchdog('osa', 'Family for admin??<pre>' . print_r(debug_backtrace(), TRUE) . '</pre>', NULL, WATCHDOG_ERROR);
         $session = CRM_Core_Session::singleton();
         $session->reset();
       }
@@ -312,20 +302,20 @@ function osa_civicrm_postProcess_CRM_Profile_Form_Edit(&$form) {
     if ((isset($hid)) && ($gid != OSA_PROFILE_REL_INDIVIDUAL)) {
       $result = civicrm_api('address', 'get', array('contact_id' => $hid, 'location_type_id' => 1, 'version' => 3));
       if ($result['count'] > 0) {
-        $houseAddressId = $result['id'];
-        $sharedAddress = $result['values'][$houseAddressId];
-        $sharedAddress['master_id'] = $houseAddressId;
-        $sharedAddress['use_shared_address'] = TRUE;
-        $sharedAddress['contact_id'] = $cid;
-        $sharedAddress['version'] = 3;
+        $house_address_id = $result['id'];
+        $shared_address = $result['values'][$house_address_id];
+        $shared_address['master_id'] = $house_address_id;
+        $shared_address['use_shared_address'] = TRUE;
+        $shared_address['contact_id'] = $cid;
+        $shared_address['version'] = 3;
 
         $result = civicrm_api('address', 'get', array('contact_id' => $cid, 'location_type_id' => 1, 'version' => 3));
         if ($result['count'] > 0) {
           $result = civicrm_api('address', 'delete', array('id' => $result['id'], 'version' => 3));
         }
 
-        unset($sharedAddress['id']);
-        $result = civicrm_api('address', 'create', $sharedAddress);
+        unset($shared_address['id']);
+        $result = civicrm_api('address', 'create', $shared_address);
       }
     }
   }
@@ -396,7 +386,7 @@ function osa_civicrm_validate_CRM_Contribute_Form_Contribution_Main(&$fields, &$
     }
   }
 
-  return empty($errors) ? true : $errors;
+  return empty($errors) ? TRUE : $errors;
 }
 
 /**
@@ -410,15 +400,15 @@ function osa_civicrm_postProcess_CRM_Contribute_Form_Contribution_Main(&$form) {
   // check if we are using the Drupal Commerce Cart
   if ($form->_paymentProcessor['payment_processor_type'] == 'drupalcommerce') {
     // since we use a Cart, we can disable the confirmation forms
-    $confirmForm =& $form->controller->_pages['Confirm'];
-    $confirmForm->preProcess();
+    $confirm_form =& $form->controller->_pages['Confirm'];
+    $confirm_form->preProcess();
 
     // Hack to tell form validator that confirmation page is valid
     $data =& $form->controller->container();
     $data['valid']['Confirm'] = 1;
 
     // Redirect to thank you page
-    $confirmForm->postProcess();
+    $confirm_form->postProcess();
     $qfKey = $form->controller->_key;
     CRM_Utils_System::redirect(CRM_Utils_System::url('civicrm/contribute/transact', "_qf_ThankYou_display=1&qfKey=$qfKey", TRUE, NULL, FALSE));
   }
@@ -489,10 +479,10 @@ function osa_civicrm_pageRun_CRM_Event_Page_EventInfo(&$page) {
 
   // get the custom data fields we want to customize
   $template = &$page->getTemplate();
-	$event_custom_data = &$template->_tpl_vars['viewCustomData'];
+  $event_custom_data = &$template->_tpl_vars['viewCustomData'];
   $cd_keys = array_keys($event_custom_data);
   
-	foreach ($cd_keys as $cd_key) {
+  foreach ($cd_keys as $cd_key) {
     $custom_data = current($event_custom_data[$cd_key]);
     $ecd_key = key($event_custom_data[$cd_key]);
 
@@ -539,8 +529,8 @@ function osa_civicrm_pageRun_CRM_Event_Page_EventInfo(&$page) {
   }
 
   // we have to set permissions to allow annonynous registration, but realy we want it for only some events
-  $allowRegistration = $template->get_template_vars('allowRegistration');
-  if ($allowRegistration) {
+  $allow_registration = $template->get_template_vars('allowRegistration');
+  if ($allow_registration) {
     $uid = _osa_getUserId();
     if (!($uid > 0) && !$open_to_public) {
       $page->assign('allowRegistration', FALSE);
@@ -573,7 +563,7 @@ function osa_civicrm_buildForm_CRM_Event_Form_Registration_Register(&$form) {
   $uid = _osa_getUserId();
   $open_to_public = $result['values'][$form->_eventId][_osa_field('open_to_public')];
   if (!($uid > 0) && !$open_to_public) {
-    drupal_set_message('You must be logged in to register for this event.', 'warning');
+    drupal_set_message(t('You must be logged in to register for this event.'), 'warning');
     drupal_goto('user/login');
     return;
   }
@@ -581,36 +571,44 @@ function osa_civicrm_buildForm_CRM_Event_Form_Registration_Register(&$form) {
   // registrations can be made on behalf of a family member
   // so if the user is logged in, add a drop down of family members
   if ($uid > 0) {
-    $members_only = $result['values'][$form->_eventId][_osa_field('members_only')];
-    _osa_addFamilyField($form, $members_only);
-    // remove the profiles related to contacts
-    $smarty = $form->getTemplate();
-    $customPre = $smarty->get_template_vars('customPre');
-    if (is_array($customPre)) {
-      foreach ($customPre as $field) {
-        if (($field['field_type'] == 'Student') ||
-            ($field['field_type'] == 'Individual') ||
-            ($field['field_type'] == 'Contact')) {
-          unset($form->_fields[$field['name']]);
-          $form->removeElement($field['name']);
-          unset($customPre[$field['name']]);
-        }
-      }
-      $form->assign('customPre', $customPre);
+    // concerts don't require you to select a student
+    $event_type = $result['values'][$form->_eventId]['event_type_id'];
+    if ($event_type == OSA_EVENT_CONCERT) {
+      _osa_addField($form, 'hidden', "contact_id", _osa_get_contact_id());
+    }
+    else {
+      $members_only = $result['values'][$form->_eventId][_osa_field('members_only')];
+      _osa_addFamilyField($form, $members_only);
     }
     
-    $customPost = $smarty->get_template_vars('customPost');
-    if (is_array($customPost)) {
-      foreach ($customPost as $field) {
+    // remove the profiles related to contacts
+    $smarty = $form->getTemplate();
+    $custom_pre = $smarty->get_template_vars('customPre');
+    if (is_array($custom_pre)) {
+      foreach ($custom_pre as $field) {
         if (($field['field_type'] == 'Student') ||
             ($field['field_type'] == 'Individual') ||
             ($field['field_type'] == 'Contact')) {
           unset($form->_fields[$field['name']]);
           $form->removeElement($field['name']);
-          unset($customPost[$field['name']]);
+          unset($custom_pre[$field['name']]);
         }
       }
-      $form->assign('customPost', $customPost);
+      $form->assign('customPre', $custom_pre);
+    }
+    
+    $custom_post = $smarty->get_template_vars('customPost');
+    if (is_array($custom_post)) {
+      foreach ($custom_post as $field) {
+        if (($field['field_type'] == 'Student') ||
+            ($field['field_type'] == 'Individual') ||
+            ($field['field_type'] == 'Contact')) {
+          unset($form->_fields[$field['name']]);
+          $form->removeElement($field['name']);
+          unset($custom_post[$field['name']]);
+        }
+      }
+      $form->assign('customPost', $custom_post);
     }
   }
   
@@ -656,7 +654,7 @@ function osa_civicrm_validate_CRM_Event_Form_Registration_Register(&$fields, &$f
     $form->setElementError('contact_id', $errors['contact_id']);
   }
 
-  return empty($errors) ? true : $errors;
+  return empty($errors) ? TRUE : $errors;
 }
 
 /**
@@ -676,15 +674,15 @@ function osa_civicrm_postProcess_CRM_Event_Form_Registration_Register(&$form) {
     $params[0]['contact_id'] = $contact_id;
     
     if ($form->_values['custom_pre_id']) {
-      $profileFields = CRM_Core_BAO_UFGroup::getFields($form->_values['custom_pre_id']);
+      $profile_fields = CRM_Core_BAO_UFGroup::getFields($form->_values['custom_pre_id']);
       $values = array();
-      CRM_Core_BAO_UFGroup::setProfileDefaults($contact_id, $profileFields, $values);
+      CRM_Core_BAO_UFGroup::setProfileDefaults($contact_id, $profile_fields, $values);
       $params[0] += $values;
     }
     if ($form->_values['custom_post_id']) {
-      $profileFields = CRM_Core_BAO_UFGroup::getFields($form->_values['custom_post_id']);
+      $profile_fields = CRM_Core_BAO_UFGroup::getFields($form->_values['custom_post_id']);
       $values = array();
-      CRM_Core_BAO_UFGroup::setProfileDefaults($contact_id, $profileFields, $values);
+      CRM_Core_BAO_UFGroup::setProfileDefaults($contact_id, $profile_fields, $values);
       $params[0] += $values;
     }
     $bltID = $form->_bltID;
@@ -698,20 +696,20 @@ function osa_civicrm_postProcess_CRM_Event_Form_Registration_Register(&$form) {
   // check if we are using the Drupal Commerce Cart
   if ($form->_paymentProcessor['payment_processor_type'] == 'drupalcommerce') {
     // since we use a Cart, we want to disable the confirmation form
-    $confirmForm = &$form->controller->_pages['Confirm'];
+    $confirm_form = &$form->controller->_pages['Confirm'];
 
     // build the confirmation form to make sure all of the values are set
-    $confirmForm->preProcess();
-    $confirmForm->buildQuickForm();
+    $confirm_form->preProcess();
+    $confirm_form->buildQuickForm();
 
     // tell form validator that confirmation page is valid
     $data =& $form->controller->container();
     $data['valid']['Confirm'] = 1;
-    $confirmForm->postProcess();
+    $confirm_form->postProcess();
 
     // special processing for group classes
-    if ($confirmForm->_values['event']['event_type_id'] == OSA_EVENT_GROUP_CLASS_MASTER) {
-      osa_civicrm_postProcess_group_class_registration($confirmForm);
+    if ($confirm_form->_values['event']['event_type_id'] == OSA_EVENT_GROUP_CLASS_MASTER) {
+      osa_civicrm_postProcess_group_class_registration($confirm_form);
     }
     
     // Redirect to thank you page
@@ -728,7 +726,7 @@ function osa_civicrm_postProcess_CRM_Event_Form_Registration_Register(&$form) {
  */
 function osa_civicrm_buildForm_CRM_Event_Form_Registration_Confirm(&$form) {
   // Mark all fields as not required
-  foreach($form->_fields as $name => $field) {
+  foreach ($form->_fields as $name => $field) {
     if (isset($field['is_required']) && $field['is_required']) {
       $form->_fields[$name]['is_required'] = FALSE;
       $form->_required = array_diff($form->_required, array($name));
@@ -780,7 +778,7 @@ function osa_civicrm_buildAmount($pageType, &$form, &$amount) {
 /**
  * Implements hook_civicrm_customFieldOptions to dynamically populate custom selection boxes
  */
-function osa_civicrm_customFieldOptions($fieldID, &$options, $detailedFormat = false ) {
+function osa_civicrm_customFieldOptions($fieldID, &$options, $detailedFormat = FALSE ) {
 
   static $cache = array();
   
@@ -808,7 +806,7 @@ function osa_civicrm_customFieldOptions($fieldID, &$options, $detailedFormat = f
     if ($fieldID == 25) {
       // find all of the group class nodes
       $nodes = &_osa_get_class_nodes();
-      foreach($nodes as $class) {
+      foreach ($nodes as $class) {
         $cache[$fieldID]['detail']['class_' . $class->nid] = array(
           'id'    => 'class_' . $class->nid,
           'value' => $class->nid,

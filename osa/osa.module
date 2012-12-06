@@ -58,10 +58,10 @@ function osa_civicrm_buildForm($formName, &$form) {
     // add all custom parameters to the form
     $ignore = array('q', 'reset', 'id', 'cid', 'gid', 'snippet', 'context', 'width', '_qf_ThankYou_display', 'qfKey');
     $parms = array_diff_key($_GET, array_flip($ignore));
-    foreach($parms as $name => $value) {
+    foreach ($parms as $name => $value) {
       _osa_addField($form, 'hidden', "osa_$name", $value);
     }
-    foreach($_POST as $name => $value) {
+    foreach ($_POST as $name => $value) {
       if (substr($name, 0, 4) == 'osa_') {
         _osa_addField($form, 'hidden', $name, $value);
       }
@@ -142,13 +142,13 @@ function osa_webform_select_options_info() {
   $items = array();
 
   $items['class_type'] = array(
-    'title' => t('Group Class Types'), 
+    'title' => t('Group class types'), 
     'options callback' => 'osa_webform_options_class_types', 
     'file' => 'osa.group_class.inc',
   );
 
   $items['class_list'] = array(
-    'title' => t('Group Class'), 
+    'title' => t('Group class'), 
     'options callback' => 'osa_webform_options_class_list', 
     'file' => 'osa.group_class.inc',
   );
@@ -169,5 +169,15 @@ function osa_clone_node_alter(&$node, $context) {
 
   if (function_exists("osa_clone_node_alter_{$context['original_node']->type}")) {
     call_user_func_array("osa_clone_node_alter_{$context['original_node']->type}", array(&$node, &$context));
+  }
+}
+
+/**
+ * Implements hook_mail() to build osa specific emails
+ */
+function osa_mail($key, &$message, $params) {
+
+  if (function_exists("osa_mail_$key")) {
+    call_user_func_array("osa_mail_$key", array(&$message, &$params));
   }
 }
