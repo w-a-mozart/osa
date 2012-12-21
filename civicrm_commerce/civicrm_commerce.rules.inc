@@ -169,10 +169,10 @@ function civicrm_commerce_rules_action_info() {
  * Rules action: update CiviCRM Contribution status
  */
 function civicrm_commerce_update_contribution($commerce_payment_transaction) {
+  // Load the order record in read only: Issue 1514618
   $order = commerce_order_load($commerce_payment_transaction->order_id);
+  entity_get_controller('commerce_order')->resetCache(array($order->order_id));
   $civi_line_item_types = array_keys(civicrm_commerce_commerce_line_item_type_info());
-  $key = array_search('civi_member_discount', $civi_line_item_types);
-  unset($civi_line_item_types[$key]);
   $params = array(
     'receive_date' => format_date($commerce_payment_transaction->created, 'custom', 'Y-m-d H:i:s'),
     'version' => 3,

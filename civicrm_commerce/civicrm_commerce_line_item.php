@@ -43,14 +43,6 @@ function civicrm_commerce_commerce_line_item_type_info() {
     'base' => 'civicrm_commerce_line_item',
   );
 
-  $line_item_types['civi_member_discount'] = array(
-    'name' => t('Member Discount'),
-    'description' => t('A line item type, for CiviCRM Member Discounts'),
-    'product' => FALSE,
-    'add_form_submit_value' => t('Add Member Discount'),
-    'base' => 'civicrm_commerce_line_item',
-  );
-  
   return $line_item_types;
 }
 
@@ -69,11 +61,6 @@ function civicrm_commerce_commerce_line_item_type_info() {
 function civicrm_commerce_line_item_configuration($line_item_type) {
   $type = $line_item_type['type'];
 
-  // every line item except the discount needs a product reference & product prices
-  if ($type != 'civi_member_discount') {
-    commerce_product_line_item_configuration($line_item_type);
-  }
-
   // add the type specific fields to the line item to link to the CiviCRM items
   switch ($type) {
     case "civi_membership":
@@ -84,9 +71,6 @@ function civicrm_commerce_line_item_configuration($line_item_type) {
     break;
     case "civi_contribution":
       $field_names = array('contribution_id', 'amount', 'currency_code', 'contact_id');
-    break;
-    case "civi_member_discount":
-      $field_names = array('amount', 'currency_code');
     break;
   }
   
@@ -165,10 +149,6 @@ function civicrm_commerce_line_item_add_form_submit(&$line_item, $element, &$for
   $currency_code = $form_state['input']['commerce_line_items']['und']['actions']['civicrm_commerce_currency_code'];
   $title = civicrm_commerce_line_item_title($line_item);
 
-  if ($type == 'civi_member_discount') {
-    $amount = $amount * -1;
-  }
-  
   // Set field information.
   $line_item->line_item_label = $title;
   $line_item_wrapper = entity_metadata_wrapper('commerce_line_item', $line_item);
@@ -249,6 +229,13 @@ function civicrm_commerce_line_item_add_new(&$params, $component) {
     CRM_Core_Error::fatal(ts('Unknown shopping cart item.'));
   }
   
+    // @TODO fix giant kludge
+  $qty = 1;
+  if ($eventID == 1019) {
+    $qty = ($amount / 12);
+    $amount = 12;
+  }
+
   // change it's price to ensure a base price is added to the line item
   // this will be overwritten by the pricing rule
   $product_wrapper = entity_metadata_wrapper('commerce_product', $product);
@@ -257,7 +244,7 @@ function civicrm_commerce_line_item_add_new(&$params, $component) {
   $product_wrapper->commerce_price->currency_code = $currency_code;
 
   // create the line item and set its attributes
-  $line_item = commerce_product_line_item_new($product, 1, 0, $params, $type);
+  $line_item = commerce_product_line_item_new($product, $qty, 0, $params, $type);
   $line_item_wrapper = entity_metadata_wrapper('commerce_line_item', $line_item);
 
   $line_item_wrapper->line_item_label = $label;
@@ -283,55 +270,4 @@ function civicrm_commerce_line_item_add_new(&$params, $component) {
   // add it to the current user's cart
   $uid = CRM_Utils_System::getLoggedInUfID();
   return commerce_cart_product_add($uid, $line_item, FALSE);
-}
-
-/**
- * Utility function which creates a new member_discount line item 
- *
- * @param $order_id
- *   The ID of the order the line item belongs to (if available).
- *
- * @return
- *   The fully loaded line item.
- */
-function _civicrm_commerce_member_discount_new($amount, $currency_code = NULL, $order_id = 0) {
-  $type = 'civi_member_discount';
-
-  // clean-up the input parameters
-  $amount = $amount * -1;
-  if (!isset($currency_code)) {
-    $currency_code = commerce_default_currency();
-  }
-
-  // Create the line item entity
-  $line_item = entity_create('commerce_line_item',
-                             array(
-                               'type' => $type,
-                               'order_id' => $order_id,
-                               'quantity' => $quantity,
-                               'data' => $data,
-                             ));
-
-  // set the line item standard attributes
-  $line_item_wrapper = entity_metadata_wrapper('commerce_line_item', $line_item);
-  $line_item_wrapper->line_item_label = t('Discount');
-  $line_item_wrapper->commerce_unit_price->amount = $amount;
-  $line_item_wrapper->commerce_unit_price->currency_code = $currency_code;
-  
-  // set the civi specific attributes
-  $line_item_wrapper->civicrm_commerce_amount = $amount;
-  $line_item_wrapper->civicrm_commerce_currency_code = $currency_code;
-
-  // create a base price ?don't know why we need this
-  if (!is_null($line_item_wrapper->commerce_unit_price->value())) {
-    if (!commerce_price_component_load($line_item_wrapper->commerce_unit_price->value(), 'base_price')) {
-      $line_item_wrapper->commerce_unit_price->data = commerce_price_component_add($line_item_wrapper->commerce_unit_price->value(),
-                                                                                   'base_price',
-                                                                                   $line_item_wrapper->commerce_unit_price->value(),
-                                                                                   TRUE
-                                                                                  );
-    }
-  }
-  
-  return $line_item;
 }
