@@ -813,26 +813,9 @@ function _osa_get_membership($contact_id, $membership_type_id = OSA_MEMBER_STUDE
  *   contact who's contributions to get
  */
 function _osa_get_contributions($contact_id) {
-/*
-  // build the  parameters
-  $params = array(
-    'contact_id' => $contact_id,
-    'option.sort' => 'receive_date desc',
-    'rowCount' => 30,
-    'version'    => '3',
- );
 
-  // Call the CiviCRM API to get the contributions
-  $result = civicrm_api('contribution', 'get', $params);
-  if ($result['is_error']) {
-    watchdog('osa', 'Error: %1\nfailed to get contributions for contact_id=%2', array(1 => $result['error_message'], 2 => $contact_id), WATCHDOG_ERROR);
-  }
-
-  return $result['values'];
-*/
-
+  // the CiviCRM API was taking multiple seconds, so call the db directly
   $contact = _osa_get_contact($contact_id, FALSE);
-  
   $query = <<<EOD
 SELECT civicrm_contribution.id AS contribution_id, civicrm_contribution_type.name AS contribution_type, "{$contact['sort_name']}" AS sort_name, civicrm_contribution.total_amount AS total_amount, civicrm_contribution.contribution_recur_id AS contribution_recur_id, civicrm_contribution.receive_date AS receive_date, civicrm_option_value.name AS contribution_status
 FROM civicrm_contribution
@@ -857,6 +840,14 @@ EOD;
   $dao->free();
 
   return $contributions;
+/*
+  $result = civicrm_api('contribution', 'get', array('contact_id' => $contact_id, 'option.sort' => 'receive_date desc', 'rowCount' => 30, 'version' => '3'));
+  if ($result['is_error']) {
+    watchdog('osa', 'Error: %1\nfailed to get contributions for contact_id=%2', array(1 => $result['error_message'], 2 => $contact_id), WATCHDOG_ERROR);
+  }
+
+  return $result['values'];
+*/
 }
 
 /**

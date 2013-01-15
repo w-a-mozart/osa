@@ -73,8 +73,8 @@ function osa_civicrm_pageRun_CRM_Contact_Page_View_UserDashBoard(&$page) {
   $members         = array(); // overwrite list to display name
   $event_rows      = array();
   $contribute_rows = array();
-//  $event_rows      = $smarty->get_template_vars('event_rows');
-//  $contribute_rows = $smarty->get_template_vars('contribute_rows');
+  $event_rows      = array();
+  $contribute_rows = array();
 
   // get all the family members for this contact
   $family = _osa_getHouseholdMembers($cid);
@@ -111,17 +111,15 @@ function osa_civicrm_pageRun_CRM_Contact_Page_View_UserDashBoard(&$page) {
     }
 
     // append family member elements to lists in the page
-//    if ($person['contact_id'] != $page->_contactId) {
-      $events = _osa_get_participant_events($person['contact_id']);
-      if (isset($events)) {
-        $event_rows = $event_rows + $events;
-      }
+    $events = _osa_get_participant_events($person['contact_id']);
+    if (isset($events)) {
+      $event_rows = $event_rows + $events;
+    }
 
-      $contributions = _osa_get_contributions($person['contact_id']);
-      if (isset($contributions)) {
-        $contribute_rows = $contribute_rows + $contributions;
-      }
-//    }
+    $contributions = _osa_get_contributions($person['contact_id']);
+    if (isset($contributions)) {
+      $contribute_rows = $contribute_rows + $contributions;
+    }
   }
 
   // special processing for group classes
