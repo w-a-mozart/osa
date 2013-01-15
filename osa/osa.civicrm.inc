@@ -71,8 +71,10 @@ function osa_civicrm_pageRun_CRM_Contact_Page_View_UserDashBoard(&$page) {
   $others          = array();
   $smarty          = $page->getTemplate();
   $members         = array(); // overwrite list to display name
-  $event_rows      = $smarty->get_template_vars('event_rows');
-  $contribute_rows = $smarty->get_template_vars('contribute_rows');
+  $event_rows      = array();
+  $contribute_rows = array();
+//  $event_rows      = $smarty->get_template_vars('event_rows');
+//  $contribute_rows = $smarty->get_template_vars('contribute_rows');
 
   // get all the family members for this contact
   $family = _osa_getHouseholdMembers($cid);
@@ -109,7 +111,7 @@ function osa_civicrm_pageRun_CRM_Contact_Page_View_UserDashBoard(&$page) {
     }
 
     // append family member elements to lists in the page
-    if ($person['contact_id'] != $page->_contactId) {
+//    if ($person['contact_id'] != $page->_contactId) {
       $events = _osa_get_participant_events($person['contact_id']);
       if (isset($events)) {
         $event_rows = $event_rows + $events;
@@ -119,11 +121,20 @@ function osa_civicrm_pageRun_CRM_Contact_Page_View_UserDashBoard(&$page) {
       if (isset($contributions)) {
         $contribute_rows = $contribute_rows + $contributions;
       }
-    }
+//    }
   }
 
   // special processing for group classes
   osa_overwrite_class_participants($event_rows);
+  
+  // sort and trim $contribute_rows to a max of 20
+  foreach ($contribute_rows as $row) {
+    if ($row['total_amount'] == "0.00") {
+      unset($contribute_rows[$row['id']]);
+    }
+  }
+  $contribute_rows = array_slice($contribute_rows, 0, 20, TRUE);
+  krsort($contribute_rows);
   
   // (re)assign Smarty varibles
   $page->assign('parents', $parents);
@@ -368,7 +379,7 @@ function osa_civicrm_buildForm_CRM_Contribute_Form_Contribution_Main(&$form) {
 
     $group = $form->getElement('buttons');
     $buttons = $group->getElements();
-    $buttons[0]->setValue(ts('Confirm') . ' >>');
+    $buttons[0]->setValue(ts('Next') . ' >>');
   }
 }
 

@@ -125,6 +125,13 @@ function _osa_manageHouseholdRelationships($cid) {
     return;
   }
 
+  // this call is expensive so make sure it is only done once
+  static $managed = array();
+  if (isset($managed[$hid])) {
+    return;
+  }
+  $managed[$hid] = TRUE;
+
   // get household members and divide by type
   $family = _osa_getHouseholdMembers($hid);
   $parents = array();
@@ -264,37 +271,50 @@ function _osa_getHousehold($cid = NULL) {
     return NULL;
   }
   
+  // use static caching
+  static $household_id = array();
+  if (isset($household_id[$contact['id']])) {
+    return $household_id[$contact['id']];
+  }
+
   // find the household
-  $hid = NULL;
+  $household_id[$contact['id']] = NULL;
   if ($contact['contact_type'] == 'Household') {
-    $hid = $cid;
+    $household_id[$contact['id']] = $contact['id'];
   }
   else {
-    $result = civicrm_api('relationship', 'get', array('contact_id' => $cid, 'version' => 3));
+    $result = civicrm_api('relationship', 'get', array('contact_id' => $contact['id'], 'version' => 3));
     $relationships = $result['values'];
     foreach ($relationships as $relationship) {
       if (($relationship['relationship_type_id'] == OSA_REL_HEAD_HOUSEHOLD) ||
           ($relationship['relationship_type_id'] == OSA_REL_HOUSEHOLD_MEMBER)) {
-        $hid = $relationship['cid'];
+        $household_id[$contact['id']] = $relationship['cid'];
         break;
       }
     }
   }
   
-  return $hid;
+  return $household_id[$contact['id']];
 }
 
 /**
  *  Get the all contacts related to a Household Contact
  */
 function _osa_getHouseholdMembers($cid = NULL, $field = NULL) {
-  $family = array();
 
-  // default to logged in user
+  // default to the logged in user
   if (!isset($cid)) {
     $cid = _osa_get_contact_id();
   }
 
+  // use static caching
+  static $family = array();
+  $cache_key = "cid=$cid&field=$field";
+  if (isset($family[$cache_key])) {
+    return $family[$cache_key];
+  }
+  $family[$cache_key] = array();
+  
   // get the household
   $hid = _osa_getHousehold($cid);
   if (!isset($hid)) {
@@ -303,7 +323,7 @@ function _osa_getHouseholdMembers($cid = NULL, $field = NULL) {
   
   // should never happen as this should only be available to authenticated users
   if (!isset($hid)) {
-    return $family;
+    return $family[$cache_key];
   }
   
   // get all relationships for the household/contact
@@ -312,19 +332,19 @@ function _osa_getHouseholdMembers($cid = NULL, $field = NULL) {
 
   // get the contact records
   foreach ($relationships as $relationship) {
-    $contact = _osa_get_contact($relationship['cid'], FALSE);
+    $contact = _osa_get_contact($relationship['cid'], !isset($field));
     $contact_id = $contact['contact_id'];
     
     if (isset($field)) {
-      $family[$contact_id] = $contact[$field];
+      $family[$cache_key][$contact_id] = $contact[$field];
     }
     else {
 
       // it's possible to have more than one relationship with the household
       // e.g. sometimes civi creates a household member for the head of the household
       // we want to perserve head of houshold relationships
-      if (isset($family[$contact_id])) {
-        if ($family[$contact_id]['relationship']['relationship_type_id'] == OSA_REL_HEAD_HOUSEHOLD) {
+      if (isset($family[$cache_key][$contact_id])) {
+        if ($family[$cache_key][$contact_id]['relationship']['relationship_type_id'] == OSA_REL_HEAD_HOUSEHOLD) {
           continue;
         }
       }
@@ -337,28 +357,35 @@ function _osa_getHouseholdMembers($cid = NULL, $field = NULL) {
         'relationship' => $relationship,
         'links'        => _osa_related_links($contact_type, $contact_id, $relationship['id'])
       );
-      $family[$contact_id] = $person;
+      $family[$cache_key][$contact_id] = $person;
     }
   }
 
   // if there are no other family members, and we just want a list, at least return the given id.
-  if (empty($family) && isset($field)) {
+  if (empty($family[$cache_key]) && isset($field)) {
     $contact = _osa_get_contact($cid, FALSE);
-    $family[$cid] = $contact[$field];
+    $family[$cache_key][$cid] = $contact[$field];
   }
 
-  return $family;
+  return $family[$cache_key];
 }
 
 /**
  *  Get the teachers related to a student
  */
 function _osa_getTeachers(&$student) {
-  $teachers = array();
+
+  // use static caching
+  static $teachers = array();
+  $cache_key = $student['id'];
+  if (isset($teachers[$cache_key])) {
+    return $teachers[$cache_key];
+  }
+  $teachers[$cache_key] = array();
 
   $contact_type = isset($student['contact_sub_type']) ? $student['contact_sub_type'][0] : $student['contact_type'];
   if ($contact_type != 'Student') {
-    return $teachers;
+    return $teachers[$cache_key];
   }
   // get relationships for the student
   $result = civicrm_api('relationship', 'get', array('contact_id' => $student['id'], 'version' => 3));
@@ -367,22 +394,22 @@ function _osa_getTeachers(&$student) {
   // find the teacher relationships
   foreach ($relationships as $relationship) {
     if ($relationship['relationship_type_id'] == OSA_REL_TEACHER) {
-      $teachers[$relationship['id']] = $relationship;
-      $teachers[$relationship['id']]['student'] = $student;
+      $teachers[$cache_key][$relationship['id']] = $relationship;
+      $teachers[$cache_key][$relationship['id']]['student'] = $student;
 
       $today = new DateTimeEx('today');
       $end_date = new DateTimeEx($relationship['end_date']);
       
       if ($end_date < $today) {
-        $teachers[$relationship['id']]['status'] = ts('Expired');
+        $teachers[$cache_key][$relationship['id']]['status'] = ts('Expired');
       }
       else {
-        $teachers[$relationship['id']]['status'] = ($relationship['is_active']) ? ts('Active') : ts('Inactive');
+        $teachers[$cache_key][$relationship['id']]['status'] = ($relationship['is_active']) ? ts('Active') : ts('Inactive');
       }
     }
   }
 
-  return $teachers;
+  return $teachers[$cache_key];
 }
 
 /**
@@ -618,14 +645,20 @@ function _osa_getUserId() {
  * Wrapper function to return current logged in user's contact id
  */
 function _osa_get_contact_id() {
-  $params = array(
-    'uf_id' => _osa_getUserId(),
-    'sequential' => 1,
-    'version' => 3,
-  );
 
-  $result = civicrm_api('UFMatch', 'get', $params);
-  return $result['values'][0]['contact_id'];
+  if (_osa_getUserId() == 0) {
+    return 0;
+  }
+
+  // use static caching
+  static $cid = NULL;
+  if (isset($cid)) {
+    return $cid;
+  }
+  
+  $result = civicrm_api('UFMatch', 'get', array('uf_id' => _osa_getUserId(), 'sequential' => 1, 'version' => 3));
+  $cid = isset($result['values'][0]['contact_id']) ? $result['values'][0]['contact_id'] : 0;
+  return $cid;
 }
 
 /**
@@ -637,10 +670,19 @@ function _osa_get_contact($cid = NULL, $custom = TRUE) {
     $cid = _osa_get_contact_id();
   }
 
+  // use static caching
+  static $contact = array();
+  $cache_key = "cid=$cid&custom=$custom";
+  if (isset($contact[$cache_key])) {
+    return $contact[$cache_key];
+  } elseif (!$custom && isset($contact["cid=$cid&custom=1"])) {
+    return $contact["cid=$cid&custom=1"];
+  }
+
   // get the contact record
   $result = civicrm_api('contact', 'get',  array('id' => $cid, 'version' => 3));
   if (($result['is_error'] == 0) && ($result['count'] == 1)) {
-    $contact = $result['values'][$cid];
+    $contact[$cache_key] = $result['values'][$cid];
   }
   else {
     return NULL;
@@ -661,19 +703,19 @@ function _osa_get_contact($cid = NULL, $custom = TRUE) {
         $ignore = array('entity_id' => 0, 'latest' => 0, 'id' => 0);
         $values = array_diff_key($fattribs, $ignore);
         if (isset($values[0])) {
-          $contact[$fname] = $values[0];
+          $contact[$cache_key][$fname] = $values[0];
         }
         else {
-          $contact[$fname] = array();
+          $contact[$cache_key][$fname] = array();
           foreach ($values as $vid => $value) {
-            $contact[$fname][$vid] = $value;
+            $contact[$cache_key][$fname][$vid] = $value;
           }
         }
       }
     }
   }
 
-  return $contact;
+  return $contact[$cache_key];
 }
 
 /**
@@ -771,6 +813,7 @@ function _osa_get_membership($contact_id, $membership_type_id = OSA_MEMBER_STUDE
  *   contact who's contributions to get
  */
 function _osa_get_contributions($contact_id) {
+/*
   // build the  parameters
   $params = array(
     'contact_id' => $contact_id,
@@ -786,6 +829,34 @@ function _osa_get_contributions($contact_id) {
   }
 
   return $result['values'];
+*/
+
+  $contact = _osa_get_contact($contact_id, FALSE);
+  
+  $query = <<<EOD
+SELECT civicrm_contribution.id AS contribution_id, civicrm_contribution_type.name AS contribution_type, "{$contact['sort_name']}" AS sort_name, civicrm_contribution.total_amount AS total_amount, civicrm_contribution.contribution_recur_id AS contribution_recur_id, civicrm_contribution.receive_date AS receive_date, civicrm_option_value.name AS contribution_status
+FROM civicrm_contribution
+JOIN civicrm_contribution_type ON civicrm_contribution.contribution_type_id = civicrm_contribution_type.id
+JOIN civicrm_option_value ON civicrm_contribution.contribution_status_id = civicrm_option_value.value AND civicrm_option_value.option_group_id = 11
+WHERE contact_id = $contact_id
+EOD;
+
+  $contributions = array();
+  $dao = CRM_Core_DAO::executeQuery($query);
+  while ($dao->fetch()) {
+      $contribution['contribution_id'] = $dao->contribution_id;
+      $contribution['contribution_type'] = $dao->contribution_type;
+      $contribution['sort_name'] = $dao->sort_name;
+      $contribution['total_amount'] = $dao->total_amount;
+      $contribution['contribution_recur_id'] = $dao->contribution_recur_id;
+      $contribution['receive_date'] = $dao->receive_date;
+      $contribution['contribution_status'] = $dao->contribution_status;
+      
+      $contributions[$dao->contribution_id] = $contribution;
+  }
+  $dao->free();
+
+  return $contributions;
 }
 
 /**
@@ -901,6 +972,7 @@ function _osa_get_next_date(&$series, &$start_date, &$end_date) {
     }
   }
 }
+
 /*
  * Called to create the email with eTicket attachments
  */

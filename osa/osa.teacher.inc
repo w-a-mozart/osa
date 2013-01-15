@@ -22,6 +22,22 @@ function osa_civicrm_buildForm_teacher_registration(&$form) {
   
   // @TODO not sure why this is needed, but form validation fails wothout it
   $form->addElement('hidden', 'amount_other', '0.01');
+
+  $config = CRM_Core_Config::singleton();
+  $teacher_pay_override = variable_get('osa_teacher_pay_override');
+  $overrides = empty($teacher_pay_override) ? array() : explode(PHP_EOL, $teacher_pay_override);
+  foreach ($overrides as $override) {
+    list( $contact_id, $override_price ) = explode('|', $override);
+    dvm( $override, 'override');
+    dvm( $contact_id, 'contact_id');
+    dvm( $override_price, 'override_price');
+    if ($contact_id == $form->_params['contact_id']) {
+      $ann_price = $override_price;
+      dvm( $form->_params['contact_id'], 'form contact_id');      
+      dvm( $ann_price, 'ann_price');
+      break;
+    }
+  }
 }
 
 /**

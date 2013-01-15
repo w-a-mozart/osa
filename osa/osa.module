@@ -181,3 +181,14 @@ function osa_mail($key, &$message, $params) {
     call_user_func_array("osa_mail_$key", array(&$message, &$params));
   }
 }
+
+/**
+ * Modify the user registration form
+ */
+function osa_form_alter_user_register_form(&$form, &$form_state) {
+
+  $form['account']['name']['#title'] = t('Choose a username');
+  $form['account']['name']['#description'] = t('Enter a username that is easy for you to remember. Spaces are allowed; punctuation is not allowed except for periods, hyphens, apostrophes, and underscores.');
+
+  $form['account']['mail']['#description'] = t('Enter a valid e-mail address. New users are required to validate their e-mail address prior to logging into the site. After submitting this form, please check your inbox (or junk folder) for an e-mail from The Oakville Suzuki Association containing a link to validate your e-mail address and enter a new password.');
+}
