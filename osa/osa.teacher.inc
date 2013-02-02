@@ -141,10 +141,9 @@ function osa_civicrm_alterPaymentProcessorParams_teacher_registration($paymentOb
     $total_installments = $num_installments = variable_get('osa_num_installments', 10);
     $start_date = _osa_next_payment_date(variable_get('osa_start_date', 'first day of September'), $num_installments);
 
-    // determine the amount
-    $pro_rate = variable_get('osa_prorate_teacher_pay', TRUE);
-    $ann_price = $rawParams['amount'];
-    $unit_price = ($pro_rate) ? round($ann_price / $total_installments, 2) : round($ann_price / $num_installments, 2);
+    // amount is already prorated (if required)
+    $total_price = $rawParams['amount'];
+    $unit_price = round($total_price / $num_installments, 2);
     $cookedParams['ssl_amount'] = $unit_price;
 
     // set the Elavon installment parameters
