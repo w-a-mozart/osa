@@ -19,7 +19,7 @@ if (module_exists("colorbox")) {
   
 	drupal_add_js("function youtubeFeedCallback(json){
     document.write('<a href=\"https://www.youtube.com/embed/' + json[\"data\"][\"id\"] + '?autoplay=1\" title=\"' + json[\"data\"][\"title\"] + '\" rel=\"cb_youtube[]\" target=\"_blank\" class=\"cboxElement\">');
-    document.write('<img class=\"himuesgallery_picture_image\" src=\"' + json[\"data\"][\"thumbnail\"][\"hqDefault\"] + '\"></a>');
+    document.write('<img class=\"himuesgallery_picture_image\" src=\"' + json[\"data\"][\"thumbnail\"][\"hqDefault\"].replace(/^http:/,\"https:\") + '\"></a>');
     document.write('<div class=\"himuesgallery_picture_description\">' + json[\"data\"][\"title\"] + '</div>');
   }", 'inline');
 
