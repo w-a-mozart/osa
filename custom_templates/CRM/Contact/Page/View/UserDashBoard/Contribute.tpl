@@ -28,7 +28,7 @@
         <tr id='rowid{$row.contribution_id}' class="{cycle values="odd-row,even-row"}{if $row.cancel_date} disabled{/if}">
           <td class="bold">{$row.contribution_type}</td>
           <td>{$row.sort_name}</td>
-          <td>{$row.total_amount|crmMoney:$row.currency} {if $row.amount_level } - {$row.amount_level} {/if}
+          <td style="text-align: right; padding-right: 1em;">{$row.total_amount|crmMoney:$row.currency}
     {if $row.contribution_recur_id}
             <br /> {ts}(Recurring Contribution){/ts}
     {/if}

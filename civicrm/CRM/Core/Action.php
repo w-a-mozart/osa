@@ -1,9 +1,9 @@
 <?php
 /*
  +--------------------------------------------------------------------+
- | CiviCRM version 4.1                                                |
+ | CiviCRM version 4.2                                                |
  +--------------------------------------------------------------------+
- | Copyright CiviCRM LLC (c) 2004-2011                                |
+ | Copyright CiviCRM LLC (c) 2004-2012                                |
  +--------------------------------------------------------------------+
  | This file is a part of CiviCRM.                                    |
  |                                                                    |
@@ -31,12 +31,10 @@
  * and similar across all objects (thus providing both reuse and standards)
  *
  * @package CRM
- * @copyright CiviCRM LLC (c) 2004-2011
+ * @copyright CiviCRM LLC (c) 2004-2012
  * $Id$
  *
  */
-
-require_once 'CRM/Utils/Array.php';
 class CRM_Core_Action {
 
   /**
@@ -47,7 +45,27 @@ class CRM_Core_Action {
    *
    * @access public
    */
-  CONST NONE = 0, ADD = 1, UPDATE = 2, VIEW = 4, DELETE = 8, BROWSE = 16, ENABLE = 32, DISABLE = 64, EXPORT = 128, BASIC = 256, ADVANCED = 512, PREVIEW = 1024, FOLLOWUP = 2048, MAP = 4096, PROFILE = 8192, COPY = 16384, RENEW = 32768, DETACH = 65536, REVERT = 131072, MAX_ACTION = 262143;
+  CONST
+    NONE = 0,
+    ADD = 1,
+    UPDATE = 2,
+    VIEW = 4,
+    DELETE = 8,
+    BROWSE = 16,
+    ENABLE = 32,
+    DISABLE = 64,
+    EXPORT = 128,
+    BASIC = 256,
+    ADVANCED = 512,
+    PREVIEW = 1024,
+    FOLLOWUP = 2048,
+    MAP = 4096,
+    PROFILE = 8192,
+    COPY = 16384,
+    RENEW = 32768,
+    DETACH = 65536,
+    REVERT = 131072,
+    MAX_ACTION = 262143;
 
   //make sure MAX_ACTION = 2^n - 1 ( n = total number of actions )
 
@@ -99,8 +117,7 @@ class CRM_Core_Action {
    * @static
    *
    */
-  static
-  function resolve($str) {
+  static function resolve($str) {
     $action = 0;
     if ($str) {
       $items = explode('|', $str);
@@ -202,7 +219,6 @@ class CRM_Core_Action {
 
 
     if ($op && $objectName && $objectId) {
-      require_once 'CRM/Utils/Hook.php';
       CRM_Utils_Hook::links($op, $objectName, $objectId, $links, $mask);
     }
 
@@ -211,7 +227,7 @@ class CRM_Core_Action {
     $firstLink = TRUE;
     foreach ($links as $m => $link) {
       if (!$mask || ($mask & $m)) {
-        $extra = isset($link['extra']) ? self::replace(CRM_Utils_Array::value('extra', $link, ''), $values) : NULL;
+        $extra = isset($link['extra']) ? self::replace($link['extra'], $values) : NULL;
 
         $frontend = (isset($link['fe'])) ? TRUE : FALSE;
 
@@ -249,9 +265,9 @@ class CRM_Core_Action {
 
         if ($urlPath) {
           if ($frontend) {
-            $extra .= " target=_blank";
+            $extra .= "target=_blank";
           }
-          $url[] = sprintf('<a href="%s" %s title="%s" ' . $extra . '>%s</a>',
+          $url[] = sprintf('<a href="%s" %s title="%s"' . $extra . '>%s</a>',
             $urlPath,
             $linkClasses,
             CRM_Utils_Array::value('title', $link),
@@ -268,14 +284,13 @@ class CRM_Core_Action {
       }
     }
 
-    require_once 'CRM/Utils/String.php';
 
     $result = '';
     $mainLinks = $url;
     if ($enclosedAllInSingleUL) {
       $allLinks = '';
       CRM_Utils_String::append($allLinks, '</li><li>', $mainLinks);
-      $allLinks = "$extraULName <ul class='panel'><li>{$allLinks}</li></ul>";
+      $allLinks = "{$extraULName}<ul class='panel'><li>{$allLinks}</li></ul>";
       $result = "<span class='btn-slide'>{$allLinks}</span>";
     }
     else {
@@ -284,7 +299,7 @@ class CRM_Core_Action {
       if (count($extraLinks) > 1) {
         $mainLinks = array_slice($url, 0, 4);
         CRM_Utils_String::append($extra, '</li><li>', $extraLinks);
-        $extra = "$extraULName <ul class='panel'><li>{$extra}</li></ul>";
+        $extra = "{$extraULName}<ul class='panel'><li>{$extra}</li></ul>";
       }
       $resultLinks = '';
       CRM_Utils_String::append($resultLinks, '', $mainLinks);

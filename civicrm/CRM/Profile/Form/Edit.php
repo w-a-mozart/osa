@@ -1,9 +1,9 @@
 <?php
 /*
  +--------------------------------------------------------------------+
- | CiviCRM version 4.1                                                |
+ | CiviCRM version 4.2                                                |
  +--------------------------------------------------------------------+
- | Copyright CiviCRM LLC (c) 2004-2011                                |
+ | Copyright CiviCRM LLC (c) 2004-2012                                |
  +--------------------------------------------------------------------+
  | This file is a part of CiviCRM.                                    |
  |                                                                    |
@@ -28,12 +28,10 @@
 /**
  *
  * @package CRM
- * @copyright CiviCRM LLC (c) 2004-2011
+ * @copyright CiviCRM LLC (c) 2004-2012
  * $Id$
  *
  */
-
-require_once 'CRM/Profile/Form.php';
 
 /**
  * This class generates form components for custom data
@@ -49,6 +47,7 @@ class CRM_Profile_Form_Edit extends CRM_Profile_Form {
   protected $_errorURL = NULL;
   protected $_context;
   protected $_blockNo;
+  protected $_prefix;
 
   /**
    * pre processing work done here.
@@ -59,7 +58,8 @@ class CRM_Profile_Form_Edit extends CRM_Profile_Form {
    *
    * @access public
    *
-   */ function preProcess() {
+   */ 
+  function preProcess() {
     $this->_mode = CRM_Profile_Form::MODE_CREATE;
 
     //set the context for the profile
@@ -68,11 +68,16 @@ class CRM_Profile_Form_Edit extends CRM_Profile_Form {
     //set the block no
     $this->_blockNo = CRM_Utils_Request::retrieve('blockNo', 'String', $this);
 
+    //set the prefix
+    $this->_prefix = CRM_Utils_Request::retrieve('prefix', 'String', $this);
+
     $this->assign('context', $this->_context);
 
     if ($this->_blockNo) {
       $this->assign('blockNo', $this->_blockNo);
+      $this->assign('prefix', $this->_prefix);
     }
+
     $this->assign('createCallback', CRM_Utils_Request::retrieve('createCallback', 'String', $this));
 
     if ($this->get('skipPermission')) {
@@ -88,10 +93,8 @@ class CRM_Profile_Form_Edit extends CRM_Profile_Form {
       $userID  = $session->get('userID');
       $id      = CRM_Utils_Request::retrieve('id', 'Positive', $this, FALSE, $userID);
 
-      require_once 'CRM/Contact/BAO/Contact/Utils.php';
       if ($id != $userID) {
         // do not allow edit for anon users in joomla frontend, CRM-4668, unless u have checksum CRM-5228
-        require_once 'CRM/Contact/BAO/Contact/Permission.php';
         $config = CRM_Core_Config::singleton();
         if ($config->userFrameworkFrontend) {
           CRM_Contact_BAO_Contact_Permission::validateOnlyChecksum($id, $this);
@@ -142,8 +145,6 @@ SELECT module
    */
   public function buildQuickForm() {
     // add the hidden field to redirect the postProcess from
-    require_once 'CRM/UF/Form/Group.php';
-    require_once 'CRM/Core/DAO/UFGroup.php';
     $ufGroup = new CRM_Core_DAO_UFGroup();
 
     $ufGroup->id = $this->_gid;
@@ -303,12 +304,10 @@ SELECT module
       $contact = civicrm_api('contact', 'get', $contactParams);
       $contact = reset($contact['values']);
 
-      require_once 'CRM/Mailing/BAO/Mailing.php';
       $dummyMail = new CRM_Mailing_BAO_Mailing();
       $dummyMail->body_text = $this->_postURL;
       $tokens = $dummyMail->getTokens();
 
-      require_once 'CRM/Utils/Token.php';
       $url = CRM_Utils_Token::replaceContactTokens($this->_postURL, $contact, FALSE, CRM_Utils_Array::value('text', $tokens));
     }
 
@@ -340,7 +339,6 @@ SELECT module
         $message .= '<p>';
       }
 
-      require_once 'CRM/Utils/System.php';
       CRM_Utils_System::setUFMessage($message);
 
       $message = urlencode($message);

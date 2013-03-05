@@ -73,8 +73,8 @@ function osa_civicrm_pageRun_CRM_Contact_Page_View_UserDashBoard(&$page) {
   $members         = array(); // overwrite list to display name
   $event_rows      = array();
   $contribute_rows = array();
-  $event_rows      = array();
-  $contribute_rows = array();
+//  $event_rows      = $smarty->get_template_vars('event_rows');
+//  $contribute_rows = $smarty->get_template_vars('contribute_rows');
 
   // get all the family members for this contact
   $family = _osa_getHouseholdMembers($cid);
@@ -111,15 +111,17 @@ function osa_civicrm_pageRun_CRM_Contact_Page_View_UserDashBoard(&$page) {
     }
 
     // append family member elements to lists in the page
-    $events = _osa_get_participant_events($person['contact_id']);
-    if (isset($events)) {
-      $event_rows = $event_rows + $events;
-    }
+//    if ($person['contact_id'] != $page->_contactId) {
+      $events = _osa_get_participant_events($person['contact_id']);
+      if (isset($events)) {
+        $event_rows = $event_rows + $events;
+      }
 
-    $contributions = _osa_get_contributions($person['contact_id']);
-    if (isset($contributions)) {
-      $contribute_rows = $contribute_rows + $contributions;
-    }
+      $contributions = _osa_get_contributions($person['contact_id']);
+      if (isset($contributions)) {
+        $contribute_rows = $contribute_rows + $contributions;
+      }
+//    }
   }
 
   // special processing for group classes
@@ -262,6 +264,12 @@ function osa_civicrm_buildForm_CRM_Profile_Form_Edit(&$form) {
     $smarty->display('CRM/common/jquery.tpl');
     $smarty->display('CRM/common/commonCSS.tpl');
     $smarty->display('osa/boxload.tpl');
+    
+    // makesure colorbox forms return to the current page
+    $form->removeElement('postURL');
+    $form->removeElement('cancelURL');
+    $form->addElement('hidden', 'postURL', $_SERVER['HTTP_REFERER']);
+    $form->addElement('hidden', 'cancelURL', $_SERVER['HTTP_REFERER']);
   }
 }
 
@@ -338,11 +346,19 @@ function osa_civicrm_postProcess_CRM_Profile_Form_Edit(&$form) {
  */
 function osa_civicrm_buildForm_CRM_Contribute_Form_Contribution_Main(&$form) {
 
+  // starting with version 4.2 this function gets called once to build the form, and once to build the payments section
+  // nothing to do if building the payments section
+  if (isset($_GET['snippet']) && ($_GET['snippet'] == 4)) {
+    return;
+  }
+
   // all of our contributions are from authenticated users,
   // so remove the email for anonymous users
   $bltID = $form->_bltID;
   $form->removeElement("email-$bltID");
   
+  $form->setDefaults(array('payment_processor' => $form->_paymentProcessor['id'] ));
+
   // check if this is the membership form (we only use one for memberships)
   if ($form->_id == OSA_CONTRIB_MEMBER) {
     return;
@@ -359,6 +375,7 @@ function osa_civicrm_buildForm_CRM_Contribute_Form_Contribution_Main(&$form) {
 
   // if using the direct payment, remove the unused fields
   if ($form->_paymentProcessor['payment_processor_type'] != 'drupalcommerce') {
+/*
     $remove_fields = array(
       'billing_first_name',
       'billing_middle_name',
@@ -374,7 +391,7 @@ function osa_civicrm_buildForm_CRM_Contribute_Form_Contribution_Main(&$form) {
       unset($form->_fields[$field]);
       $form->removeElement($field);
     }
-
+*/
     $group = $form->getElement('buttons');
     $buttons = $group->getElements();
     $buttons[0]->setValue(ts('Next') . ' >>');
@@ -561,10 +578,12 @@ function osa_civicrm_pageRun_CRM_Event_Page_EventInfo(&$page) {
  */
 function osa_civicrm_buildForm_CRM_Event_Form_Registration_Register(&$form) {
 
-  // remove the email field to identify participant
-  $bltID = $form->_bltID;
-  $form->removeElement("email-$bltID");
-
+  // starting with version 4.2 this function gets called once to build the form, and once to build the payments section
+  // nothing to do if building the payments section
+  if (isset($_GET['snippet']) && ($_GET['snippet'] == 4)) {
+    return;
+  }
+  
   // get the details of the event
   $result = civicrm_api("event", "get", array('id' => $form->_eventId, 'version' => 3));
 
@@ -589,6 +608,9 @@ function osa_civicrm_buildForm_CRM_Event_Form_Registration_Register(&$form) {
       $members_only = $result['values'][$form->_eventId][_osa_field('members_only')];
       _osa_addFamilyField($form, $members_only);
     }
+    
+    // add an email field, in order to pass profile vaildation
+    _osa_addField($form, 'hidden', 'email-validate', 'TRUE');
     
     // remove the profiles related to contacts
     $smarty = $form->getTemplate();
@@ -628,6 +650,7 @@ function osa_civicrm_buildForm_CRM_Event_Form_Registration_Register(&$form) {
   }
   else {
     // if using the direct payment, remove the unused fields
+    $bltID = $form->_bltID;
     $remove_fields = array(
       'billing_first_name',
       'billing_middle_name',
@@ -639,12 +662,14 @@ function osa_civicrm_buildForm_CRM_Event_Form_Registration_Register(&$form) {
       "billing_country_id-$bltID",
       'cvv2',
     );
+    /*
     foreach ($remove_fields as $field) {
       unset($form->_fields[$field]);
       $form->removeElement($field);
     }
+    */
   }
-  
+
   // special processing for group classes
   if ($form->_values['event']['event_type_id'] == OSA_EVENT_GROUP_CLASS_MASTER) {
     osa_civicrm_buildForm_group_class_registration($form);
@@ -904,24 +929,4 @@ function osa_civicrm_buildForm_CRM_Contact_Form_Task_EmailCommon(&$form) {
 
   $form->assign('toContact', json_encode($toArray));
   $form->assign('suppressedEmails', $suppressedEmails);
-}
-
-
-/**
- * Implements hook_civicrm_alterPaymentProcessorParams to customize payment processing
- *
- */
-function osa_civicrm_alterPaymentProcessorParams($paymentObj, &$rawParams, &$cookedParams) {
-
-  if ($paymentObj->_processorName == 'Elavon') {
-    $contact = _osa_get_contact(NULL, FALSE);
-    $cookedParams['osa_name_card'] = $contact['display_name'];
-    $cookedParams['osa_card_type'] = $rawParams['credit_card_type'];
-    unset($cookedParams['ssl_customer_number']);
-  }
-  
-  // customize private lesson payments
-  if ($rawParams['contributionPageID'] == OSA_CONTRIB_TEACHER) {
-    osa_civicrm_alterPaymentProcessorParams_teacher_registration($paymentObj, $rawParams, $cookedParams);
-  }
 }

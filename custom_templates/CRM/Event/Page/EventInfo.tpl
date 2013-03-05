@@ -1,13 +1,26 @@
 {*
  +--------------------------------------------------------------------+
- | Custom OSA Event Info Page                                         |
+ | CiviCRM version 4.2                                                |
  +--------------------------------------------------------------------+
- | Override Standard CiviCRM Template EventInfo.tpl                   |
- | - add message to login to register                                 |
- | - add support for snippets                                         |
- +--------------------------------------------------------------------+
- | Copyright Oakville Suzuki Association 2012                         |
  | Copyright CiviCRM LLC (c) 2004-2012                                |
+ +--------------------------------------------------------------------+
+ | This file is a part of CiviCRM.                                    |
+ |                                                                    |
+ | CiviCRM is free software; you can copy, modify, and distribute it  |
+ | under the terms of the GNU Affero General Public License           |
+ | Version 3, 19 November 2007 and the CiviCRM Licensing Exception.   |
+ |                                                                    |
+ | CiviCRM is distributed in the hope that it will be useful, but     |
+ | WITHOUT ANY WARRANTY; without even the implied warranty of         |
+ | MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.               |
+ | See the GNU Affero General Public License for more details.        |
+ |                                                                    |
+ | You should have received a copy of the GNU Affero General Public   |
+ | License and the CiviCRM Licensing Exception along                  |
+ | with this program; if not, contact CiviCRM LLC                     |
+ | at info[AT]civicrm[DOT]org. If you have questions about the        |
+ | GNU Affero General Public License or the licensing of CiviCRM,     |
+ | see the CiviCRM license FAQ at http://civicrm.org/licensing        |
  +--------------------------------------------------------------------+
 *}
 {* this template is used for displaying event information *}
@@ -78,13 +91,14 @@
 	    <div class="crm-section event_description-section summary" {if $smarty.get.snippet eq 2}style="width:700px"{/if}>
           {* Put the top register link to the right of description if no summary *}
         	{if $allowRegistration && $smarty.get.snippet neq 2}
-                <div class="action-link section register_link-section register_link-top">
-                    <a href="{$registerURL}" title="{$registerText}" class="button crm-register-button"><span>{$registerText}</span></a>
-                </div>
-            {/if}
+              <div class="action-link section register_link-section register_link-top">
+                <a href="{$registerURL}" title="{$registerText}" class="button crm-register-button"><span>{$registerText}</span></a>
+              </div>
+          {/if}
 	        {$event.description}
 	    </div>
 	{/if}
+  <div class="clear"></div>
 	<div class="crm-section event_date_time-section">
 	    <div class="label"><label>{ts}When{/ts}</label></div>
 	    <div class="content">
@@ -154,7 +168,7 @@
 	        <div class="clear"></div>
 	    </div>
 	{/if}
-
+	
 	{if $event.is_monetary eq 1 && $feeBlock.value}
 	    <div class="crm-section event_fees-section">
 	        <div class="label"><label>{$event.fee_label}</label></div>
@@ -162,30 +176,34 @@
 	            <table class="form-layout-compressed fee_block-table">
 	                {foreach from=$feeBlock.value name=fees item=value}
 	                    {assign var=idx value=$smarty.foreach.fees.iteration}
+	                    {* Skip price field label for quick_config price sets since it duplicates $event.fee_label *}
 	                    {if $feeBlock.lClass.$idx}
 	                        {assign var="lClass" value=$feeBlock.lClass.$idx}
 	                    {else}
 	                        {assign var="lClass" value="fee_level-label"}
 	                    {/if}
+	                    {if $isQuickConfig && $lClass EQ "price_set_option_group-label"}
+	                      {* Skip price field label for quick_config price sets since it duplicates $event.fee_label *}
+	                    {else}
 	                    <tr>
 	                        <td class="{$lClass} crm-event-label">{$feeBlock.label.$idx}</td>
-                          {if !$isPriceSet || ($isPriceSet & $feeBlock.isDisplayAmount.$idx)}
+                          {if $isPriceSet & $feeBlock.isDisplayAmount.$idx}
 	                        <td class="fee_amount-value right">{$feeBlock.value.$idx|crmMoney}</td>
                           {/if}
 	                    </tr>
+	                    {/if}
 	                {/foreach}
 	            </table>
 	        </div>
 	        <div class="clear"></div>
 	    </div>
-	{/if}
-
+  {/if}
 
   {* Override how custom data is displayed. *}
   {include file="CRM/Event/Page/CustomEventDataView.tpl"}
         
   {* Add message telling user they must login to register. *}
-	{if ($event.is_online_registration) && (!$session || $session->get('userID') <= 0) && (!$open_to_public)}
+  {if ($event.is_online_registration) && (!$session || $session->get('userID') <= 0) && (!$open_to_public)}
       <br/>
        <div class="messages help cms_user_help-section">
          {assign var=loginURL value="`$config->userFrameworkBaseURL`user"}

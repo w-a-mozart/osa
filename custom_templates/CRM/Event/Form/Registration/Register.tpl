@@ -1,14 +1,43 @@
 {*
  +--------------------------------------------------------------------+
- | Custom OSA Event Registration Form                                 |
+ | CiviCRM version 4.2                                                |
  +--------------------------------------------------------------------+
- | Override Standard CiviCRM Template Register.tpl                    |
- | - add selection box to register on behalf of family members.       |
+ | Copyright CiviCRM LLC (c) 2004-2012                                |
  +--------------------------------------------------------------------+
- | Copyright Oakville Suzuki Association 2012                         |
- | Copyright CiviCRM LLC (c) 2004-2011                                |
+ | This file is a part of CiviCRM.                                    |
+ |                                                                    |
+ | CiviCRM is free software; you can copy, modify, and distribute it  |
+ | under the terms of the GNU Affero General Public License           |
+ | Version 3, 19 November 2007 and the CiviCRM Licensing Exception.   |
+ |                                                                    |
+ | CiviCRM is distributed in the hope that it will be useful, but     |
+ | WITHOUT ANY WARRANTY; without even the implied warranty of         |
+ | MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.               |
+ | See the GNU Affero General Public License for more details.        |
+ |                                                                    |
+ | You should have received a copy of the GNU Affero General Public   |
+ | License and the CiviCRM Licensing Exception along                  |
+ | with this program; if not, contact CiviCRM LLC                     |
+ | at info[AT]civicrm[DOT]org. If you have questions about the        |
+ | GNU Affero General Public License or the licensing of CiviCRM,     |
+ | see the CiviCRM license FAQ at http://civicrm.org/licensing        |
  +--------------------------------------------------------------------+
 *}
+{if $ppType}
+  {include file="CRM/Core/BillingBlock.tpl"}
+
+<div id="paypalExpress">
+{* Put PayPal Express button after customPost block since it's the submit button in this case. *}
+{if $paymentProcessor.payment_processor_type EQ 'PayPal_Express'}
+    {assign var=expressButtonName value='_qf_Register_upload_express'}
+    <fieldset class="crm-group payPalExpress-group"><legend>{ts}Checkout with PayPal{/ts}</legend>
+    <div class="description">{ts}Click the PayPal button to continue.{/ts}</div>
+	<div>{$form.$expressButtonName.html} <span style="font-size:11px; font-family: Arial, Verdana;">Checkout securely.  Pay without sharing your financial information. </span>
+    </div>
+    </fieldset>
+{/if}
+</div>
+{else}
 {if $action & 1024}
     {include file="CRM/Event/Form/Registration/PreviewHeader.tpl"}
 {/if}
@@ -72,38 +101,19 @@
 {/if}
 
 {if $priceSet}
-    <fieldset id="priceset" class="crm-group priceset-group"><legend>{$event.fee_label}</legend>
-        {include file="CRM/Price/Form/PriceSet.tpl" extends="Event"}
-	{include file="CRM/Price/Form/ParticipantCount.tpl"}
-    </fieldset>
+    {if ! $quickConfig}<fieldset id="priceset" class="crm-group priceset-group"><legend>{$event.fee_label}</legend>{/if}
+      {include file="CRM/Price/Form/PriceSet.tpl" extends="Event"}
+			{include file="CRM/Price/Form/ParticipantCount.tpl"}
+      {if $paymentProcessor.payment_processor_type eq 'drupalcommerce'} 
+          <div class="discount-info">Applicable discounts will be applied in the shopping cart.</div>
+      {/if}
+    {if ! $quickConfig}</fieldset>{/if}
     {if $form.is_pay_later}
         <div class="crm-section pay_later-section">
 	        <div class="label">&nbsp;</div>
             <div class="content">{$form.is_pay_later.html}&nbsp;{$form.is_pay_later.label}</div>
-      {if $paymentProcessor.payment_processor_type eq 'drupalcommerce'} 
-          <div class="discount-info">Applicable discounts will be applied in the shopping cart.</div>
-      {/if}
-          <div class="clear"></div>
-        </div>
-    {/if}
-
-{else}
-    {if $paidEvent}
-        <div class="crm-section paid_event-section">
-    	    <div class="label">{$event.fee_label} <span class="marker">*</span></div>
-    		<div class="content">{$form.amount.html}</div>
-      {if $paymentProcessor.payment_processor_type eq 'drupalcommerce'}
-  			<div class="discount-info">Applicable discounts will be applied in the shopping cart.</div>
-      {/if}
             <div class="clear"></div>
-     	</div>
-        {if $form.is_pay_later}
-            <div class="crm-section pay_later-section">
-    	        <div class="label">&nbsp;</div>
-                <div class="content">{$form.is_pay_later.html}&nbsp;{$form.is_pay_later.label}</div>
-                <div class="clear"></div>
-            </div>
-        {/if}
+        </div>
     {/if}
 {/if}
 
@@ -142,34 +152,24 @@
     </fieldset>
 {/if}
 
-{* Remove email field *}
-
 {* User account registration option. Displays if enabled for one of the profiles on this page. *}
 {include file="CRM/common/CMSUser.tpl"}
 
 {include file="CRM/UF/Form/Block.tpl" fields=$customPre} 
+ <div class="crm-section payment_processor-section">
+      <div class="label">{$form.payment_processor.label}</div>
+      <div class="content">{$form.payment_processor.html}</div>
+      <div class="clear"></div>
+ </div>
 
-{if $paidEvent and $paymentProcessor.payment_processor_type neq 'drupalcommerce'} 
-    {include file='CRM/Core/BillingBlock.tpl'} 
-{/if}        
+ <div id="billing-payment-block"></div>
+ {include file="CRM/common/paymentBlock.tpl"}
 
-{include file="CRM/UF/Form/Block.tpl" fields=$customPost}   
+ {include file="CRM/UF/Form/Block.tpl" fields=$customPost}
 
 {if $isCaptcha}
     {include file='CRM/common/ReCAPTCHA.tpl'}
 {/if}
-
-<div id="paypalExpress">
-{* Put PayPal Express button after customPost block since it's the submit button in this case. *}
-{if $paymentProcessor.payment_processor_type EQ 'PayPal_Express' and $buildExpressPayBlock}
-    {assign var=expressButtonName value='_qf_Register_upload_express'}
-    <fieldset class="crm-group payPalExpress-group"><legend>{ts}Checkout with PayPal{/ts}</legend>
-    <div class="description">{ts}Click the PayPal button to continue.{/ts}</div>
-	<div>{$form.$expressButtonName.html} <span style="font-size:11px; font-family: Arial, Verdana;">Checkout securely.  Pay without sharing your financial information. </span>
-    </div>
-    </fieldset>
-{/if}
-</div>
 
 <div id="crm-submit-buttons" class="crm-submit-buttons">
     {include file="CRM/common/formButtons.tpl" location="bottom"}
@@ -181,7 +181,35 @@
     </div>
 {/if}
 </div>
+ 
+<script type="text/javascript">
+{literal}
+function toggleConfirmButton() {
+  var payPalExpressId = {/literal}{$payPalExpressId}{literal};
+  var elementObj = cj('input[name="payment_processor"]');
+   if ( elementObj.attr('type') == 'hidden' ) {
+      var processorTypeId = elementObj.val( );
+   } else {
+      var processorTypeId = elementObj.filter(':checked').val();
+   }
 
+   if (payPalExpressId !=0 && payPalExpressId == processorTypeId) {
+      hide("crm-submit-buttons");
+   } else {	
+      show("crm-submit-buttons");
+   } 
+}
+
+cj('input[name="payment_processor"]').change( function() {
+ toggleConfirmButton();
+});
+
+cj(function() {
+  toggleConfirmButton();
+});
+{/literal} 
+</script>
+{/if}
 {literal} 
 <script type="text/javascript">
     {/literal}{if $pcp && $is_honor_roll }pcpAnonymous();{/if}{literal}
@@ -226,9 +254,9 @@
 
 	if ( ( cj("#bypass_payment").val( ) == 1 ) ||
 	     ( payLater && document.getElementsByName('is_pay_later')[0].checked ) ) {
-	     hide( 'payment_information' );		
+	     hide( 'billing-payment-block' );		
 	} else {
-             show( 'payment_information' );
+             show( 'billing-payment-block' );
 	}
     }
     

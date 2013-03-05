@@ -1,7 +1,7 @@
 <?php
 /*
  +----------------------------------------------------------------------------+
- | Elavon (Nova) Virtual Merchant Core Payment Module for CiviCRM version 4.1 |
+ | Elavon (Nova) Virtual Merchant Core Payment Module for CiviCRM version 4.2 |
  +----------------------------------------------------------------------------+
  | Licensed to CiviCRM under the Academic Free License version 3.0            |
  |                                                                            |
@@ -23,12 +23,7 @@
 
  -----------------------------------------------------------------------------------------------
  **/
-
-require_once 'CRM/Core/Payment.php';
 class CRM_Core_Payment_Elavon extends CRM_Core_Payment {
-  // (not used, implicit in the API, might need to convert?)
-  CONST
-  CHARSET = 'UFT-8';
 
   /**
    * We only need one instance of this object. So we use the singleton
@@ -45,7 +40,8 @@ class CRM_Core_Payment_Elavon extends CRM_Core_Payment {
    * @param string $mode the mode of operation: live or test
    *
    * @return void
-   **********************************************************/ function __construct($mode, &$paymentProcessor) {
+   **********************************************************/
+  function __construct($mode, &$paymentProcessor) {
     // live or test
     $this->_mode = $mode;
     $this->_paymentProcessor = $paymentProcessor;
@@ -61,8 +57,7 @@ class CRM_Core_Payment_Elavon extends CRM_Core_Payment {
    * @static
    *
    */
-  static
-  function &singleton($mode, &$paymentProcessor) {
+  static function &singleton($mode, &$paymentProcessor) {
     $processorName = $paymentProcessor['name'];
     if (self::$_singleton[$processorName] === NULL) {
       self::$_singleton[$processorName] = new CRM_Core_Payment_Elavon($mode, $paymentProcessor);
@@ -139,16 +134,14 @@ class CRM_Core_Payment_Elavon extends CRM_Core_Payment {
     }
 
     /*
-         *Create the array of variables to be sent to the processor from the $params array
-         * passed into this function
-         */
-
+     *Create the array of variables to be sent to the processor from the $params array
+     * passed into this function
+     */
     $requestFields = self::mapProcessorFieldstoParams($params);
 
     /*
-         * define variables for connecting with the gateway
-         */
-
+     * define variables for connecting with the gateway
+     */
     $requestFields['ssl_merchant_id'] = $this->_paymentProcessor['user_name'];
     $requestFields['user_id'] = $this->_paymentProcessor['password'];
     $requestFields['ssl_pin'] = $this->_paymentProcessor['signature'];
@@ -176,31 +169,51 @@ class CRM_Core_Payment_Elavon extends CRM_Core_Payment {
     /**********************************************************
      * Send to the payment processor using cURL
      **********************************************************/
-
-    $chHost = $host . '?xmldata=' . $xml;
-
     $ch = curl_init();
     if (!$ch) {
       return self::errorExit(9004, 'Could not initiate connection to payment gateway');
     }
     
-    curl_setopt($ch, CURLOPT_URL, $chHost);
+    curl_setopt($ch, CURLOPT_URL, $host);
     curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, FALSE);
-    // see - http://curl.haxx.se/docs/sslcerts.html
-    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, FALSE);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, CRM_Core_BAO_Setting::getItem(CRM_Core_BAO_Setting::SYSTEM_PREFERENCES_NAME, 'verifySSL'));
     // return the result on success, FALSE on failure
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
     curl_setopt($ch, CURLOPT_TIMEOUT, 36000);
     // set this for debugging -look for output in apache error log
-    //curl_setopt ($ch,CURLOPT_VERBOSE,1 );
+    // curl_setopt ($ch,CURLOPT_VERBOSE,1 );
     // ensures any Location headers are followed
     curl_setopt($ch, CURLOPT_FOLLOWLOCATION, 1);
+    // use HTTP POST
+		curl_setopt($ch, CURLOPT_POST, TRUE);
+    curl_setopt($ch, CURLOPT_POSTFIELDS, 'xmldata=' . $xml);
 
     /**********************************************************
      * Send the data out over the wire
      **********************************************************/
-    $responseData = curl_exec($ch);
-
+    if (variable_get('commerce_elavon_server', 0) != 2) {
+      $responseData = curl_exec($ch);
+    }
+    else {
+      // dummy response
+      $now = date('Y/m/d h:i:s A'); 
+      $id = strtoupper(hash('crc32b', $now));
+      $pci_card_number = sprintf( "%'*16s", substr($requestFields['ssl_card_number'], -4));
+      $responseData = <<<EOD
+<txn>
+<ssl_card_number>{$pci_card_number}</ssl_card_number>
+<ssl_exp_date>{$requestFields['ssl_exp_date']}</ssl_exp_date>
+<ssl_amount>{$requestFields['ssl_amount']}</ssl_amount>
+<ssl_result>0</ssl_result>
+<ssl_result_message>APPROVAL</ssl_result_message>
+<ssl_txn_id>THIS-IS-A-TEST-{$id}</ssl_txn_id>
+<ssl_approval_code>ABC123</ssl_approval_code>
+<ssl_account_balance>0</ssl_account_balance>
+<ssl_txn_time>$now</ssl_txn_time>
+</txn>
+EOD;
+    }
+    
     /**********************************************************
      * See if we had a curl error - if so tell 'em and bail out
      *
@@ -213,12 +226,13 @@ class CRM_Core_Payment_Elavon extends CRM_Core_Payment {
       curl_close($ch);
 
       // Paranoia - in the unlikley event that 'curl' errno fails
-      if ($errorNum == 0)
-      $errorNum = 9005;
-
+      if ($errorNum == 0) {
+        $errorNum = 9005;
+      }
       // Paranoia - in the unlikley event that 'curl' error fails
-      if (strlen($errorDesc) == 0)
-      $errorDesc = "Connection to payment gateway failed";
+      if (strlen($errorDesc) == 0) {
+        $errorDesc = "Connection to payment gateway failed";
+      }
       if ($errorNum = 60) {
         return self::errorExit($errorNum, "Curl error - " . $errorDesc . " Try this link for more information http://curl.haxx.se/docs/sslcerts.html");
       }
@@ -238,7 +252,7 @@ class CRM_Core_Payment_Elavon extends CRM_Core_Payment {
     }
 
     /**********************************************************
-     // If gateway returned no data - tell 'em and bail out
+     * If gateway returned no data - tell 'em and bail out
      **********************************************************/
     if (empty($responseData)) {
       curl_close($ch);
@@ -246,21 +260,20 @@ class CRM_Core_Payment_Elavon extends CRM_Core_Payment {
     }
 
     /**********************************************************
-     // Success so far - close the curl and check the data
+     * Success so far - close the curl and check the data
      **********************************************************/
     curl_close($ch);
 
     /**********************************************************
      * Payment succesfully sent to gateway - process the response now
      **********************************************************/
-
     $processorResponse = self::decodeXMLResponse($responseData);
-    /*success in test mode returns response "APPROVED"
-         * test mode always returns trxn_id = 0
-         * fix for CRM-2566
-         **********************************************************/
 
-
+    /**********************************************************
+     * success in test mode returns response "APPROVED"
+     * test mode always returns trxn_id = 0
+     * fix for CRM-2566
+     **********************************************************/
     if ($processorResponse['errorCode']) {
       return self::errorExit(9010, "Error: [" . $processorResponse['errorCode'] . " " . $processorResponse['errorName'] . " " . $processorResponse['errorMessage'] . "] - from payment processor");
     }
@@ -284,18 +297,12 @@ class CRM_Core_Payment_Elavon extends CRM_Core_Payment {
       return self::errorExit(9009, "Error: [" . $processorResponse['ssl_result_message'] . " " . $processorResponse['ssl_result'] . "] - from payment processor");
     }
     else {
-      /*
-             * Success !
-             */
-
-      if ($this->_mode == 'test') {}
-      else {
+      // Success !
+      if ($this->_mode != 'test') {
         // 'trxn_id' is varchar(255) field. returned value is length 37
         $params['trxn_id'] = $processorResponse['ssl_txn_id'];
       }
-
       $params['trxn_result_code'] = $processorResponse['ssl_approval_code'] . "-Cvv2:" . $processorResponse['ssl_cvv2_response'] . "-avs:" . $processorResponse['ssl_avs_response'];
-
       return $params;
     }
   }
@@ -309,7 +316,6 @@ class CRM_Core_Payment_Elavon extends CRM_Core_Payment {
    * @return bool                  True if ID exists, else false
    */
   function _checkDupe($invoiceId) {
-    require_once 'CRM/Contribute/DAO/Contribution.php';
     $contribution = new CRM_Contribute_DAO_Contribution();
     $contribution->invoice_id = $invoiceId;
     return $contribution->find();
@@ -326,6 +332,8 @@ class CRM_Core_Payment_Elavon extends CRM_Core_Payment {
     else {
       $e->push(9000, 0, NULL, 'Unknown System Error.');
     }
+    
+    $e->debug_log_message($errorMessage);
     return $e;
   }
 
@@ -370,7 +378,6 @@ class CRM_Core_Payment_Elavon extends CRM_Core_Payment {
   //end check config
 
   function buildXML($requestFields) {
-
     $xml = '<txn>';
     foreach ($requestFields as $key => $value) {
       if (isset($value)) {
@@ -438,9 +445,7 @@ class CRM_Core_Payment_Elavon extends CRM_Core_Payment {
     $pos2 = stripos($strXML, $ClosingNodeName);
 
     if (($pos1 === FALSE) || ($pos2 === FALSE)) {
-
       return "";
-
     }
 
     $pos1 += strlen($OpeningNodeName);
@@ -453,11 +458,9 @@ class CRM_Core_Payment_Elavon extends CRM_Core_Payment {
   }
 
   function decodeXMLresponse($Xml) {
-
     /**
      * $xtr = simplexml_load_string($Xml) or die ("Unable to load XML string!");
      **/
-
     $processorResponse['ssl_result'] = self::GetNodeValue("ssl_result", $Xml);
     $processorResponse['ssl_result_message'] = self::GetNodeValue("ssl_result_message", $Xml);
     $processorResponse['ssl_txn_id'] = self::GetNodeValue("ssl_txn_id", $Xml);

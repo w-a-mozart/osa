@@ -1,13 +1,26 @@
 {*
  +--------------------------------------------------------------------+
- | Custom OSA Thank You page                                          |
+ | CiviCRM version 4.2                                                |
  +--------------------------------------------------------------------+
- | Override Standard CiviCRM Template ThankYou.tpl                    |
- | - using Drupal Commerce Cart so don't show everything just         |
- |   thanks and checkout button.                                      |
+ | Copyright CiviCRM LLC (c) 2004-2012                                |
  +--------------------------------------------------------------------+
- | Copyright Oakville Suzuki Association 2012                         |
- | Copyright CiviCRM LLC (c) 2004-2011                                |
+ | This file is a part of CiviCRM.                                    |
+ |                                                                    |
+ | CiviCRM is free software; you can copy, modify, and distribute it  |
+ | under the terms of the GNU Affero General Public License           |
+ | Version 3, 19 November 2007 and the CiviCRM Licensing Exception.   |
+ |                                                                    |
+ | CiviCRM is distributed in the hope that it will be useful, but     |
+ | WITHOUT ANY WARRANTY; without even the implied warranty of         |
+ | MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.               |
+ | See the GNU Affero General Public License for more details.        |
+ |                                                                    |
+ | You should have received a copy of the GNU Affero General Public   |
+ | License and the CiviCRM Licensing Exception along                  |
+ | with this program; if not, contact CiviCRM LLC                     |
+ | at info[AT]civicrm[DOT]org. If you have questions about the        |
+ | GNU Affero General Public License or the licensing of CiviCRM,     |
+ | see the CiviCRM license FAQ at http://civicrm.org/licensing        |
  +--------------------------------------------------------------------+
 *}
 {if $action & 1024}
@@ -18,14 +31,14 @@
 
 <div class="crm-block crm-event-thankyou-form-block">
     {* Don't use "normal" thank-you message for Waitlist and Approval Required registrations - since it will probably not make sense for those situations. dgg *}
-    {if $event.thankyou_text AND (not $isOnWaitlist AND not $isRequireApproval)} 
+    {if $event.thankyou_text AND (not $isOnWaitlist AND not $isRequireApproval)}
         <div id="intro_text" class="crm-section event_thankyou_text-section">
             <p>
             {$event.thankyou_text}
             </p>
         </div>
     {/if}
-    
+
     {* Show link to Tell a Friend (CRM-2153) *}
     {if $friendText}
         <div id="tell-a-friend" class="crm-section tell_friend_link-section">
@@ -39,13 +52,13 @@
             <a href="{$pcpLink}" title="{$pcpLinkText}" class="button"><span>&raquo; {$pcpLinkText}</span></a>
         </div><br /><br />
     {/if}
-    
+
         {if $isOnWaitlist}
           <div id="help">
             <p>
                 <span class="bold">{ts}You have been added to the WAIT LIST for this event.{/ts}</span>
                 {ts}If space becomes available you will receive an email with a link to a web page where you can complete your registration.{/ts}
-             </p> 
+             </p>
           </div>
         {elseif $isRequireApproval}
           <div id="help">
@@ -87,7 +100,7 @@
             {include file="CRM/Event/Form/Registration/EventInfoBlock.tpl" context="ThankYou"}
         </div>
     </div>
-    
+
     {if $paidEvent}
         <div class="crm-group event_fees-group">
             <div class="header-dark">
@@ -97,7 +110,7 @@
                 {include file="CRM/Price/Page/LineItem.tpl" context="Event"}
             {elseif $amount || $amount == 0}
 	            <div class="crm-section no-label amount-item-section">
-                    {foreach from= $finalAmount item=amount key=level}  
+                    {foreach from= $finalAmount item=amount key=level}
             			<div class="content">
             			    {$amount.amount|crmMoney}&nbsp;&nbsp;{$amount.label}
             			</div>
@@ -114,7 +127,7 @@
                             <em>({$hookDiscount.message})</em>
                         </div>
                     {/if}
-                {/if}	
+                {/if}
             {/if}
             {if $receive_date}
                 <div class="crm-section no-label receive_date-section">
@@ -129,7 +142,7 @@
             	</div>
             {/if}
         </div>
-    
+
     {elseif $participantInfo}
         <div class="crm-group participantInfo-group">
             <div class="header-dark">
@@ -137,16 +150,14 @@
             </div>
             <div class="crm-section no-label participant_info-section">
                 <div class="content">
-                    {foreach from=$participantInfo  item=mail key=no}  
-                        <strong>{$mail}</strong><br />	
+                    {foreach from=$participantInfo  item=mail key=no}
+                        <strong>{$mail}</strong><br />
                     {/foreach}
                 </div>
         		<div class="clear"></div>
         	</div>
         </div>
     {/if}
-
-    {* Remove Registered Email *}
 
     {if $event.participant_role neq 'Attendee' and $defaultRole}
         <div class="crm-group participant_role-group">
@@ -163,13 +174,13 @@
     {/if}
 
     {if $customPre}
-            <fieldset class="label-left">
+            <fieldset class="label-left no-border">
                 {include file="CRM/UF/Form/Block.tpl" fields=$customPre}
             </fieldset>
     {/if}
 
     {if $customPost}
-            <fieldset class="label-left">  
+            <fieldset class="label-left no-border">
                 {include file="CRM/UF/Form/Block.tpl" fields=$customPost}
             </fieldset>
     {/if}
@@ -179,11 +190,24 @@
         {foreach from=$addParticipantProfile item=participant key=participantNo}
             <div class="crm-group participant_info-group">
                 <div class="header-dark">
-                    {ts 1=$participantNo+1}Participant Information - Participant %1{/ts}	
+                    {ts 1=$participantNo+1}Participant %1{/ts}
                 </div>
-                {if $participant.additionalCustomPre}
-		    <fieldset class="label-left"><div class="header-dark">{$participant.additionalCustomPreGroupTitle}</div>	
-                        {foreach from=$participant.additionalCustomPre item=value key=field}
+            {if $participant.additionalCustomPre}
+		        <fieldset class="label-left no-border"><div class="bold crm-additional-profile-view-title">{$participant.additionalCustomPreGroupTitle}</div>
+                    {foreach from=$participant.additionalCustomPre item=value key=field}
+                        <div class="crm-section {$field}-section">
+                            <div class="label">{$field}</div>
+                            <div class="content">{$value}</div>
+                            <div class="clear"></div>
+                        </div>
+                    {/foreach}
+                </fieldset>
+            {/if}
+
+            {if $participant.additionalCustomPost}
+		        {foreach from=$participant.additionalCustomPost item=value key=field}
+		            <fieldset class="label-left no-border"><div class="bold crm-additional-profile-view-title">{$participant.additionalCustomPostGroupTitle.$field.groupTitle}</div>
+                        {foreach from=$participant.additionalCustomPost.$field item=value key=field}
                             <div class="crm-section {$field}-section">
                                 <div class="label">{$field}</div>
                                 <div class="content">{$value}</div>
@@ -191,24 +215,10 @@
                             </div>
                         {/foreach}
                     </fieldset>
-                {/if}
-
-                {if $participant.additionalCustomPost}
-		{foreach from=$participant.additionalCustomPost item=value key=field}
-		<fieldset class="label-left"><div class="header-dark">{$participant.additionalCustomPostGroupTitle.$field.groupTitle}</div>
-                        {foreach from=$participant.additionalCustomPost.$field item=value key=field}
-                            <div class="crm-section {$field}-section">
-                                <div class="label">{$field}</div>
-                                <div class="content">{$value}</div>
-                                <div class="clear"></div>
-                            </div>
-                        {/foreach}		 
-		{/foreach}		
-
-                    </fieldset>
-                {/if}
+		        {/foreach}
+            {/if}
             </div>
-        <div class="spacer"></div>
+            <div class="spacer"></div>
         {/foreach}
     {/if}
 
@@ -231,7 +241,7 @@
             <p>{$event.thankyou_footer_text}</p>
         </div>
     {/if}
-    
+
     <div class="action-link section event_info_link-section">
         {* Change links to Registration Page *}
     {if $paymentProcessor.payment_processor_type eq 'drupalcommerce'} 

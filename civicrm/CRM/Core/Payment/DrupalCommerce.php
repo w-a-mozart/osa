@@ -68,15 +68,9 @@ class CRM_Core_Payment_DrupalCommerce extends CRM_Core_Payment {
    *  
    */  
   function doTransferCheckout(&$params, $component) {
-    $component = strtolower($component);
-    
-    // Allow manipulation of the arguments via custom hooks
-    $cookedParams = $params; // no translation in this processor
-    CRM_Utils_Hook::alterPaymentProcessorParams($this, $params, $cookedParams);
-
-    // Create a new shopping cart line item
+    // create a new shopping cart line item
     module_load_include('php', 'civicrm_commerce', 'civicrm_commerce_line_item');
-    $result = civicrm_commerce_line_item_add_new($params, $component);
+    $result = civicrm_commerce_line_item_add_new($this, $params, strtolower($component));
   }
 
   /** 

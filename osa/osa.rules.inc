@@ -74,9 +74,10 @@ function osa_household_members($commerce_line_item, $operator, $value) {
   $membership = _osa_get_membership($contact_id);
 
   // we don't want to count memberships that come after this one in the shopping cart
+  // open the order record as read only: Issue 1514618
   $order = commerce_order_load($commerce_line_item->order_id);
-  // Unlock the order record: Issue 1514618
   entity_get_controller('commerce_order')->resetCache(array($order->order_id));
+
   $ignore_membership_ids = array();
   if ($order) {
     $order_wrapper = entity_metadata_wrapper('commerce_order', $order);

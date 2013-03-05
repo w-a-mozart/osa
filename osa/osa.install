@@ -17,4 +17,5 @@
     variable_del('osa_start_date');  
     variable_del('osa_num_installments');
     variable_del('osa_prorate_teacher_pay');
+    variable_del('osa_teacher_pay_override');
   }

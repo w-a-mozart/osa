@@ -1,9 +1,9 @@
 <?php
 /*
  +--------------------------------------------------------------------+
- | CiviCRM version 4.1                                                |
+ | CiviCRM version 4.2                                                |
  +--------------------------------------------------------------------+
- | Copyright CiviCRM LLC (c) 2004-2011                                |
+ | Copyright CiviCRM LLC (c) 2004-2012                                |
  +--------------------------------------------------------------------+
  | This file is a part of CiviCRM.                                    |
  |                                                                    |
@@ -28,7 +28,7 @@
 /**
  *
  * @package CRM
- * @copyright CiviCRM LLC (c) 2004-2011
+ * @copyright CiviCRM LLC (c) 2004-2012
  * $Id: $
  *
  */
@@ -74,6 +74,8 @@ class CRM_Utils_Token {
     ),
     // populate this dynamically
     'contact' => NULL,
+    // populate this dynamically
+    'contribution' => NULL,
     'domain' => array(
       'name',
       'phone',
@@ -107,7 +109,7 @@ class CRM_Utils_Token {
   public static function requiredTokens(&$str) {
     // all emails go to registered users, so don't require any tokens
     return TRUE;
-    
+
     if (self::$_requiredTokens == NULL) {
       self::$_requiredTokens = array(
         'domain.address' => ts("Domain address - displays your organization's postal address."),
@@ -258,7 +260,6 @@ class CRM_Utils_Token {
         return $addressCache[$cache_key];
       }
 
-      require_once 'CRM/Utils/Address.php';
       $value = NULL;
       /* Construct the address token */
 
@@ -341,7 +342,6 @@ class CRM_Utils_Token {
         }
       }
       elseif ($token == 'checksum') {
-        require_once 'CRM/Contact/BAO/Contact/Utils.php';
         $cs = CRM_Contact_BAO_Contact_Utils::generateChecksum($org['contact_id']);
         $value = "cs={$cs}";
       }
@@ -441,13 +441,11 @@ class CRM_Utils_Token {
         break;
 
       case 'html':
-        require_once 'CRM/Mailing/Page/View.php';
         $page = new CRM_Mailing_Page_View();
         $value = $page->run($mailing->id, NULL, FALSE);
         break;
 
       case 'approvalStatus':
-        require_once 'CRM/Mailing/PseudoConstant.php';
         $mailApprovalStatus = CRM_Mailing_PseudoConstant::approvalStatus();
         $value = $mailApprovalStatus[$mailing->approval_status_id];
         break;
@@ -586,7 +584,7 @@ class CRM_Utils_Token {
     return $str;
   }
 
-  public function getContactTokenReplacement($token, &$contact, $html = FALSE,
+  public static function getContactTokenReplacement($token, &$contact, $html = FALSE,
     $returnBlankToken = FALSE, $escapeSmarty = FALSE
   ) {
     if (self::$_tokens['contact'] == NULL) {
@@ -609,7 +607,6 @@ class CRM_Utils_Token {
       $value = "{contact.$token}";
     }
     elseif ($token == 'checksum') {
-      require_once 'CRM/Contact/BAO/Contact/Utils.php';
       $hash = CRM_Utils_Array::value('hash', $contact);
       $contactID = CRM_Utils_Array::retrieveValueRecursive($contact, 'contact_id');
       $cs = CRM_Contact_BAO_Contact_Utils::generateChecksum($contactID,
@@ -662,7 +659,7 @@ class CRM_Utils_Token {
     return $str;
   }
 
-  public function getHookTokenReplacement($token, &$contact, $category, $html = FALSE, $escapeSmarty = FALSE) {
+  public static function getHookTokenReplacement($token, &$contact, $category, $html = FALSE, $escapeSmarty = FALSE) {
     $value = CRM_Utils_Array::value("{$category}.{$token}", $contact);
 
     if ($value &&
@@ -716,7 +713,6 @@ class CRM_Utils_Token {
         $base = CRM_Utils_System::baseURL();
 
         // FIXME: an ugly hack for CRM-2035, to be dropped once CRM-1799 is implemented
-        require_once 'CRM/Contact/DAO/Group.php';
         $dao = new CRM_Contact_DAO_Group();
         $dao->find();
         while ($dao->fetch()) {
@@ -810,10 +806,9 @@ class CRM_Utils_Token {
 
     if (preg_match('/\{action\.subscribe.\d+\}/', $str, $matches)) {
       foreach ($matches as $key => $value) {
-        $gid = substr($value, 18, -1);
-        $config = CRM_Core_Config::singleton();
-        require_once 'CRM/Core/BAO/MailSettings.php';
-        $domain = CRM_Core_BAO_MailSettings::defaultDomain();
+        $gid       = substr($value, 18, -1);
+        $config    = CRM_Core_Config::singleton();
+        $domain    = CRM_Core_BAO_MailSettings::defaultDomain();
         $localpart = CRM_Core_BAO_MailSettings::defaultLocalpart();
         // we add the 0.0000000000000000 part to make this match the other email patterns (with action, two ids and a hash)
         $str = preg_replace('/' . preg_quote($value) . '/', "mailto:{$localpart}s.{$gid}.0.0000000000000000@$domain", $str);
@@ -898,7 +893,7 @@ class CRM_Utils_Token {
    * @access public
    * @static
    */
-  function getTokens($string) {
+  static function getTokens($string) {
     $matches = array();
     $tokens = array();
     preg_match_all('/(?<!\{|\\\\)\{(\w+\.\w+)\}(?!\})/',
@@ -925,24 +920,26 @@ class CRM_Utils_Token {
    * gives required details of contacts in an indexed array format so we
    * can iterate in a nice loop and do token evaluation
    *
-   * @param  array   $contactIds       of conatcts
+   * @param  array   $contactIds       of contacts
    * @param  array   $returnProperties of required properties
    * @param  boolean $skipOnHold       don't return on_hold contact info also.
    * @param  boolean $skipDeceased     don't return deceased contact info.
    * @param  array   $extraParams      extra params
    * @param  array   $tokens           the list of tokens we've extracted from the content
+   * @param  int     $jobID            the mailing list jobID - this is a legacy param
    *
    * @return array
    * @access public
    * @static
    */
-  function getTokenDetails($contactIDs,
+  static function getTokenDetails($contactIDs,
     $returnProperties = NULL,
     $skipOnHold       = TRUE,
     $skipDeceased     = TRUE,
     $extraParams      = NULL,
     $tokens           = array(),
-    $className        = NULL
+    $className        = NULL,
+    $jobID            = NULL
   ) {
     if (empty($contactIDs)) {
       // putting a fatal here so we can track if/when this happens
@@ -950,7 +947,6 @@ class CRM_Utils_Token {
     }
 
     $params = array();
-    require_once 'CRM/Core/Form.php';
     foreach ($contactIDs as $key => $contactID) {
       $params[] = array(
         CRM_Core_Form::CB_PREFIX . $contactID,
@@ -974,7 +970,6 @@ class CRM_Utils_Token {
 
     // if return properties are not passed then get all return properties
     if (empty($returnProperties)) {
-      require_once 'CRM/Contact/BAO/Contact.php';
       $fields = array_merge(array_keys(CRM_Contact_BAO_Contact::exportableFields()),
         array('display_name', 'checksum', 'contact_id')
       );
@@ -984,7 +979,6 @@ class CRM_Utils_Token {
     }
 
     $custom = array();
-    require_once 'CRM/Core/BAO/CustomField.php';
     foreach ($returnProperties as $name => $dontCare) {
       $cfID = CRM_Core_BAO_CustomField::getKeyID($name);
       if ($cfID) {
@@ -994,9 +988,6 @@ class CRM_Utils_Token {
 
     //get the total number of contacts to fetch from database.
     $numberofContacts = count($contactIDs);
-
-
-    require_once 'CRM/Contact/BAO/Query.php';
     $query = new CRM_Contact_BAO_Query($params, $returnProperties);
 
     $details = $query->apiQuery($params, $returnProperties, NULL, NULL, 0, $numberofContacts);
@@ -1008,11 +999,9 @@ class CRM_Utils_Token {
         if (CRM_Utils_Array::value('preferred_communication_method', $returnProperties) == 1
           && array_key_exists('preferred_communication_method', $contactDetails[$contactID])
         ) {
-          require_once 'CRM/Core/PseudoConstant.php';
           $pcm = CRM_Core_PseudoConstant::pcm();
 
           // communication Prefferance
-          require_once 'CRM/Core/BAO/CustomOption.php';
           $contactPcm = explode(CRM_Core_DAO::VALUE_SEPARATOR,
             $contactDetails[$contactID]['preferred_communication_method']
           );
@@ -1044,13 +1033,70 @@ class CRM_Utils_Token {
     }
 
     // also call a hook and get token details
-    require_once 'CRM/Utils/Hook.php';
     CRM_Utils_Hook::tokenValues($details[0],
       $contactIDs,
-      NULL,
+      $jobID,
       $tokens,
       $className
     );
+    return $details;
+  }
+
+  /**
+   * gives required details of contribuion in an indexed array format so we
+   * can iterate in a nice loop and do token evaluation
+   *
+   * @param  array   $contributionId   one contribution id
+   * @param  array   $returnProperties of required properties
+   * @param  boolean $skipOnHold       don't return on_hold contact info.
+   * @param  boolean $skipDeceased     don't return deceased contact info.
+   * @param  array   $extraParams      extra params
+   * @param  array   $tokens           the list of tokens we've extracted from the content
+   *
+   * @return array
+   * @access public
+   * @static
+   */
+  static function getContributionTokenDetails($contributionIDs,
+    $returnProperties = NULL,
+    $extraParams      = NULL,
+    $tokens           = array(),
+    $className        = NULL
+  ) {
+    if (empty($contributionIDs)) {
+      // putting a fatal here so we can track if/when this happens
+      CRM_Core_Error::fatal();
+    }
+
+    $details = array();
+
+    // no apiQuery helper yet, so do a loop and find contribution by id
+    foreach ($contributionIDs as $contributionID) {
+
+      $dao = new CRM_Contribute_DAO_Contribution();
+      $dao->id = $contributionID;
+
+      if ($dao->find(TRUE)) {
+
+        $details[$dao->id] = array();
+        CRM_Core_DAO::storeValues($dao, $details[$dao->id]);
+
+        // do the necessary transformation
+        if (CRM_Utils_Array::value('payment_instrument_id', $details[$dao->id])) {
+          $piId = $details[$dao->id]['payment_instrument_id'];
+          $pis = CRM_Contribute_PseudoConstant::paymentInstrument();
+          $details[$dao->id]['payment_instrument'] = $pis[$piId];
+        }
+        if (CRM_Utils_Array::value('campaign_id', $details[$dao->id])) {
+          $campaignId = $details[$dao->id]['campaign_id'];
+          $campaigns = CRM_Campaign_BAO_Campaign::getCampaigns($campaignId);
+          $details[$dao->id]['campaign'] = $campaigns[$campaignId];
+        }
+
+        // TODO: call a hook to get token contribution details
+      }
+    }
+
     return $details;
   }
 
@@ -1059,15 +1105,14 @@ class CRM_Utils_Token {
    *
    * @access public
    */
-  function replaceGreetingTokens(&$tokenString, $contactDetails = NULL, $contactId = NULL, $className = NULL) {
-    require_once 'CRM/Utils/Token.php';
+  static function replaceGreetingTokens(&$tokenString, $contactDetails = NULL, $contactId = NULL, $className = NULL) {
 
     if (!$contactDetails && !$contactId) {
       return;
     }
 
     // check if there are any tokens
-    $greetingTokens = CRM_Utils_Token::getTokens($tokenString);
+    $greetingTokens = self::getTokens($tokenString);
 
     if (!empty($greetingTokens)) {
       // first use the existing contact object for token replacement
@@ -1076,7 +1121,7 @@ class CRM_Utils_Token {
       }
 
       // check if there are any unevaluated tokens
-      $greetingTokens = CRM_Utils_Token::getTokens($tokenString);
+      $greetingTokens = self::getTokens($tokenString);
 
       // $greetingTokens not empty, means there are few tokens which are not evaluated, like custom data etc
       // so retrieve it from database
@@ -1085,7 +1130,7 @@ class CRM_Utils_Token {
         $greetingsReturnProperties = array_fill_keys(array_keys($greetingsReturnProperties), 1);
         $contactParams = array('contact_id' => $contactId);
 
-        $greetingDetails = CRM_Utils_Token::getTokenDetails($contactParams,
+        $greetingDetails = self::getTokenDetails($contactParams,
           $greetingsReturnProperties,
           FALSE, FALSE, NULL,
           $greetingTokens,
@@ -1102,8 +1147,7 @@ class CRM_Utils_Token {
     }
   }
 
-  static
-  function flattenTokens(&$tokens) {
+  static function flattenTokens(&$tokens) {
     $flattenTokens = array();
 
     foreach (array(
@@ -1154,12 +1198,10 @@ class CRM_Utils_Token {
 
     switch ($objectName) {
       case 'permission':
-        require_once 'CRM/Core/Permission.php';
         $value = CRM_Core_Permission::permissionEmails($objectValue);
         break;
 
       case 'role':
-        require_once 'CRM/Core/Permission.php';
         $value = CRM_Core_Permission::roleEmails($objectValue);
         break;
     }
@@ -1168,6 +1210,70 @@ class CRM_Utils_Token {
       $value = self::tokenEscapeSmarty($value);
     }
 
+    return $value;
+  }
+
+
+  protected static function _buildContributionTokens() {
+    $key = 'contribution';
+    if (self::$_tokens[$key] == NULL) {
+      self::$_tokens[$key] = array_keys(array_merge(CRM_Contribute_BAO_Contribution::exportableFields('All'),
+          array('campaign', 'contribution_type')
+        ));
+    }
+  }
+
+  public static function &replaceContributionTokens($str, &$contribution, $html = FALSE, $knownTokens = NULL, $escapeSmarty = FALSE) {
+    self::_buildContributionTokens();
+
+    // here we intersect with the list of pre-configured valid tokens
+    // so that we remove anything we do not recognize
+    // I hope to move this step out of here soon and
+    // then we will just iterate on a list of tokens that are passed to us
+    $key = 'contribution';
+    if (!$knownTokens || !CRM_Utils_Array::value($key, $knownTokens)) {
+      return $str;
+    }
+
+    $str = preg_replace(self::tokenRegex($key),
+      'self::getContributionTokenReplacement(\'\\1\', $contribution, $html, $escapeSmarty)',
+      $str
+    );
+
+    $str = preg_replace('/\\\\|\{(\s*)?\}/', ' ', $str);
+    return $str;
+  }
+
+  public static function getContributionTokenReplacement($token, &$contribution, $html = FALSE, $escapeSmarty = FALSE) {
+    self::_buildContributionTokens();
+
+    switch ($token) {
+      case 'total_amount':
+      case 'net_amount':
+      case 'fee_amount':
+      case 'non_deductible_amount':
+        $value = CRM_Utils_Money::format(CRM_Utils_Array::retrieveValueRecursive($contribution, $token));
+        break;
+
+      case 'receive_date':
+        $value = CRM_Utils_Array::retrieveValueRecursive($contribution, $token);
+        $value = CRM_Utils_Date::customFormat($value, NULL, array('j', 'm', 'Y'));
+        break;
+
+      default:
+        if (!in_array($token, self::$_tokens['contribution'])) {
+          $value = "{contribution.$token}";
+        }
+        else {
+          $value = CRM_Utils_Array::retrieveValueRecursive($contribution, $token);
+        }
+        break;
+    }
+
+
+    if ($escapeSmarty) {
+      $value = self::tokenEscapeSmarty($value);
+    }
     return $value;
   }
 

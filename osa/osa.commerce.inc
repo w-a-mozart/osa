@@ -12,8 +12,9 @@ require_once 'osa.inc';
 function osa_form_alter_views_form_commerce_cart_form_default(&$form, &$form_state) {
 
   global $user;
+  
+  // open the order record as read only: Issue 1514618
   $cart = commerce_cart_order_load($user->uid);
-  // Unlock the order record: Issue 1514618
   entity_get_controller('commerce_order')->resetCache(array($cart->order_id));
   $non_civi_line_item_found = FALSE;
 

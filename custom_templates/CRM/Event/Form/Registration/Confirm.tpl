@@ -1,8 +1,8 @@
 {*
  +--------------------------------------------------------------------+
- | CiviCRM version 4.1                                                |
+ | CiviCRM version 4.2                                                |
  +--------------------------------------------------------------------+
- | Copyright CiviCRM LLC (c) 2004-2011                                |
+ | Copyright CiviCRM LLC (c) 2004-2012                                |
  +--------------------------------------------------------------------+
  | This file is a part of CiviCRM.                                    |
  |                                                                    |
@@ -108,9 +108,9 @@
             </div>
             {if $lineItem}
                 {include file="CRM/Price/Page/LineItem.tpl" context="Event"}
-            {elseif $amount || $amount == 0}
+            {elseif $amounts || $amount == 0}
 			    <div class="crm-section no-label amount-item-section">
-                    {foreach from= $amount item=amount key=level}  
+                    {foreach from= $amounts item=amount key=level}  
     					<div class="content">
     					    {$amount.amount|crmMoney}&nbsp;&nbsp;{$amount.label}
     					</div>
@@ -164,10 +164,10 @@
         {foreach from=$addParticipantProfile item=participant key=participantNo}
             <div class="crm-group participant_info-group">
                 <div class="header-dark">
-                    {ts 1=$participantNo+1}Participant Information - Participant %1{/ts}	
+                    {ts 1=$participantNo+1}Participant %1{/ts}	
                 </div>
                 {if $participant.additionalCustomPre}
-                    <fieldset class="label-left"><div class="header-dark">{$participant.additionalCustomPreGroupTitle}</div>
+                    <fieldset class="label-left no-border"><div class="bold crm-additional-profile-view-title">{$participant.additionalCustomPreGroupTitle}</div>
                         {foreach from=$participant.additionalCustomPre item=value key=field}
                             <div class="crm-section {$field}-section">
                                 <div class="label">{$field}</div>
@@ -179,8 +179,8 @@
                 {/if}
 
                 {if $participant.additionalCustomPost}
-		{foreach from=$participant.additionalCustomPost item=value key=field}
-                 <fieldset class="label-left"><div class="header-dark">{$participant.additionalCustomPostGroupTitle.$field.groupTitle}</div>
+		            {foreach from=$participant.additionalCustomPost item=value key=field}
+                        <fieldset class="label-left no-border"><div class="bold crm-additional-profile-view-title">{$participant.additionalCustomPostGroupTitle.$field.groupTitle}</div>
                         {foreach from=$participant.additionalCustomPost.$field item=value key=field}
                             <div class="crm-section {$field}-section">
                                 <div class="label">{$field}</div>
@@ -188,9 +188,8 @@
                                 <div class="clear"></div>
                             </div>
                         {/foreach}		 
-		{/foreach}		
-
-                    </fieldset>
+                        </fieldset>
+		            {/foreach}
                 {/if}
             </div>
         <div class="spacer"></div>

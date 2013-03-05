@@ -1,9 +1,9 @@
 <?php
 /*
  +--------------------------------------------------------------------+
- | CiviCRM version 4.1                                                |
+ | CiviCRM version 4.2                                                |
  +--------------------------------------------------------------------+
- | Copyright CiviCRM LLC (c) 2004-2011                                |
+ | Copyright CiviCRM LLC (c) 2004-2012                                |
  +--------------------------------------------------------------------+
  | This file is a part of CiviCRM.                                    |
  |                                                                    |
@@ -28,13 +28,10 @@
 /**
  *
  * @package CRM
- * @copyright CiviCRM LLC (c) 2004-2011
+ * @copyright CiviCRM LLC (c) 2004-2012
  * $Id$
  *
  */
-
-require_once 'CRM/Core/Page.php';
-require_once 'CRM/Contact/BAO/Contact.php';
 
 /**
  * CMS User Dashboard
@@ -77,7 +74,6 @@ class CRM_Contact_Page_View_UserDashBoard extends CRM_Core_Page {
       $this->_contactId = $userID;
     }
     elseif ($this->_contactId != $userID) {
-      require_once 'CRM/Contact/BAO/Contact/Permission.php';
       if (!CRM_Contact_BAO_Contact_Permission::allow($this->_contactId, CRM_Core_Permission::VIEW)) {
         CRM_Core_Error::fatal(ts('You do not have permission to view this contact'));
       }
@@ -121,7 +117,6 @@ class CRM_Contact_Page_View_UserDashBoard extends CRM_Core_Page {
     $dashboardElements = array();
     $config = CRM_Core_Config::singleton();
 
-    require_once 'CRM/Core/BAO/Setting.php';
     $this->_userOptions = CRM_Core_BAO_Setting::valueOptions(CRM_Core_BAO_Setting::SYSTEM_PREFERENCES_NAME,
       'user_dashboard_options'
     );
@@ -166,7 +161,6 @@ class CRM_Contact_Page_View_UserDashBoard extends CRM_Core_Page {
     }
 
     if (CRM_Utils_Array::value('PCP', $this->_userOptions)) {
-      require_once 'CRM/PCP/BAO/PCP.php';
       $dashboardElements[] = array(
         'templatePath' => 'CRM/Contribute/Page/PcpUserDashboard.tpl',
         'sectionTitle' => ts('Personal Campaign Pages'),
@@ -184,19 +178,16 @@ class CRM_Contact_Page_View_UserDashBoard extends CRM_Core_Page {
         'sectionTitle' => ts('Your Assigned Activities'),
         'weight' => 5,
       );
-      require_once 'CRM/Activity/Page/UserDashboard.php';
       $userDashboard = new CRM_Activity_Page_UserDashboard;
       $userDashboard->run();
     }
 
-    require_once 'CRM/Utils/Sort.php';
     usort($dashboardElements, array('CRM_Utils_Sort', 'cmpFunc'));
     $this->assign('dashboardElements', $dashboardElements);
 
     if (CRM_Utils_Array::value('Groups', $this->_userOptions)) {
       $this->assign('showGroup', TRUE);
       //build group selector
-      require_once "CRM/Contact/Page/View/UserDashBoard/GroupContact.php";
       $gContact = new CRM_Contact_Page_View_UserDashBoard_GroupContact();
       $gContact->run();
     }
@@ -214,7 +205,7 @@ class CRM_Contact_Page_View_UserDashBoard extends CRM_Core_Page {
    */
   function run() {
     $this->preProcess();
-//    $this->buildUserDashBoard();
+    // $this->buildUserDashBoard();
     return parent::run();
   }
 
@@ -259,7 +250,6 @@ class CRM_Contact_Page_View_UserDashBoard extends CRM_Core_Page {
     }
 
     // call the hook so we can modify it
-    require_once 'CRM/Utils/Hook.php';
     CRM_Utils_Hook::links('view.contact.userDashBoard',
       'Contact',
       CRM_Core_DAO::$_nullObject,

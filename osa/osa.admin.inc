@@ -19,6 +19,15 @@ function osa_admin_settings() {
     '#collapsed' => FALSE,
   );
 
+  $form['osa']['osa_discount_types'] = array(
+    '#type' => 'textarea',
+    '#title' => t('Discount types'),
+    '#default_value' => variable_get('osa_discount_types'),
+    '#description' => '<p>' . t('List all of the different Discount types offered.') . '<br />' .
+                      t('Enter one value per line. The amount of each discount is controlled by Pricing rules') . '<br />' .
+                      t('ONLY ADD TO THE END. Do not remove discount types or add new types into the middle of the list.') . '</p>',
+  );
+  
   $form['osa']['teacher_pay'] = array(
     '#type' => 'fieldset',
     '#title' => t('Teacher payment settings'),

@@ -1,9 +1,9 @@
 <?php
 /*
  +--------------------------------------------------------------------+
- | CiviCRM version 4.1                                                |
+ | CiviCRM version 4.2                                                |
  +--------------------------------------------------------------------+
- | Copyright CiviCRM LLC (c) 2004-2011                                |
+ | Copyright CiviCRM LLC (c) 2004-2012                                |
  +--------------------------------------------------------------------+
  | This file is a part of CiviCRM.                                    |
  |                                                                    |
@@ -28,13 +28,10 @@
 /**
  *
  * @package CRM
- * @copyright CiviCRM LLC (c) 2004-2011
+ * @copyright CiviCRM LLC (c) 2004-2012
  * $Id$
  *
  */
-
-require_once 'CRM/Core/Menu.php';
-require_once 'CRM/Core/Permission.php';
 
 /**
  * defines a simple implemenation of a drupal block.
@@ -93,7 +90,7 @@ class CRM_Core_Block {
           'visibility' => 1,
           'weight' => -100,
           'status' => 1,
-          'pages' => "civicrm/\ncivicrm/*",
+          'pages' => "civicrm\ncivicrm/*",
           'region' => $config->userSystem->getDefaultBlockLocation(),
         ),
         self::RECENTLY_VIEWED => array(
@@ -105,7 +102,7 @@ class CRM_Core_Block {
           'visibility' => 1,
           'weight' => -99,
           'status' => 1,
-          'pages' => "civicrm/\ncivicrm/*",
+          'pages' => "civicrm\ncivicrm/*",
           'region' => $config->userSystem->getDefaultBlockLocation(),
         ),
         self::DASHBOARD => array(
@@ -117,7 +114,7 @@ class CRM_Core_Block {
           'visibility' => 1,
           'weight' => -98,
           'status' => 1,
-          'pages' => "civicrm/\ncivicrm/*",
+          'pages' => "civicrm\ncivicrm/*",
           'region' => $config->userSystem->getDefaultBlockLocation(),
         ),
         self::ADD => array(
@@ -129,7 +126,7 @@ class CRM_Core_Block {
           'visibility' => 1,
           'weight' => -97,
           'status' => 1,
-          'pages' => "civicrm/\ncivicrm/*",
+          'pages' => "civicrm\ncivicrm/*",
           'region' => $config->userSystem->getDefaultBlockLocation(),
         ),
         self::LANGSWITCH => array(
@@ -142,7 +139,7 @@ class CRM_Core_Block {
           'visibility' => 1,
           'weight' => -96,
           'status' => 1,
-          'pages' => "civicrm/\ncivicrm/*",
+          'pages' => "civicrm\ncivicrm/*",
           'region' => $config->userSystem->getDefaultBlockLocation(),
         ),
         self::EVENT => array(
@@ -155,7 +152,7 @@ class CRM_Core_Block {
           'visibility' => 1,
           'weight' => -95,
           'status' => 0,
-          'pages' => "civicrm/\ncivicrm/*",
+          'pages' => "civicrm\ncivicrm/*",
           'region' => $config->userSystem->getDefaultBlockLocation(),
         ),
         self::FULLTEXT_SEARCH => array(
@@ -167,7 +164,7 @@ class CRM_Core_Block {
           'visibility' => 1,
           'weight' => -94,
           'status' => 0,
-          'pages' => "civicrm/\ncivicrm/*",
+          'pages' => "civicrm\ncivicrm/*",
           'region' => $config->userSystem->getDefaultBlockLocation(),
         ),
       );
@@ -295,9 +292,6 @@ class CRM_Core_Block {
         break;
 
       case self::ADD:
-        require_once 'CRM/Core/BAO/LocationType.php';
-        require_once 'CRM/Contact/BAO/Contact.php';
-        require_once 'CRM/Contact/BAO/Contact/Utils.php';
         $defaultLocation = CRM_Core_BAO_LocationType::getDefault();
         $defaultPrimaryLocationId = $defaultLocation->id;
         $values = array('postURL' => CRM_Utils_System::url('civicrm/contact/add', 'reset=1&ct=Individual'),
@@ -323,7 +317,6 @@ class CRM_Core_Block {
         break;
 
       case self::RECENTLY_VIEWED:
-        require_once 'CRM/Utils/Recent.php';
         $recent = CRM_Utils_Recent::get();
         self::setProperty(self::RECENTLY_VIEWED, 'templateValues', array('recentlyViewed' => $recent));
         break;
@@ -348,7 +341,6 @@ class CRM_Core_Block {
     if (!($shortCuts)) {
       if (CRM_Core_Permission::check('add contacts')) {
         if (CRM_Core_Permission::giveMeAllACLs()) {
-          require_once 'CRM/Contact/BAO/ContactType.php';
           $shortCuts = CRM_Contact_BAO_ContactType::getCreateNewList();
         }
         if (CRM_Core_Permission::access('Quest')) {
@@ -369,7 +361,6 @@ class CRM_Core_Block {
             'title' => ts('Activity'),
           )));
 
-      require_once 'CRM/Core/Component.php';
       $components = CRM_Core_Component::getEnabledComponents();
 
       if (!empty($config->enableComponents)) {
@@ -426,7 +417,6 @@ class CRM_Core_Block {
     }
 
     // call links hook to add user defined links
-    require_once 'CRM/Utils/Hook.php';
     CRM_Utils_Hook::links('create.new.shorcuts',
       NULL,
       CRM_Core_DAO::$_nullObject,
@@ -531,7 +521,6 @@ class CRM_Core_Block {
   private function setTemplateEventValues() {
     $config = CRM_Core_Config::singleton();
 
-    require_once 'CRM/Event/BAO/Event.php';
     // change to only get 2 months
     $info = CRM_Event_BAO_Event::getCompleteInfo(date("Ymd"), NULL, NULL, date("Ymd", strtotime('+2 months')));
 
@@ -562,7 +551,7 @@ class CRM_Core_Block {
   function getContent($id) {
     // return if upgrade mode
     $config = CRM_Core_Config::singleton();
-    if (CRM_Utils_Array::value($config->userFrameworkURLVar, $_GET) == 'civicrm/upgrade') {
+    if ($config->isUpgradeMode()) {
       return;
     }
 
@@ -606,6 +595,12 @@ class CRM_Core_Block {
       if (CRM_Utils_Array::crmIsEmptyArray($recent)) {
         return NULL;
       }
+    }
+
+    // Suppress Language switcher if language is inherited from CMS - CRM-9971
+    $config = CRM_Core_Config::singleton();
+    if ($id == self::LANGSWITCH && property_exists($config, "inheritLocale") && $config->inheritLocale) {
+      return NULL;
     }
 
     $block            = array();
