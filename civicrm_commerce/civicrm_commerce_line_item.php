@@ -92,7 +92,7 @@ function civicrm_commerce_line_item_title($line_item) {
     $title = $result['values'][$contribution_id]['contribution_type'];
   }
   else {
-    $title = t('Discount');
+    $title = '';
   }
 
   return($title);
@@ -175,23 +175,15 @@ function civicrm_commerce_line_item_add_form_submit(&$line_item, $element, &$for
  * @access public 
  *  
  */  
-function civicrm_commerce_line_item_add_new(&$params, $component) {
+function civicrm_commerce_line_item_add_new($paymentObj, &$params, $component) {
 
-  // parse the params
-  $contributionID = CRM_Utils_Array::value('contributionID', $params);
-  $amount         = CRM_Utils_Array::value('amount', $params);
-  $currency_code  = CRM_Utils_Array::value('currencyID', $params);
-  $contactID      = CRM_Utils_Array::value('contactID', $params);
-  $membershipID   = CRM_Utils_Array::value('membershipID', $params);
-  $eventID        = CRM_Utils_Array::value('eventID', $params);
-  $participantID  = CRM_Utils_Array::value('participantID', $params);
-
-  // load the "dummy" civicrm product
-  $product = commerce_product_load_by_sku(CIVICRM_COMMERCE_PRODUCT_SKU);
-
-  if (isset($contactID)) {
-    $result = civicrm_api('contact', 'get', array('id' => $contactID, 'version' => 3));
-    $contact = $result['values'][$contactID];
+  // define an array of the params required to build a line item
+  $line_item_params = $params;
+  
+  // load the contact record to get the display name
+  if (isset($params['contactID'])) {
+    $result = civicrm_api('contact', 'get', array('id' => $params['contactID'], 'version' => 3));
+    $contact = $result['values'][$params['contactID']];
   }
   else {
     $contact['display_name'] = '';
@@ -199,72 +191,77 @@ function civicrm_commerce_line_item_add_new(&$params, $component) {
   
   // determine the line item type to create
   if ($component == "contribute") {
-    $label = $contact['display_name'];
-    if ($membershipID) {
-      $type = 'civi_membership';
+    $line_item_params['label'] = $contact['display_name'];
+    if (isset($params['membershipID'])) {
+      $line_item_params['type'] = 'civi_membership';
     }
     else {
-      $type = 'civi_contribution';
+      $line_item_params['type'] = 'civi_contribution';
     }
   }
   elseif ($component == "event") {
-    $type = 'civi_event';
-    if (isset($participantID)) {
-      $result = civicrm_api('participant', 'get', array('id' => $participantID, 'version' => 3));
-      $label = $result['values'][$participantID]['event_title'];
-      $label .= ' (' . $result['values'][$participantID]['display_name']; 
+    $line_item_params['type'] = 'civi_event';
+    if (isset($params['participantID'])) {
+      $result = civicrm_api('participant', 'get', array('id' => $params['participantID'], 'version' => 3));
+      $line_item_params['label'] = $result['values'][$params['participantID']]['event_title'];
+      $line_item_params['label'] .= ' (' . $result['values'][$params['participantID']]['display_name']; 
 
-      if ((isset($result['values'][$participantID]['participant_fee_level'])) &&
-          (!is_array($result['values'][$participantID]['participant_fee_level']))){
-        $label .= ' : ' . $result['values'][$participantID]['participant_fee_level'];
+      if ((isset($result['values'][$params['participantID']]['participant_fee_level'])) &&
+          (!is_array($result['values'][$params['participantID']]['participant_fee_level']))){
+        $line_item_params['label'] .= ' : ' . $result['values'][$params['participantID']]['participant_fee_level'];
       }
-      $label .= ')';
+      $line_item_params['label'] .= ')';
     }
     else {
-      $label = CRM_Utils_Array::value('item_name', $params);
-      $label .= ' (' . $contact['display_name'] . ')';
+      $line_item_params['label'] = CRM_Utils_Array::value('item_name', $params);
+      $line_item_params['label'] .= ' (' . $contact['display_name'] . ')';
     }
   }
   else {
     CRM_Core_Error::fatal(ts('Unknown shopping cart item.'));
   }
   
-    // @TODO fix giant kludge
-  $qty = 1;
-  if ($eventID == 1019) {
-    $qty = ($amount / 12);
-    $amount = 12;
+  // allow manipulation of the line item parameters
+  $line_item_params['quantity'] = 1;
+  CRM_Utils_Hook::alterPaymentProcessorParams($paymentObj, $params, $line_item_params);
+
+  // @TODO move this into hook_alterPaymentProcessorParams
+  if ($line_item_params['eventID'] == 1019) {
+    $line_item_params['quantity'] = ($line_item_params['amount'] / 12);
+    $line_item_params['amount'] = 12;
   }
 
-  // change it's price to ensure a base price is added to the line item
+  // load the "dummy" civicrm product
+  $product = commerce_product_load_by_sku(CIVICRM_COMMERCE_PRODUCT_SKU);
+  // change the products price to ensure a base price is added to the line item
   // this will be overwritten by the pricing rule
   $product_wrapper = entity_metadata_wrapper('commerce_product', $product);
-  $product_wrapper->title = $label;
-  $product_wrapper->commerce_price->amount = $amount;
-  $product_wrapper->commerce_price->currency_code = $currency_code;
+  $product_wrapper->title = $line_item_params['label'];
+  $product_wrapper->commerce_price->amount = $line_item_params['amount'];
+  $product_wrapper->commerce_price->currency_code = $line_item_params['currencyID'];
 
   // create the line item and set its attributes
-  $line_item = commerce_product_line_item_new($product, $qty, 0, $params, $type);
+  $line_item = commerce_product_line_item_new($product, $line_item_params['quantity'], 0, $line_item_params, $line_item_params['type']);
   $line_item_wrapper = entity_metadata_wrapper('commerce_line_item', $line_item);
 
-  $line_item_wrapper->line_item_label = $label;
-  $line_item_wrapper->civicrm_commerce_amount = $amount;
-  $line_item_wrapper->civicrm_commerce_currency_code = $currency_code;
+  $line_item_wrapper->line_item_label = $line_item_params['label'];
+  $line_item_wrapper->civicrm_commerce_amount = $line_item_params['amount'];
+  $line_item_wrapper->civicrm_commerce_currency_code = $line_item_params['currencyID'];
 
-  if ($contributionID) {
-    $line_item_wrapper->civicrm_commerce_contribution_id = $contributionID;
+  if ($line_item_params['contributionID']) {
+    $line_item_wrapper->civicrm_commerce_contribution_id = $line_item_params['contributionID'];
   }
-  if ($membershipID) {
-    $line_item_wrapper->civicrm_commerce_membership_id = $membershipID;
+  if ($line_item_params['membershipID']) {
+    $line_item_wrapper->civicrm_commerce_membership_id = $line_item_params['membershipID'];
   }
-  if ($contactID) {
-    $line_item_wrapper->civicrm_commerce_contact_id = $contactID;
+  if ($line_item_params['contactID']) {
+    $line_item_wrapper->civicrm_commerce_contact_id = $line_item_params['contactID'];
   }
-  if ($eventID) {
-    $line_item_wrapper->civicrm_commerce_event_id = $eventID;
+  if ($line_item_params['eventID']) {
+    $line_item_wrapper->civicrm_commerce_event_id = $line_item_params['eventID'];
   }
-  if ($participantID) {
-    $line_item_wrapper->civicrm_commerce_participant_id = $participantID;
+  if ($line_item_params['participantID']) {
+    $line_item_wrapper->civicrm_commerce_participant_id = $line_item_params['participantID'];
   }
 
   // add it to the current user's cart

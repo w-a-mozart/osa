@@ -1,7 +1,7 @@
 name = CiviCRM Commerce Integration
-description = "Integrate CiviCRM and Drupal Commerce Module."
+description = "Enables Drupal Commerce Cart to act as a payment processor for CiviCRM."
 version = 7.x-dev
-package = CiviCRM
+package = CiviCRM (contrib)
 dependencies[] = civicrm
 dependencies[] = commerce
 core = 7.x
