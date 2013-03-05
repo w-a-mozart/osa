@@ -24,7 +24,7 @@ function commerce_elavon_admin_settings() {
     '#title' => t('Title'),
     '#default_value' => variable_get('commerce_elavon_title', 'Elavon'),
     '#description' => t('Override the display title of the Elavon Payment Method.'),
-  );  
+  );
   
   $form['commerce_elavon']['commerce_elavon_server'] = array(
     '#type' => 'radios',
@@ -32,6 +32,7 @@ function commerce_elavon_admin_settings() {
     '#options' => array(
       0 => t('Test / Demo'),
       1 => t('Production / Live'),
+      2 => t('None (reply with dummy acceptance)'),
     ),
     '#default_value' => variable_get('commerce_elavon_server', 0),
     '#required' => TRUE,

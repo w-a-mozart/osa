@@ -103,13 +103,15 @@ function commerce_elavon_transaction($payment_method, $values, $order, $charge) 
   // use curl to send the transaction to Elavon
   $chURL = ($txn_array['ssl_test_mode'] == 'true') ? COMMERCE_ELAVON_TEST_URL : COMMERCE_ELAVON_URL;
   $curl_options = array(
-    CURLOPT_URL            => $chURL . '?xmldata=' . $request,
+    CURLOPT_URL            => $chURL,
     CURLOPT_TIMEOUT        => COMMERCE_ELAVON_TIMEOUT,
-    CURLOPT_RETURNTRANSFER => TRUE,
     CURLOPT_SSL_VERIFYPEER => FALSE,
-    CURLOPT_REFERER        => "$base_url/" . request_path(),
     CURLOPT_SSL_VERIFYHOST => FALSE,
+    CURLOPT_REFERER        => "$base_url/" . request_path(),
     CURLOPT_FOLLOWLOCATION => TRUE,
+    CURLOPT_RETURNTRANSFER => TRUE,
+		CURLOPT_POST           => TRUE,
+    CURLOPT_POSTFIELDS     => 'xmldata=' . $request
   );
 
   if (variable_get('commerce_elavon_verify_peer', FALSE)) {
@@ -117,29 +119,32 @@ function commerce_elavon_transaction($payment_method, $values, $order, $charge) 
     $curl_options[CURLOPT_CAINFO]         = variable_get('commerce_elavon_cert_path');
   }
 
-  $ch = curl_init();
-  curl_setopt_array($ch, $curl_options);
-  $response = curl_exec($ch);
-  $errorno  = curl_errno($ch);
-  $errmsg   = curl_error($ch);
-  curl_close($ch);
-
-/*
-  $now = date('Y/m/d h:i:s A'); 
-  $response = <<<EOD
+  // send txn to Elavon
+  if (variable_get('commerce_elavon_server', 0) != 2) {
+    $ch = curl_init();
+    curl_setopt_array($ch, $curl_options);
+    $response = curl_exec($ch);
+    $errorno  = curl_errno($ch);
+    $errmsg   = curl_error($ch);
+    curl_close($ch);
+  }
+  else {
+    $now = date('Y/m/d h:i:s A');
+    $id = strtoupper(hash('crc32b', $now));
+    $response = <<<EOD
 <txn>
 <ssl_card_number>$pci_card_number</ssl_card_number>
 <ssl_exp_date>{$txn_array['ssl_exp_date']}</ssl_exp_date>
 <ssl_amount>{$txn_array['ssl_amount']}</ssl_amount>
 <ssl_result>0</ssl_result>
 <ssl_result_message>APPROVAL</ssl_result_message>
-<ssl_txn_id>101641221593ACBA6-BAFD-76B7-4948-B3DE68CFD0CC</ssl_txn_id>
-<ssl_approval_code>CMC142</ssl_approval_code>
+<ssl_txn_id>THIS-IS-A-TEST-{$id}</ssl_txn_id>
+<ssl_approval_code>ABC123</ssl_approval_code>
 <ssl_account_balance>0</ssl_account_balance>
 <ssl_txn_time>$now</ssl_txn_time>
 </txn>
 EOD;
-*/
+  }
 
   if (!$response) {
     watchdog('commerce_elavon', 'Error with cURL request: (!error_no). Message: !error_message', array('!error_no' => $errorno, '!error_message' => $errmsg), WATCHDOG_ERROR);
