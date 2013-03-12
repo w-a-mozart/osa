@@ -114,6 +114,8 @@ class CRM_Profile_Form_Edit extends CRM_Profile_Form {
         'Form' => $this,
         '_SESSION' => $_SESSION,
         '_SERVER' => $_SERVER,
+        '_POST' => $_POST,
+        'GLOBALS'=> $GLOBALS,
       );
       watchdog('ahh', '<pre>' . print_r($ahhmsg, TRUE) . '</pre>');
       CRM_Core_Error::fatal(ts('The requested Profile (gid=%1) is disabled, OR there is no Profile with that ID, OR a valid \'gid=\' integer value is missing from the URL. Contact the site administrator if you need assistance.',

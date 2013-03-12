@@ -59,7 +59,7 @@ function osa_civicrm_pageRun_CRM_Contact_Page_View_UserDashBoard(&$page) {
   //   or the current user
   // so the get the contact object being displayed
   $pg_contact = _osa_get_contact($cid, FALSE);
-  $pg_contact_type = isset($pg_contact['contact_sub_type']) ? $pg_contact['contact_sub_type'][0] : $pg_contact['contact_type'];
+  $pg_contact_type = empty($pg_contact['contact_sub_type']) ? $pg_contact['contact_type'] : $pg_contact['contact_sub_type'][0];
   // @todo image_URL not currently returned by api
   $pg_contact['image_URL'] = CRM_Contact_BAO_Contact_Utils::getImage($pg_contact_type, FALSE, $cid);
   $page->assign('contact', $pg_contact);
@@ -73,8 +73,6 @@ function osa_civicrm_pageRun_CRM_Contact_Page_View_UserDashBoard(&$page) {
   $members         = array(); // overwrite list to display name
   $event_rows      = array();
   $contribute_rows = array();
-//  $event_rows      = $smarty->get_template_vars('event_rows');
-//  $contribute_rows = $smarty->get_template_vars('contribute_rows');
 
   // get all the family members for this contact
   $family = _osa_getHouseholdMembers($cid);
@@ -111,30 +109,23 @@ function osa_civicrm_pageRun_CRM_Contact_Page_View_UserDashBoard(&$page) {
     }
 
     // append family member elements to lists in the page
-//    if ($person['contact_id'] != $page->_contactId) {
-      $events = _osa_get_participant_events($person['contact_id']);
-      if (isset($events)) {
-        $event_rows = $event_rows + $events;
-      }
+    $events = _osa_get_participant_events($person['contact_id']);
+    if (isset($events)) {
+      $event_rows = $event_rows + $events;
+    }
 
-      $contributions = _osa_get_contributions($person['contact_id']);
-      if (isset($contributions)) {
-        $contribute_rows = $contribute_rows + $contributions;
-      }
-//    }
+    $contributions = _osa_get_contributions($person['contact_id']);
+    if (isset($contributions)) {
+      $contribute_rows = $contribute_rows + $contributions;
+    }
   }
 
   // special processing for group classes
   osa_overwrite_class_participants($event_rows);
   
   // sort and trim $contribute_rows to a max of 20
-  foreach ($contribute_rows as $row) {
-    if ($row['total_amount'] == "0.00") {
-      unset($contribute_rows[$row['id']]);
-    }
-  }
-  $contribute_rows = array_slice($contribute_rows, 0, 20, TRUE);
   krsort($contribute_rows);
+  $contribute_rows = array_slice($contribute_rows, 0, 20, TRUE);
   
   // (re)assign Smarty varibles
   $page->assign('parents', $parents);
@@ -261,15 +252,16 @@ function osa_civicrm_buildForm_CRM_Profile_Form_Edit(&$form) {
   $context = CRM_Utils_Request::retrieve('context', 'String');
   if ($context == 'boxload') {
     $smarty = CRM_Core_Smarty::singleton();
-    $smarty->display('CRM/common/jquery.tpl');
-    $smarty->display('CRM/common/commonCSS.tpl');
     $smarty->display('osa/boxload.tpl');
-    
+
     // makesure colorbox forms return to the current page
     $form->removeElement('postURL');
     $form->removeElement('cancelURL');
     $form->addElement('hidden', 'postURL', $_SERVER['HTTP_REFERER']);
     $form->addElement('hidden', 'cancelURL', $_SERVER['HTTP_REFERER']);
+
+    // make sure we don't loose the profile id
+    $form->set('gid', $gid);
   }
 }
 
@@ -297,7 +289,7 @@ function osa_civicrm_postProcess_CRM_Profile_Form_Edit(&$form) {
       }
 
       $contact     = _osa_get_contact($cid, FALSE);
-      $contact_type = isset($contact['contact_sub_type']) ? $contact['contact_sub_type'][0] : $contact['contact_type'];
+      $contact_type = empty($contact['contact_sub_type']) ? $contact['contact_type'] : $contact['contact_sub_type'][0];
       $perm        = ($contact_type == 'Parent') ? OSA_PERM_OWNED : OSA_PERM_NONE;
       _osa_create_relationship($type, $cid, $hid, $perm);
 
@@ -373,25 +365,8 @@ function osa_civicrm_buildForm_CRM_Contribute_Form_Contribution_Main(&$form) {
     osa_civicrm_buildForm_teacher_registration($form);
   }
 
-  // if using the direct payment, remove the unused fields
+  // if using the direct payment, fix the button label
   if ($form->_paymentProcessor['payment_processor_type'] != 'drupalcommerce') {
-/*
-    $remove_fields = array(
-      'billing_first_name',
-      'billing_middle_name',
-      'billing_last_name',
-      "billing_street_address-$bltID",
-      "billing_city-$bltID",
-      "billing_state_province_id-$bltID",
-      "billing_postal_code-$bltID",
-      "billing_country_id-$bltID",
-      'cvv2',
-    );
-    foreach ($remove_fields as $field) {
-      unset($form->_fields[$field]);
-      $form->removeElement($field);
-    }
-*/
     $group = $form->getElement('buttons');
     $buttons = $group->getElements();
     $buttons[0]->setValue(ts('Next') . ' >>');
@@ -451,7 +426,7 @@ function osa_civicrm_buildForm_CRM_Contribute_Form_Contribution_Confirm(&$form) 
   if (isset($form->_params['contact_id'])) {
     $cid = $form->_params['contact_id'];
     $contact = _osa_get_contact($cid, FALSE);
-    $contact['contact_type'] = isset($contact['contact_sub_type']) ? $contact['contact_sub_type'][0] : $contact['contact_type'];
+    $contact['contact_type'] = empty($contact['contact_sub_type']) ? $contact['contact_type'] : $contact['contact_sub_type'][0];
 
     $form->assign('contact', $contact);
     $form->assign('onbehalfFamily', TRUE);
@@ -642,32 +617,12 @@ function osa_civicrm_buildForm_CRM_Event_Form_Registration_Register(&$form) {
       $form->assign('customPost', $custom_post);
     }
   }
-  
+
+  // if using the shopping cart, fix the button label
   if ($form->_paymentProcessor['payment_processor_type'] == 'drupalcommerce') {
     $group = $form->getElement('buttons');
     $buttons = $group->getElements();
     $buttons[0]->setValue(ts('Add to Cart'));
-  }
-  else {
-    // if using the direct payment, remove the unused fields
-    $bltID = $form->_bltID;
-    $remove_fields = array(
-      'billing_first_name',
-      'billing_middle_name',
-      'billing_last_name',
-      "billing_street_address-$bltID",
-      "billing_city-$bltID",
-      "billing_state_province_id-$bltID",
-      "billing_postal_code-$bltID",
-      "billing_country_id-$bltID",
-      'cvv2',
-    );
-    /*
-    foreach ($remove_fields as $field) {
-      unset($form->_fields[$field]);
-      $form->removeElement($field);
-    }
-    */
   }
 
   // special processing for group classes
@@ -724,7 +679,6 @@ function osa_civicrm_postProcess_CRM_Event_Form_Registration_Register(&$form) {
     $data['values']['Register']["email-$bltID"] = $contact['email'];
     
     $form->set('params', $params);
-//    $form->set("email-$bltID", $contact['email']);
   }
   
   // check if we are using the Drupal Commerce Cart

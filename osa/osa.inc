@@ -140,7 +140,7 @@ function _osa_manageHouseholdRelationships($cid) {
 
   foreach ($family as $person) {
     $contact = $person['contact'];
-    $contact_type = isset($contact['contact_sub_type']) ? $contact['contact_sub_type'][0] : $contact['contact_type'];
+    $contact_type = empty($contact['contact_sub_type']) ? $contact['contact_type'] : $contact['contact_sub_type'][0];
 
     if ($contact_type == 'Parent') {
       $parents[] = $contact;
@@ -349,7 +349,7 @@ function _osa_getHouseholdMembers($cid = NULL, $field = NULL) {
         }
       }
       
-      $contact_type = isset($contact['contact_sub_type']) ? $contact['contact_sub_type'][0] : $contact['contact_type'];
+      $contact_type = empty($contact['contact_sub_type']) ? $contact['contact_type'] : $contact['contact_sub_type'][0];
       $person = array(
         'contact_id'   => $contact_id,
         'contact_type' => $contact_type,
@@ -383,10 +383,6 @@ function _osa_getTeachers(&$student) {
   }
   $teachers[$cache_key] = array();
 
-  $contact_type = isset($student['contact_sub_type']) ? $student['contact_sub_type'][0] : $student['contact_type'];
-  if ($contact_type != 'Student') {
-    return $teachers[$cache_key];
-  }
   // get relationships for the student
   $result = civicrm_api('relationship', 'get', array('contact_id' => $student['id'], 'version' => 3));
   $relationships = $result['values'];
@@ -838,7 +834,7 @@ SELECT civicrm_contribution.id AS contribution_id, civicrm_contribution_type.nam
 FROM civicrm_contribution
 JOIN civicrm_contribution_type ON civicrm_contribution.contribution_type_id = civicrm_contribution_type.id
 JOIN civicrm_option_value ON civicrm_contribution.contribution_status_id = civicrm_option_value.value AND civicrm_option_value.option_group_id = 11
-WHERE contact_id = $contact_id
+WHERE (contact_id = $contact_id) AND (total_amount > 0)
 EOD;
 
   $contributions = array();
