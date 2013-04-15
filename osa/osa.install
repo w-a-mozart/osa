@@ -1,21 +1,27 @@
 <?php
 
-  /**
-   * @file
-   */
+/**
+ * @file
+ */
 
-  /**
-   * Implementation of hook_install() 
-   */
-  function osa_install() {
-  }
+/**
+ * Implementation of hook_install() 
+ */
+function osa_install() {
+  // make sure our callbacks come after civicrm
+  db_update('system')
+    ->fields(array('weight' => 101))
+    ->condition('name', 'osa', '=')
+    ->execute();
+}
 
-  /**
-   * Implementation of hook_uninstall() 
-   */
-  function osa_uninstall() {
-    variable_del('osa_start_date');  
-    variable_del('osa_num_installments');
-    variable_del('osa_prorate_teacher_pay');
-    variable_del('osa_teacher_pay_override');
-  }
+/**
+ * Implementation of hook_uninstall() 
+ */
+function osa_uninstall() {
+  variable_del('osa_discount_types');
+  variable_del('osa_num_installments');
+  variable_del('osa_prorate_teacher_pay');
+  variable_del('osa_start_date');
+  variable_del('osa_teacher_pay_override');
+}

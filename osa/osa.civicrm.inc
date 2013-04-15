@@ -48,9 +48,13 @@ function osa_civicrm_pageRun_CRM_Contact_Page_View_UserDashBoard(&$page) {
     }
   }
 
-  // take the opportunity to clean house
+  // take the opportunity to clean house (only once a day)
   if (isset($hid)) {
-    _osa_manageHouseholdRelationships($hid);
+    $clean_time = isset($_SESSION['osa']['manageHouseholdRelationships'][$hid]) ? $_SESSION['osa']['manageHouseholdRelationships'][$hid] : 0;
+    if (($clean_time + 86400) < $_SERVER['REQUEST_TIME']) {
+      _osa_manageHouseholdRelationships($hid);
+      $_SESSION['osa']['manageHouseholdRelationships'][$hid] = $_SERVER['REQUEST_TIME'];
+    }
   }
   
   // $cid could be:
@@ -110,12 +114,12 @@ function osa_civicrm_pageRun_CRM_Contact_Page_View_UserDashBoard(&$page) {
 
     // append family member elements to lists in the page
     $events = _osa_get_participant_events($person['contact_id']);
-    if (isset($events)) {
+    if (!empty($events)) {
       $event_rows = $event_rows + $events;
     }
 
     $contributions = _osa_get_contributions($person['contact_id']);
-    if (isset($contributions)) {
+    if (!empty($contributions)) {
       $contribute_rows = $contribute_rows + $contributions;
     }
   }

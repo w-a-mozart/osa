@@ -99,7 +99,7 @@ function civicrm_commerce_contains_contribution_type($order, $contribution_type,
     $order_wrapper = entity_metadata_wrapper('commerce_order', $order);
 
     civicrm_initialize();
-    // Count the quantities of the in each line item with the specified contribution type
+    // Count the quantities of each line item with the specified contribution type
     foreach ($order_wrapper->commerce_line_items as $delta => $line_item_wrapper) {
       if (!isset($line_item_wrapper->civicrm_commerce_contribution_id)) {
         continue;
@@ -214,7 +214,31 @@ function civicrm_commerce_update_contribution($commerce_payment_transaction) {
           }
         }
 
-        // updating the contribution status doesn't update the participant
+        // update the membership records
+        if (($commerce_payment_transaction->status == COMMERCE_PAYMENT_STATUS_SUCCESS) && ($line_item_wrapper->type->value() == 'civi_membership')) {
+          $mid = $line_item_wrapper->civicrm_commerce_membership_id->value();
+          $result = civicrm_api('membership', 'get', array('id' => $mid, 'version' => 3));
+          if ($result['is_error'] == 0) {
+            $membership_params = $result['values'][$mid];
+            unset($membership_params['status_id']);
+            $membership_params['skipStatusCal'] = FALSE;
+            $membership_params['version'] = 3;
+
+            $membershipType = new CRM_Member_BAO_MembershipType();
+            $dates = $membershipType->getDatesForMembershipType($membership_params['membership_type_id']);
+
+            $membership_params['end_date'] = $dates['end_date'];
+            $membership_params['join_date'] = isset($membership_params['join_date']) ? $membership_params['join_date'] : $dates['join_date'];
+            $membership_params['start_date'] = isset($membership_params['start_date']) ? $membership_params['start_date'] : $dates['start_date'];
+
+            $result = civicrm_api('membership', 'create', $membership_params);
+            if ($result['is_error'] != 0) {
+              watchdog('civicrm_commerce', 'Error updating civicrm membership %1: %2', array( '%1' => $membership_params['id'], '%2' => $result['error_message']), WATCHDOG_ERROR);
+            }
+          }
+        }
+        
+        // update the participant records
         if ($line_item_wrapper->type->value() == 'civi_event') {
           $participant_params['id'] = $line_item_wrapper->civicrm_commerce_participant_id->value();
           $result = civicrm_api('participant', 'create', $participant_params);

@@ -307,19 +307,19 @@ function _osa_getHouseholdMembers($cid = NULL, $field = NULL) {
     $cid = _osa_get_contact_id();
   }
 
-  // use static caching
-  static $family = array();
-  $cache_key = "cid=$cid&field=$field";
-  if (isset($family[$cache_key])) {
-    return $family[$cache_key];
-  }
-  $family[$cache_key] = array();
-  
   // get the household
   $hid = _osa_getHousehold($cid);
   if (!isset($hid)) {
     $hid = $cid;
   }
+  
+  // use static caching
+  static $family = array();
+  $cache_key = "hid=$hid&field=$field";
+  if (isset($family[$cache_key])) {
+    return $family[$cache_key];
+  }
+  $family[$cache_key] = array();
   
   // should never happen as this should only be available to authenticated users
   if (!isset($hid)) {
@@ -339,7 +339,6 @@ function _osa_getHouseholdMembers($cid = NULL, $field = NULL) {
       $family[$cache_key][$contact_id] = $contact[$field];
     }
     else {
-
       // it's possible to have more than one relationship with the household
       // e.g. sometimes civi creates a household member for the head of the household
       // we want to perserve head of houshold relationships
@@ -803,6 +802,26 @@ function _osa_get_membership($contact_id, $membership_type_id = OSA_MEMBER_STUDE
 }
 
 /**
+ * Gets start and end dates associated with a membership type
+ */
+function _osa_get_membership_dates($membership_type_id = OSA_MEMBER_STUDENT) {
+  static $membershipDates = array();
+  
+  if (!isset($membershipDates[$membership_type_id])) {
+    $membershipType = new CRM_Member_BAO_MembershipType();
+    $dates = $membershipType->getDatesForMembershipType($membership_type_id);
+    // dates are note returned in same format as v3 api
+    foreach ($dates as $name => $date) {
+      if (!empty($date)) {
+        $membershipDates[$membership_type_id][$name] = substr($date, 0, 4) . '-' . substr($date, 4, 2) . '-' . substr($date, 6, 2);
+      }
+    }
+  }
+
+  return $membershipDates[$membership_type_id];
+}
+
+/**
  * Wrapper of CiviCRM API to get contributions
  *
  * @param integer $contact_id
@@ -861,7 +880,7 @@ EOD;
  * @param integer $contact_id
  *   contact who's events we're to get
  */
-function _osa_get_participant_events($contact_id) {
+function _osa_get_participant_events($contact_id, $current = TRUE) {
   // build the  parameters
   $params = array(
     'contact_id' => $contact_id,
@@ -871,7 +890,16 @@ function _osa_get_participant_events($contact_id) {
   // Call the CiviCRM API to get the events
   $result = civicrm_api('participant', 'get', $params);
   if ($result['is_error']) {
-    watchdog('osa', 'Error: %1\nfailed to get events for contact_id=%2', array(1 => $result['error_message'], 2 => $contact_id), WATCHDOG_ERROR);
+    watchdog('osa', 'Error: %1\nfailed to get events for contact_id = %2', array('%1' => $result['error_message'], '%2' => $contact_id), WATCHDOG_ERROR);
+  }
+
+  // "current" is participation less than one week old
+  if ($current) {
+    foreach ($result['values'] as $id => $value) {
+      if (strtotime($value['event_end_date']) < strtotime('-1 week')) {
+        unset($result['values'][$id]);
+      }
+    }
   }
   
   return $result['values'];

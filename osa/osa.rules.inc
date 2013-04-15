@@ -47,92 +47,90 @@ function osa_rules_condition_info() {
  * Rules condition: contact's household has other members
  */
 function osa_household_members($commerce_line_item, $operator, $value) {
-  $number_members = 0;
+  static $number_members = array();
   
   $line_item_wrapper = entity_metadata_wrapper('commerce_line_item', $commerce_line_item);
-  if (!isset($line_item_wrapper->civicrm_commerce_contact_id)) {
-    // must get a valid contact id
-    return FALSE;
-  }
-
-  $contact_id = $line_item_wrapper->civicrm_commerce_contact_id->value();
-  civicrm_initialize();
-  $contact = _osa_get_contact($contact_id, FALSE);
-  if ((!isset($contact)) || ($contact['contact_type'] <> 'Individual')) {
-    // must get a valid Individual contact
-    return FALSE;
-  }
-    
-  // get the household
-  $hid = _osa_getHousehold($contact_id);
-  if (!isset($hid)) {
-    // person must belong to a household
-    return FALSE;
-  }
-
-  // get the contact's membership record
-  $membership = _osa_get_membership($contact_id);
-
-  // we don't want to count memberships that come after this one in the shopping cart
-  // open the order record as read only: Issue 1514618
-  $order = commerce_order_load($commerce_line_item->order_id);
-  entity_get_controller('commerce_order')->resetCache(array($order->order_id));
-
-  $ignore_membership_ids = array();
-  if ($order) {
-    $order_wrapper = entity_metadata_wrapper('commerce_order', $order);
-    foreach ($order_wrapper->commerce_line_items as $delta => $order_line_item_wrapper) {
-      if ($order_line_item_wrapper->line_item_id->value() <= $line_item_wrapper->line_item_id->value()) {
-        continue;
-      }
-      if ((isset($order_line_item_wrapper->civicrm_commerce_membership_id)) &&
-          ($order_line_item_wrapper->civicrm_commerce_membership_id->value() <> $membership['id'])) {
-        $ignore_membership_ids[] = $order_line_item_wrapper->civicrm_commerce_membership_id->value();
-      }
-    }
-  }
+  $line_item_id = $line_item_wrapper->line_item_id->value();
   
-  // get the family member ids
-  $result = civicrm_api('relationship', 'get', array('contact_id' => $hid, 'version' => 3));
-  $relationships = $result['values'];
-
-  // setup default search criteria
-  $params = array(
-    'membership_type_id' => OSA_MEMBER_STUDENT,
-    'filters' => array( 
-        'is_current' => 1,
-      ),
-    'version' => 3,
-  );
-
-  // only want memberships for the same year as the given contact
-  if (isset($membership)) {
-    $params['end_date'] = $membership['end_date'];
-  }
-
-  foreach ($relationships as $relationship) {
-    $params['contact_id'] = $relationship['cid'];
-    $result = civicrm_api('membership', 'get', $params);
-
-    if (($result['is_error'] == 0) &&
-        ($result['count'] == 1) &&
-        (!in_array($result['id'], $ignore_membership_ids))) {
-      $number_members++;
+  // this can be called multiple times for a single line item
+  if (!isset($number_members[$line_item_id])) {
+    // must get a valid contact id in the line item
+    if (!isset($line_item_wrapper->civicrm_commerce_contact_id)) {
+      throw new RulesEvaluationException('The given commerce_line_item is incompatible with this condition.', array(), NULL, RulesLog::ERROR);
+      return FALSE;
     }
+    $contact_id = $line_item_wrapper->civicrm_commerce_contact_id->value();
+
+    // need civicrm
+    civicrm_initialize();
+    
+    // get all the family members for this contact, use static cacheing as this is called many times
+    $hid = _osa_getHousehold($contact_id);
+    $hid = isset($hid) ? $hid : $contact_id;
+    static $osa_members = array();
+    if (isset($osa_members[$hid])) {
+      $members = $osa_members[$hid];
+    }
+    else {
+      $members = array();
+      $family = _osa_getHouseholdMembers($contact_id);
+    
+      // get the membership record for each family member
+      foreach ($family as $person) {
+        $membership = _osa_get_membership($person['contact_id']);
+        if ((isset($membership)) && ($membership['is_current_member'])) {
+          $members[$membership['id']] = $membership;
+        }
+      }
+      $osa_members[$hid] = $members;
+    }
+
+    // eliminate memberships, depending on context of call
+    
+    // we don't want to count memberships that come after this one in the shopping cart
+    $order = commerce_order_load($commerce_line_item->order_id);
+    entity_get_controller('commerce_order')->resetCache(array($order->order_id)); // open the order record as read only: Issue 1514618
+    if ($order) {
+      $order_wrapper = entity_metadata_wrapper('commerce_order', $order);
+      foreach ($order_wrapper->commerce_line_items as $delta => $order_line_item_wrapper) {
+        if (($order_line_item_wrapper->line_item_id->value() > $line_item_id) && (isset($order_line_item_wrapper->civicrm_commerce_membership_id))) {
+          if (isset($members[$order_line_item_wrapper->civicrm_commerce_membership_id->value()])) {
+            unset($members[$order_line_item_wrapper->civicrm_commerce_membership_id->value()]);
+          }
+        }
+      }
+    }
+
+    // if we are passed a line_item for a new membership, we only want to include memberships for the same membership year
+    if (isset($line_item_wrapper->civicrm_commerce_membership_id)) {
+      $new_membership = $members[$line_item_wrapper->civicrm_commerce_membership_id->value()];
+      
+      if (!isset($new_membership['end_date'])) {
+        $new_membership += _osa_get_membership_dates($new_membership['membership_type_id']);
+      }
+      
+      foreach ($members as $mid => $member) {
+        if ((isset($member['end_date'])) && ($member['end_date'] <> $new_membership['end_date'])) {
+          unset($members[$mid]);
+        }
+      }
+    }
+
+    $number_members[$line_item_id] = count($members);
   }
 
   // Make a quantity comparison based on the operator.
   switch ($operator) {
     case '<':
-      return $number_members < $value;
+      return $number_members[$line_item_id] < $value;
     case '<=':
-      return $number_members <= $value;
+      return $number_members[$line_item_id] <= $value;
     case '=':
-      return $number_members == $value;
+      return $number_members[$line_item_id] == $value;
     case '>=':
-      return $number_members >= $value;
+      return $number_members[$line_item_id] >= $value;
     case '>':
-      return $number_members > $value;
+      return $number_members[$line_item_id] > $value;
   }
 
   return FALSE;

@@ -183,6 +183,7 @@ function osa_webform_submission_presave($node, &$submission) {
 function osa_webform_select_options_info() {
   $items = array();
 
+  // group class option lists
   $items['class_type'] = array(
     'title' => t('Group class types'), 
     'options callback' => 'osa_webform_options_class_types', 
