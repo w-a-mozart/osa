@@ -10,6 +10,7 @@ require_once 'osa.civicrm.inc';
 require_once 'osa.commerce.inc';
 require_once 'osa.group_class.inc';
 require_once 'osa.teacher.inc';
+require_once 'osa.camp.inc';
 
 // CiviCRM hooks
 
@@ -178,30 +179,48 @@ function osa_webform_submission_presave($node, &$submission) {
 }
 
 /**
+ * Implements hook_webform_submission_insert() to process webform submissions
+ */
+function osa_webform_submission_insert($node, $submission) {
+  if (function_exists("osa_webform_submission_insert_{$node->nid}")) {
+    call_user_func_array("osa_webform_submission_insert_{$node->nid}", array(&$node, &$submission));
+  }
+}
+
+/**
  * Define custom options lists used in drop downs on webforms
  */
 function osa_webform_select_options_info() {
   $items = array();
 
+  // common lists
+  $items['family_list'] = array(
+    'title' => t('Family members'),
+    'options callback' => 'osa_webform_options_family',
+    'file' => 'osa.inc',
+  );
+
   // group class option lists
   $items['class_type'] = array(
-    'title' => t('Group class types'), 
-    'options callback' => 'osa_webform_options_class_types', 
+    'title' => t('Group class types'),
+    'options callback' => 'osa_webform_options_class_types',
     'file' => 'osa.group_class.inc',
   );
 
   $items['class_list'] = array(
-    'title' => t('Group class'), 
-    'options callback' => 'osa_webform_options_class_list', 
+    'title' => t('Group class'),
+    'options callback' => 'osa_webform_options_class_list',
     'file' => 'osa.group_class.inc',
   );
 
   $items['session_list'] = array(
     'title' => t('Sessions'),
-    'options callback' => 'osa_webform_options_session_list', 
+    'options callback' => 'osa_webform_options_session_list',
     'file' => 'osa.group_class.inc',
   );
 
+  // summer camp option lists
+  
   return $items;
 }
 
@@ -266,6 +285,14 @@ function osa_process_node(&$variables) {
 }
 
 /**
+ * Implements hook_js_alter to modify javascript added by other modules
+ */
+function osa_js_alter(&$javascript) {
+  // 
+
+};
+
+/**
  * Implements hook_commerce_price_component_type_info.
  */
 function osa_commerce_price_component_type_info() {
@@ -309,5 +336,23 @@ function osa_commerce_price_formatted_components_alter(&$components, $price, $en
         unset($components[$type]);
       }
     }
+  }
+}
+
+function osa_views_post_render(&$view, &$output, &$cache) {
+  // kuldge to allow commerce item labels to display html
+  // note we had to chnage the label db column to TEXT from VARCHAR
+  // @todo must be a better way
+  if (($view->base_table == 'commerce_line_item') || ($view->base_table == 'commerce_order')) {
+    $output = htmlspecialchars_decode($output);
+  }
+}
+
+/**
+ * Implements hook_views_query_alter() to modify view queries
+ */
+function osa_views_query_alter(&$view, &$query) {
+  if (function_exists("osa_views_query_alter_{$view->name}")) {
+    call_user_func_array("osa_views_query_alter_{$view->name}", array(&$view, &$query));
   }
 }

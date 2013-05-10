@@ -263,8 +263,11 @@ function osa_civicrm_buildForm_CRM_Profile_Form_Edit(&$form) {
     $form->removeElement('cancelURL');
     $form->addElement('hidden', 'postURL', $_SERVER['HTTP_REFERER']);
     $form->addElement('hidden', 'cancelURL', $_SERVER['HTTP_REFERER']);
-
-    // make sure we don't loose the profile id
+  }
+  
+  // make sure we don't loose the profile id
+  if ($gid) {
+    $form->addElement('hidden', 'gid', $gid);
     $form->set('gid', $gid);
   }
 }
@@ -285,6 +288,11 @@ function osa_civicrm_postProcess_CRM_Profile_Form_Edit(&$form) {
   // if we just created a new contact, setup the relationships, etc.
   if ($mode == CRM_Profile_Form::MODE_CREATE) {
 
+    // default to the current users house if it wasn't passed and we need it
+    if ((!$hid) && (($gid == OSA_PROFILE_PARENT) || ($gid == OSA_PROFILE_STUDENT) || ($gid == OSA_PROFILE_REL_INDIVIDUAL))) {
+      $hid = _osa_getHousehold();
+    }
+  
     // if we are passed a household id, add the new contact to the house
     if (isset($hid)) {
       $type = OSA_REL_HOUSEHOLD_MEMBER;
@@ -367,6 +375,11 @@ function osa_civicrm_buildForm_CRM_Contribute_Form_Contribution_Main(&$form) {
   // custom processing for the teacher registration form
   if ($form->_id == OSA_CONTRIB_TEACHER) {
     osa_civicrm_buildForm_teacher_registration($form);
+  }
+  // custom processing for the misc payment forms
+  elseif (($form->_id == OSA_CONTRIB_DONATE) || ($form->_id == OSA_CONTRIB_ADJUST)) {
+    drupal_add_css('.discount-info { display: none; }', array('type' => 'inline'));
+    
   }
 
   // if using the direct payment, fix the button label

@@ -21,6 +21,8 @@ define('OSA_PROFILE_REL_INDIVIDUAL', 2);
  */
 define('OSA_CONTRIB_MEMBER', 1);
 define('OSA_CONTRIB_TEACHER', 2);
+define('OSA_CONTRIB_DONATE', 3);
+define('OSA_CONTRIB_ADJUST', 4);
 
 /**
  * Define constants for CiviCRM Contribution Types.
@@ -295,6 +297,77 @@ function _osa_getHousehold($cid = NULL) {
   }
   
   return $household_id[$contact['id']];
+}
+
+/**
+ *  Create a default Household Contact
+ */
+function _osa_createHousehold($cid = NULL, $source = 'From code') {
+  // get the user's contact record
+  $contact = _osa_get_contact($cid, FALSE);
+  $cid = $contact['id'];
+
+  // create a household contact
+  $params = array(
+    'contact_type' => 'Household',
+    'household_name' => $contact['last_name'] . ' Family',
+    'email' => $contact['email'],
+    'source' => $source,
+    'primary_contact_id' => $cid,
+    'version'=> 3,
+  );
+  $result = civicrm_api('contact', 'create', $params);
+  if ($result['is_error'] <> 0) {
+    watchdog('osa', "Error creating household {$params['household_name']} for cid $cid %1", array('%1' => $result['error_message']), WATCHDOG_ERROR);
+    drupal_set_message('An unexpected error has occured. Please contact the administrator', 'error');
+  }
+  $hid = $result['id'];
+
+  // get the user's address
+  $result = civicrm_api('address', 'get', array('contact_id' => $cid, 'location_type_id' => 1, 'is_primary' => 1, 'version' => 3));
+  if ($result['is_error'] <> 0) {
+    watchdog('osa', "Error getting address for cid $cid %1", array('%1' => $result['error_message']), WATCHDOG_ERROR);
+    drupal_set_message('An unexpected error has occured. Please contact the administrator', 'error');
+  }
+  
+  // set the address of the household
+  if ($result['count'] == 1) {
+    $address = $result['values'][$result['id']];
+    // delete the user's current address so we can reset it to be shared with the household
+    $result = civicrm_api('address', 'delete', array('id' => $result['id'], 'version' => 3));
+  }
+  else {
+    $address['country_id'] = 1039;
+  }
+  $address['contact_id'] = $hid;
+  $address['version'] = 3;
+  $address['location_type_id'] = 1;
+  $address['is_primary'] = 1;
+  unset($address['id']);
+  $result = civicrm_api('address', 'create', $address);
+  if ($result['is_error'] <> 0) {
+    watchdog('osa', "Error creating address for hid $hid %1", array('%1' => $result['error_message']), WATCHDOG_ERROR);
+    drupal_set_message('An unexpected error has occured. Please contact the administrator', 'error');
+  }
+
+  // share the address
+  $address['master_id'] = $result['id'];
+  $address['use_shared_address'] = TRUE;
+  $address['contact_id'] = $cid;
+  $result = civicrm_api('address', 'create', $address);
+
+  // make the relationship to the household
+  _osa_create_relationship(OSA_REL_HEAD_HOUSEHOLD, $cid, $hid, OSA_PERM_OWNED);
+      
+  // update the given contact to be a Parent
+  if (is_array($contact['contact_sub_type'])) {
+    $contact_sub_type = $contact['contact_sub_type'];
+    $contact_sub_type[] = 'Parent';
+  }
+  else {
+    $contact_sub_type = 'Parent';
+  }
+  $result = civicrm_api('contact', 'create', array('id' => $cid, 'contact_sub_type' => $contact_sub_type, 'version' => 3));
 }
 
 /**
@@ -910,21 +983,52 @@ function _osa_get_participant_events($contact_id, $current = TRUE) {
  */
 function &_osa_get_webform_component(&$node, $form_key) {
 
-  static $webform_cache = array();
+  $cid = _osa_get_webform_component_id($node->webform['components'], $form_key);
+  return ($cid !== FALSE) ? $node->webform['components'][$cid] : NULL;
+}
 
-  if (!array_key_exists($node->nid, $webform_cache)) {
-    $webform_cache[$node->nid] = array();
-    foreach ($node->webform['components'] as $id => $component) {
-      $webform_cache[$node->nid][$component['form_key']] = $id;
-    }
+/**
+ * Returns the id of a webform component given the components & form_key
+ */
+function _osa_get_webform_component_id($components, $form_key) {
+
+  static $webform_component_map = array();
+
+  $nid = isset($components[1]['nid']) ? $components[1]['nid'] : NULL;
+  if (isset($nid) && isset($webform_component_map[$nid]) && isset($webform_component_map[$nid][$form_key])) {
+    return $webform_component_map[$nid][$form_key];
   }
 
-  if (array_key_exists($form_key, $webform_cache[$node->nid])) {
-    return $node->webform['components'][$webform_cache[$node->nid][$form_key]];
+  $map = array();
+  foreach ($components as $cid => $component) {
+    $map[$component['form_key']] = $cid;
   }
-  else {
-    return NULL;
+
+  if (isset($nid)) {
+    $webform_component_map[$nid] = $map;
   }
+
+  return isset($map[$form_key]) ? $map[$form_key] : FALSE;
+}
+
+/**
+ * Define option lists for drop downs on webforms
+ */
+function osa_webform_options_family() {
+  $camp_participant = NULL;
+  
+  // find out if there is an existing submission
+  $path = request_path();
+  $matches = array();
+  if (preg_match('#node\/(?P<nid>\d+)\/submission\/(?P<sid>\d+)#', $path, $matches) === 1) {
+    $node = node_load($matches['nid']);
+    $submission = webform_get_submission($matches['nid'], $matches['sid']);
+    $cid = _osa_get_webform_component_id($node->webform['components'], 'camp_participant');
+    $camp_participant = $submission->data[$cid][0];
+  }
+
+  civicrm_initialize();
+  return _osa_getHouseholdMembers($camp_participant, 'display_name');
 }
 
 /**

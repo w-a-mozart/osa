@@ -28,13 +28,8 @@ function osa_civicrm_buildForm_teacher_registration(&$form) {
   $overrides = empty($teacher_pay_override) ? array() : explode(PHP_EOL, $teacher_pay_override);
   foreach ($overrides as $override) {
     list( $contact_id, $override_price ) = explode('|', $override);
-    dvm( $override, 'override');
-    dvm( $contact_id, 'contact_id');
-    dvm( $override_price, 'override_price');
     if ($contact_id == $form->_params['contact_id']) {
       $ann_price = $override_price;
-      dvm( $form->_params['contact_id'], 'form contact_id');      
-      dvm( $ann_price, 'ann_price');
       break;
     }
   }
