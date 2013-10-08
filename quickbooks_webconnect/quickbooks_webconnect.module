@@ -1,0 +1,211 @@
+<?php
+
+/**
+ * Implementation of hook_server_info().
+ */
+function quickbooks_webconnect_server_info() {
+  return array(
+    'name' => 'QuickBooks Web Connector SOAP Service',
+    'settings' => array(
+      'file' => array('admin.inc', 'quickbooks_webconnect'),
+      'form' => '_quickbooks_webconnect_settings',
+      'submit' => '_quickbooks_webconnect_settings_submit',
+    ),
+  );
+}
+
+/**
+ * Implements hook_server().
+ */
+function quickbooks_webconnect_server() {
+
+  // check for valid ip
+  $allowed_ip = variable_get('quickbooks_webconnect_allowed_ip', '');
+  if ($allowed_ip) {
+    if (strpos($allowed_ip, $_SERVER['REMOTE_ADDR']) === FALSE) {
+      drupal_add_http_header('Status', '403 Forbidden');
+      exit;
+    }
+  }
+
+  // Serve the WSDL if ?wsdl is appended to the URL.
+  $wsdl = variable_get('quickbooks_webconnect_devkit_path', DRUPAL_ROOT . '/sites/all/libraries/quickbooks-php') . '/QuickBooks/QBWebConnectorSvc.wsdl';
+  if (in_array('wsdl', array_keys($_GET))) {
+    _quickbooks_webconnect_wsdl_output($wsdl);
+  }
+
+  // Disable the WSDL cache so it's not stored in memory or on disk.
+  ini_set("soap.wsdl_cache_enabled", "0");
+
+  // handle SOAP requests using the PHP SoapServer
+  try {
+    $server = new SoapServer($wsdl);
+    $server->setClass('QuickBooksWebConnectorSoapServer');
+    $server->handle();
+  }
+  catch (Exception $e) {
+    watchdog('quickbooks_webconnect', $e->getMessage(), array(), WATCHDOG_ERROR);
+  }
+
+  drupal_session_commit();
+  exit;
+}
+
+/**
+ * Soap Server Class for handling soap requests.
+ */
+class QuickBooksWebConnectorSoapServer {
+  public function __call($method_name, $args) {
+
+    // get the services controller
+    $info =  services_server_info_object();
+    $endpoint = services_endpoint_load($info->endpoint);
+    $services_method_name = 'quickbooks_webconnect.' . $method_name;
+    $controller = services_controller_get($services_method_name, $endpoint->name);
+
+    // execute the service method
+    try {
+      $ret = services_controller_execute($controller, $args);
+    }
+    catch (Exception $e) {
+      $code = $e->getCode();
+      $soap_fault = new SoapFault($e->getMessage(), $code);
+      watchdog('quickbooks_webconnect', $e->getMessage(), array(), WATCHDOG_ERROR);
+      throw $soap_fault;
+    }
+    return $ret;
+  }
+}
+
+/**
+ * Implements hook_services_resources()
+ */
+function quickbooks_webconnect_services_resources() {
+
+  // define each web service method
+  $methods = array(
+    'serverVersion' => 'Send the server version to the QuickBooks Webconnect client',
+    'clientVersion' => 'Check the version of the QuickBooks Webconnect client',
+    'authenticate' => 'Authenticate and initiate a session with the QuickBooks Webconnect client',
+    'sendRequestXML' => 'Send data to the QuickBooks Webconnect client',
+    'receiveResponseXML' => 'Get a response from the last QuickBooks operation',
+    'getLastError' => 'Send an error to the QuickBooks Webconnect client',
+    'closeConnection' => 'Close the connection',
+    'connectionError' => 'Log errors returned by the QuickBooks Webconnect client',
+  );
+
+  // create an action callback for each method
+  $actions = array();
+  foreach ($methods as $method => $help) {
+    $actions[$method] = array(
+      'callback' => "quickbooks_webconnect_$method",
+      'help' => $help,
+      // the callbacks are defined in quickbooks_webconnect.callbacks.inc
+      'file' => array(
+        'type' => 'inc',
+        'module' => 'quickbooks_webconnect',
+        'name' => 'quickbooks_webconnect.callbacks',
+      ),
+      // the request always comes in as a stdClass object
+      'args' => array(
+        array(
+          'name' => 'request',
+          'type' => 'struct',
+          'description' => 'standard request object',
+          'source' => array('param'),
+          'optional' => FALSE,
+        ),
+      ),
+      // all access is via anonymous user, access validation is thru the ticket parameter
+      'access arguments' => array('access content'),
+    );
+  }
+
+  // return the resources
+  return array('quickbooks_webconnect' => array('actions' => $actions));
+}
+
+/* Other Drupal hooks */
+
+/**
+ * Implements hook_menu().
+ */
+function quickbooks_webconnect_menu() {
+  $items['admin/config/quickbooks_webconnect'] = array(
+    'title' => 'QuickBooks Web Connector settings',
+    'description' => 'Logging and configuration settings for QuickBooks Web Connector.',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('quickbooks_webconnect_admin_form'),
+    'file' => 'quickbooks_webconnect.admin.inc',
+    'access arguments' => array('administer quickbooks webconnect'),
+    'type' => MENU_NORMAL_ITEM
+  );
+  $items['admin/config/quickbooks_webconnect/qwc'] = array(
+    'title' => t('QWC File'),
+    'page callback' => 'quickbooks_webconnect_qwc',
+    'access arguments' => array('administer quickbooks webconnect'),
+    'type' => MENU_CALLBACK,
+    'file' => 'quickbooks_webconnect.admin.inc',
+  );
+
+  return $items;
+}
+
+/**
+ * Implements hook_permission()
+ */
+function quickbooks_webconnect_permission() {
+  return array(
+    'access quickbooks webconnect server' => array(
+      'title' => t('Access QuickBooks Web Connector SOAP Service'),
+      'description' => t('Authenticate with QuickBooks Web Connector resources through SOAP endpoints.'),
+    ),
+    'administer quickbooks webconnect' => array(
+      'title' => t('Administer QuickBooks Web Connector SOAP Service'),
+      'description' => t('Change config and logging settings for QuickBooks Web Connector.'),
+    ),
+  );
+}
+
+/**
+ * Implements hook_hook_info().
+ */
+function quickbooks_webconnect_hook_info() {
+  $hooks = array(
+    'quickbooks_webconnect_qbxml_name_map' => array(
+      'group' => 'quickbooks_webconnect'
+    ),
+    'quickbooks_webconnect_qbxml_value_map' => array(
+      'group' => 'quickbooks_webconnect'
+    ),
+    'quickbooks_webconnect_qbxml_alter' => array(
+      'group' => 'quickbooks_webconnect'
+    ),
+    'quickbooks_webconnect_element_alter' => array(
+      'group' => 'quickbooks_webconnect'
+    ),
+    'quickbooks_webconnect_process_response' => array(
+      'group' => 'quickbooks_webconnect'
+    ),
+  );
+
+  return $hooks;
+}
+
+/* Helper functions */
+
+/**
+ * Return WSDL to SOAP clients.
+ */
+function _quickbooks_webconnect_wsdl_output($wsdl) {
+  ob_end_clean();
+  drupal_add_http_header('Connection', 'close');
+  drupal_add_http_header('Content-Length', drupal_strlen($wsdl_content));
+  drupal_add_http_header('Content-Type', 'application/wsdl+xml; charset=utf-8');
+  drupal_add_http_header('Content-Disposition', 'attachment; filename="' . basename($wsdl) . '"');
+  drupal_add_http_header('Date', date('r'));
+
+  $wsdl_content = file_get_contents($wsdl);
+  print $wsdl_content;
+  exit;
+}

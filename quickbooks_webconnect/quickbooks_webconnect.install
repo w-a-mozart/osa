@@ -1,0 +1,30 @@
+<?php
+
+/**
+ * Implementation of hook_install() 
+ */
+function quickbooks_webconnect_install() {
+  $queue = DrupalQueue::get('quickbooks_webconnect');
+  $queue->createQueue();
+}
+
+/**
+ * Implementation of hook_uninstall() 
+ */
+function quickbooks_webconnect_uninstall() {
+  $queue = DrupalQueue::get('quickbooks_webconnect');
+  $queue->deleteQueue();
+
+  variable_del('quickbooks_webconnect_allowed_ip');
+  variable_del('quickbooks_webconnect_app_desc');
+  variable_del('quickbooks_webconnect_app_id');
+  variable_del('quickbooks_webconnect_app_name');
+  variable_del('quickbooks_webconnect_app_support');
+  variable_del('quickbooks_webconnect_company_file');
+  variable_del('quickbooks_webconnect_debug');
+  variable_del('quickbooks_webconnect_devkit_path');
+  variable_del('quickbooks_webconnect_qbxml_version');
+  variable_del('quickbooks_webconnect_scheduler');
+  variable_del('quickbooks_webconnect_url');
+  variable_del('quickbooks_webconnect_user');
+}
