@@ -176,16 +176,53 @@ function _osa_camp_teacher_premiums($components, $submitted, &$component, &$form
 }
 
 /**
- * Modify the camp application webform to include a javascript setting
- * This setting is used to control the "running total" display
+ * Modify the camp application webform
  */
 function osa_form_alter_webform_client_form_103(&$form, &$form_state) {
 
-  // add a vlaidation routine so we get called even when there is an error
-  $form['#validate'][] = '_osa_camp_validate';
-  
-  // call a shared routine
-  _osa_form_alter_webform_client_form_103($form, $form_state);
+  // find out if this is a new or existing submission
+  $path = request_path();
+  $matches = array();
+  if (preg_match('#node\/(?P<nid>\d+)\/submission\/(?P<sid>\d+)#', $path, $matches) !== 1) {
+    // new submission, so edit the form for the end user
+    _osa_form_alter_webform_client_form_103($form, $form_state);
+    // add a validation routine so we get called even when there is an error
+    $form['#validate'][] = '_osa_camp_validate';
+  }
+  else {
+    // existing submission, so make it easier on the admin editing the data
+    static $first_time = TRUE;
+    if ($first_time) {
+      // save what we need from the current form
+      $node = $form['#node'];
+      $submission = $form['#submission'];
+ /*
+ $action = $form['#action'];
+      $id = $form['#id'];
+      $type = $form['#type'];
+      //$form_state = array();
+      // rebuild the form to include all pages
+      $form = webform_client_form(array(), $form_state, $node, $submission, FALSE, FALSE);
+*/
+      $form = webform_client_form($form, $form_state, $node, $submission, FALSE, FALSE);
+      $form['#attached']['css'][] = drupal_get_path('module', 'osa') . '/osa.camp.css';
+      $form['details']['page_num']['#value'] = $form['details']['page_count']['#value'];
+      unset($form['actions']['next']);
+      $form['actions']['submit'] = array(
+        '#type' => 'submit',
+        '#value' => t('Submit'),
+        '#weight' => 10,
+      );
+/*
+      $form['#action'] = $action;
+      $form['#id'] = $id;
+      $form['#type'] = $type;
+*/
+      $form['#validate'] = array();
+
+      $first_time = FALSE;
+    }
+  }
 }
 
 function _osa_camp_validate($form, &$form_state) {
@@ -194,6 +231,10 @@ function _osa_camp_validate($form, &$form_state) {
   return $form;
 }
 
+/**
+ * Modify the camp application webform to include a javascript setting
+ * This setting is used to control the "running total" display
+ */
 function _osa_form_alter_webform_client_form_103(&$form, &$form_state) {
   // only process once for a given page
   static $already_called = array();
@@ -331,7 +372,7 @@ function osa_webform_submission_insert_103($node, $submission) {
   
   $params = array(
     'contact_id' => $contact_id,
-    'contribution_type_id' => 10,
+    'financial_type_id' => 10,
     'contribution_status_id' => 2,
     'payment_instrument_id' => 1,
     'amount_level' => $values['programs']['value'],
@@ -518,6 +559,26 @@ function osa_views_query_alter_summer_camp_students(&$view, &$query) {
   $webform_table['join'] = $new_join;
 
   // move to the end
+  $tmp = $query->table_queue['users_webform_submissions'];
+  unset($query->table_queue['users_webform_submissions']);
   unset($query->table_queue['webform_submissions_users']);
   $query->table_queue['webform_submissions_users'] = $webform_table; 
+  $query->table_queue['users_webform_submissions'] = $tmp; 
+}
+
+function osa_views_query_alter_summer_camp_student_allergies(&$view, &$query) {
+  osa_views_query_alter_summer_camp_students($view, $query);
+  // move to the end
+  $tmp = $query->table_queue['webform_submitted_data_webform_submissions'];
+  unset($query->table_queue['webform_submitted_data_webform_submissions']);
+  $query->table_queue['webform_submitted_data_webform_submissions'] = $tmp; 
+}
+/**
+ * Implements hook_views_query_alter() to join the civicrm_participant and the civicrm_contribution tables
+ */
+function osa_views_query_alter_extra_summer_camp_payments(&$view, &$query) {
+  // replace the join
+  $new_join = new views_join();
+  $new_join->construct('civicrm_participant', 'civicrm_contribution', 'contact_id', 'contact_id');
+  $query->table_queue['users_civicrm_uf_match__civicrm_participant']['join'] = $new_join;
 }
