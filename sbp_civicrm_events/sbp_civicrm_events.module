@@ -72,6 +72,7 @@ function sbp_civicrm_events_sbp_details($id, $environment, $keys = NULL) {
   $detail = array(
     'type'  => 'Page',
     'title' => search_by_page_strip_tags($event['title'], $environment),
+    'content' => $event['description'],
   );
   
   // snippet
