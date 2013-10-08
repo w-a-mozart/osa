@@ -4,7 +4,6 @@
  * @file
  * Rules integration for the OSA
  */
-
 require_once 'osa.inc';
  
 /**
@@ -103,7 +102,7 @@ function osa_household_members($commerce_line_item, $operator, $value) {
 
     // if we are passed a line_item for a new membership, we only want to include memberships for the same membership year
     if (isset($line_item_wrapper->civicrm_commerce_membership_id)) {
-      $new_membership = $members[$line_item_wrapper->civicrm_commerce_membership_id->value()];
+      $new_membership = isset($members[$line_item_wrapper->civicrm_commerce_membership_id->value()]) ? $members[$line_item_wrapper->civicrm_commerce_membership_id->value()] : array();
       
       if (!isset($new_membership['end_date'])) {
         $new_membership += _osa_get_membership_dates($new_membership['membership_type_id']);

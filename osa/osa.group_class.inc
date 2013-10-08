@@ -12,12 +12,13 @@ require_once 'osa.inc';
 function osa_options_class_types() {
 
   $options = array();
-  $options['cello'] = 'Cello';
+  // $options['cello'] = 'Cello';
   $options['bass'] = 'Double Bass';
+  $options['guitar'] = 'Guitar';
   $options['koday'] = 'Koday Only';
   $options['ecm'] = 'Suzuki Baby';
   $options['theory'] = 'Theory';
-  $options['viace'] = 'Vivace Violin';
+  $options['viace'] = 'Violin - Advanced';
   $options['violin'] = 'Violin';
 
   return $options;
@@ -64,7 +65,7 @@ function osa_field_widget_options_select_form_alter(&$element, &$form_state, $co
   // only include events of type 'Group Class (Master)'
   if ($element['#field_name'] == 'field_event_master') {
     civicrm_initialize();
-    $results = civicrm_api('event', 'get', array('event_type_id' => OSA_EVENT_GROUP_CLASS_MASTER, 'version' => 3));
+    $results = civicrm_api('event', 'get', array('event_type_id' => OSA_EVENT_GROUP_CLASS_MASTER, 'is_active' => TRUE, 'rowCount' => PHP_INT_MAX, 'version' => 3));
     $options = array();
     foreach ($results['values'] as $class) {
       $options[$class['id']] = $class['event_title'];
@@ -200,11 +201,11 @@ function set_class_description() {
   var cbox = "#edit-submitted-" + group_type + "-fieldset-" + group_type;
   var event = jQuery( cbox ).val();
   if (descs[event] == undefined) {
-    document.getElementById('webform-component-desc-fieldset').style.visibility='hidden';
+    jQuery('.webform-component--desc-fieldset').css('visibility', 'hidden');
   }
   else {
-    document.getElementById('webform-component-desc-fieldset--class-description').innerHTML = descs[event];
-    document.getElementById('webform-component-desc-fieldset').style.visibility='visible';
+    jQuery('.webform-component--desc-fieldset--class-description').html(descs[event]);
+    jQuery('.webform-component--desc-fieldset').css('visibility', 'visible');
   }
 }
 jQuery(document).ready(function() {
@@ -219,9 +220,11 @@ EOD;
   // set the default values for the group class lists
   $types = osa_options_class_types();
   foreach ($types as $type => $label) {
-    reset($form['submitted']["{$type}_fieldset"][$type]['#options']);
-    $first_option = key($form['submitted']["{$type}_fieldset"][$type]['#options']);
-    $form['submitted']["{$type}_fieldset"][$type]['#default_value'] = isset($first_option) ? $first_option : '';
+    if (is_array($form['submitted']["{$type}_fieldset"][$type]['#options'])) {
+      reset($form['submitted']["{$type}_fieldset"][$type]['#options']);
+      $first_option = key($form['submitted']["{$type}_fieldset"][$type]['#options']);
+      $form['submitted']["{$type}_fieldset"][$type]['#default_value'] = isset($first_option) ? $first_option : '';
+    }
   }
 }
 
@@ -433,7 +436,7 @@ function &_osa_get_class_nodes($cid = NULL, $class_type = NULL, $event_master = 
 
   static $class_nodes = array();
   $cache_key = implode('|', array($cid, $class_type, $event_master, $session_id));
-  
+
   if (!array_key_exists($cache_key, $class_nodes)) {
     // get the list of group class nodes
     $query = new EntityFieldQuery();
@@ -445,7 +448,7 @@ function &_osa_get_class_nodes($cid = NULL, $class_type = NULL, $event_master = 
     if (isset($class_type)) {
       $query->fieldCondition('field_class_type', 'value', $class_type, '=');
     }
-    
+
     // most group classes require membership so filter if the cid is past
     if (isset($cid)) {
       civicrm_initialize();
@@ -465,10 +468,10 @@ function &_osa_get_class_nodes($cid = NULL, $class_type = NULL, $event_master = 
     if (isset($session_id)) {
       $query->fieldCondition('field_session_id', 'value', $session_id, '=');
     }
-    
+
     $entities = $query->execute();
     $class_nodes[$cache_key] = empty($entities) ? array() : node_load_multiple(array_keys($entities['node']));
   }
-  
+
   return $class_nodes[$cache_key];
 }

@@ -20,19 +20,8 @@ function osa_civicrm_buildForm_teacher_registration(&$form) {
   $form->assign('price45',  json_encode($prices45min));
   $form->assign('price60',  json_encode($prices60min));
   
-  // @TODO not sure why this is needed, but form validation fails wothout it
+  // @TODO not sure why this is needed, but form validation fails without it
   $form->addElement('hidden', 'amount_other', '0.01');
-
-  $config = CRM_Core_Config::singleton();
-  $teacher_pay_override = variable_get('osa_teacher_pay_override');
-  $overrides = empty($teacher_pay_override) ? array() : explode(PHP_EOL, $teacher_pay_override);
-  foreach ($overrides as $override) {
-    list( $contact_id, $override_price ) = explode('|', $override);
-    if ($contact_id == $form->_params['contact_id']) {
-      $ann_price = $override_price;
-      break;
-    }
-  }
 }
 
 /**
@@ -59,7 +48,7 @@ function osa_civicrm_validate_teacher_registration(&$fields, &$files, &$form) {
 }
 
 /**
- * Custom procesing for the Teacher payment confirmation form
+ * Custom processing for the Teacher payment confirmation form
  */
 function osa_civicrm_buildForm_teacher_registration_confirm(&$form) {
 
@@ -89,13 +78,25 @@ function osa_civicrm_buildForm_teacher_registration_confirm(&$form) {
   $teacher_id = $form->_params[_osa_field('selected_teacher')];
   $lesson_level = $form->_params[_osa_field('lesson_level')];
   $ann_price = $pay[$price_set['Lesson_Length']['value']][$teacher_id][$lesson_level];
+
+  // special overrides
+  $teacher_pay_override = variable_get('osa_teacher_pay_override');
+  $overrides = empty($teacher_pay_override) ? array() : explode(PHP_EOL, $teacher_pay_override);
+  foreach ($overrides as $override) {
+    list( $contact_id, $override_price ) = explode('|', $override);
+    if ($contact_id == $form->_params['contact_id']) {
+      $ann_price = $override_price;
+      break;
+    }
+  }
+
   $unit_price = $ann_price;
   $num_installments = 1;
   
-  // change the form to show installments
+  // change the form to show instalments
   if ($price_set['payment_option']['value'] = 'Monthly_Installments') {
 
-    // get the number of installments & set unit price
+    // get the number of instalments & set unit price
     $total_installments = $num_installments = variable_get('osa_num_installments', 10);
     $start_date = _osa_next_payment_date(variable_get('osa_start_date', 'first day of September'), $num_installments);
     $pro_rate = variable_get('osa_prorate_teacher_pay', TRUE);
@@ -129,10 +130,10 @@ function osa_civicrm_buildForm_teacher_registration_confirm(&$form) {
  */
 function osa_civicrm_alterPaymentProcessorParams_teacher_registration($paymentObj, &$rawParams, &$cookedParams) {
 
-  // convert to installments
+  // convert to instalments
   // if ($rawParams['price_1'] == 'Monthly_Installments') {
   if ($rawParams['price_1'] == 3) {
-    // get the number of installments
+    // get the number of instalments
     $total_installments = $num_installments = variable_get('osa_num_installments', 10);
     $start_date = _osa_next_payment_date(variable_get('osa_start_date', 'first day of September'), $num_installments);
 
@@ -141,7 +142,7 @@ function osa_civicrm_alterPaymentProcessorParams_teacher_registration($paymentOb
     $unit_price = round($total_price / $num_installments, 2);
     $cookedParams['ssl_amount'] = $unit_price;
 
-    // set the Elavon installment parameters
+    // set the Elavon instalment parameters
     $cookedParams['ssl_transaction_type'] = 'ccaddinstall';
     $cookedParams['ssl_billing_cycle'] = 'MONTHLY';
     $cookedParams['ssl_end_of_month'] = 'N';
@@ -195,7 +196,7 @@ function osa_civicrm_postProcess_teacher_registration_confirm(&$form) {
  * Customize the Teacher payments thank you form
  */
 function osa_civicrm_buildForm_teacher_registration_thankyou(&$form) {
-  // the confim and thankyou forms show identical information
+  // the confirm and thankyou forms show identical information
   osa_civicrm_buildForm_teacher_registration_confirm($form);
 }
 
@@ -217,7 +218,7 @@ function _osa_get_teacher_lists( &$contacts, &$select_options, &$pricelevel, &$p
     $cache['prices45min'][0] = array(0 => 0);
     $cache['prices60min'][0] = array(0 => 0);
 
-    $result = civicrm_api('contact', 'get',  array('contact_sub_type' => 'Teacher', 'option.sort' => 'sort_name', 'version' => 3));
+    $result = civicrm_api('contact', 'get',  array('contact_sub_type' => 'Teacher', 'option.sort' => 'sort_name', 'rowCount' => PHP_INT_MAX, 'version' => 3));
     if ($result['is_error']) {
       watchdog('osa', 'Error: %1\nfailed to get teacher contacts', array(1 => $result['error_message']), WATCHDOG_ERROR);
     }
