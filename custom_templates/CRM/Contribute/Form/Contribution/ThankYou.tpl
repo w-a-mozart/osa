@@ -1,8 +1,8 @@
 {*
  +--------------------------------------------------------------------+
- | CiviCRM version 4.2                                                |
+ | CiviCRM version 4.3                                                |
  +--------------------------------------------------------------------+
- | Copyright CiviCRM LLC (c) 2004-2012                                |
+ | Copyright CiviCRM LLC (c) 2004-2013                                |
  +--------------------------------------------------------------------+
  | This file is a part of CiviCRM.                                    |
  |                                                                    |
@@ -29,7 +29,7 @@
 
 {include file="CRM/common/TrackingFields.tpl"}
 
-<div class="crm-block crm-contribution-thankyou-form-block">
+<div class="crm-contribution-page-id-{$contributionPageID} crm-block crm-contribution-thankyou-form-block">
     {if $thankyou_text}
         <div id="thankyou_text" class="crm-section thankyou_text-section">
             {$thankyou_text}
@@ -44,48 +44,53 @@
     {/if}
     {* Add button for donor to create their own Personal Campaign page *}
     {if $linkText}
- 	<div class="crm-section create_pcp_link-section">
+   <div class="crm-section create_pcp_link-section">
         <a href="{$linkTextUrl}" title="{$linkText}" class="button"><span>&raquo; {$linkText}</span></a>
     </div><br /><br />
     {/if}
 
-    <div id="help">
+
         {* PayPal_Standard sets contribution_mode to 'notify'. We don't know if transaction is successful until we receive the IPN (payment notification) *}
         {if $is_pay_later}
-	    <div class="bold">{$pay_later_receipt}</div>
-	    {if $is_email_receipt}
+    <div id="help">
+    <div class="bold">{$pay_later_receipt}</div>
+      {if $is_email_receipt}
                 <div>
-		    {if $onBehalfEmail AND ($onBehalfEmail neq $email)}
-			{ts 1=$email 2=$onBehalfEmail}An email confirmation with these payment instructions has been sent to %1 and to %2.{/ts}
-		    {else}
-			{ts 1=$email}An email confirmation with these payment instructions has been sent to %1.{/ts}
-		    {/if}
-		</div>
+        {if $onBehalfEmail AND ($onBehalfEmail neq $email)}
+      {ts 1=$email 2=$onBehalfEmail}An email confirmation with these payment instructions has been sent to %1 and to %2.{/ts}
+        {else}
+      {ts 1=$email}An email confirmation with these payment instructions has been sent to %1.{/ts}
+        {/if}
+    </div>
+    </div>
             {/if}
         {elseif $contributeMode EQ 'notify' OR ($contributeMode EQ 'direct' && $is_recur) }
             {* Remove message *}
             {if $is_email_receipt}
+    <div id="help">
                 <div>
-		    {if $onBehalfEmail AND ($onBehalfEmail neq $email)}
-			{ts 1=$email 2=$onBehalfEmail}An email receipt will be sent to %1 and to %2 once the transaction is processed successfully.{/ts}
-		    {else}
-			{ts 1=$email}An email receipt will be sent to %1 once the transaction is processed successfully.{/ts}
-		    {/if}
-		</div>
+        {if $onBehalfEmail AND ($onBehalfEmail neq $email)}
+      {ts 1=$email 2=$onBehalfEmail}An email receipt will be sent to %1 and to %2 once the transaction is processed successfully.{/ts}
+        {else}
+      {ts 1=$email}An email receipt will be sent to %1 once the transaction is processed successfully.{/ts}
+        {/if}
+    </div>
+    </div>
             {/if}
         {else}
+    <div id="help">
             <div>{ts}Your transaction has been processed successfully.{/ts}{if $amount > 0} {ts}Please print this page for your records.{/ts}{/if}</div>
             {if $is_email_receipt}
                 <div>
-		    {if $onBehalfEmail AND ($onBehalfEmail neq $email)}
-			{ts 1=$email 2=$onBehalfEmail}An email receipt has also been sent to %1 and to %2{/ts}
-		    {else}
-			{ts 1=$email}An email receipt has also been sent to %1{/ts}
-		    {/if}
-		</div>
-            {/if}
+        {if $onBehalfEmail AND ($onBehalfEmail neq $email)}
+      {ts 1=$email 2=$onBehalfEmail}An email receipt has also been sent to %1 and to %2{/ts}
+        {else}
+      {ts 1=$email}An email receipt has also been sent to %1{/ts}
         {/if}
     </div>
+            {/if}
+    </div>
+    {/if}
     <div class="spacer"></div>
 
     {include file="CRM/Contribute/Form/Contribution/MembershipBlock.tpl" context="thankContribution"}
@@ -101,44 +106,47 @@
         {/if}
         <div class="display-block">
          {if !$useForMember}
-         {if $lineItem and $priceSetID}
-    	    {if !$amount}{assign var="amount" value=0}{/if}
-    	      {assign var="totalAmount" value=$amount}
+        {if $lineItem and $priceSetID}
+          {if !$amount}{assign var="amount" value=0}{/if}
+            {assign var="totalAmount" value=$amount}
                 {if $amount > 0}{include file="CRM/Price/Page/LineItem.tpl" context="Contribution"}{/if}
           {elseif $membership_amount}
             {$membership_name} {ts}Membership{/ts}: <strong>{$membership_amount|crmMoney}</strong><br />
             {if $amount}
               {if !$is_separate_payment}
                 {ts}Contribution Amount{/ts}: <strong>{$amount|crmMoney}</strong><br />
-    	        {else}
-    		        {ts}Additional Contribution{/ts}: <strong>{$amount|crmMoney}</strong><br />
-      	      {/if}
+              {else}
+                {ts}Additional Contribution{/ts}: <strong>{$amount|crmMoney}</strong><br />
+              {/if}
             {/if}
             <strong> -------------------------------------------</strong><br />
             {ts}Total{/ts}: <strong>{$amount+$membership_amount|crmMoney}</strong><br />
           {else}
             {ts}Amount{/ts}: <strong>{$amount|crmMoney} {if $amount_level} - {$amount_level} {/if}</strong><br />
           {/if}
-	  {/if}
-        {if $receive_date}
+    {/if}
+          {if $receive_date}
             {if $amount > 0}{ts}Date{/ts}: <strong>{$receive_date|crmDate}</strong><br />{/if}
           {/if}
           {if $contributeMode ne 'notify' and $is_monetary and ! $is_pay_later and $trxn_id}
-    	      {ts}Transaction #{/ts}: {$trxn_id}<br />
+            {ts}Transaction #{/ts}: {$trxn_id}<br />
           {/if}
           {if $membership_trx_id}
-    	      {ts}Membership Transaction #{/ts}: {$membership_trx_id}
+            {ts}Membership Transaction #{/ts}: {$membership_trx_id}
           {/if}
 
             {* Recurring contribution / pledge information *}
             {if $is_recur}
                 {if $membershipBlock} {* Auto-renew membership confirmation *}
+{crmRegion name="contribution-thankyou-recur-membership"}
                     <br />
                     <strong>{ts 1=$frequency_interval 2=$frequency_unit}This membership will be renewed automatically every %1 %2(s).{/ts}</strong>
                     <div class="description crm-auto-renew-cancel-info">({ts}You will receive an email receipt which includes information about how to cancel the auto-renwal option.{/ts})</div>
+{/crmRegion}
                 {else}
+{crmRegion name="contribution-thankyou-recur"}
                     {if $installments}
-        		        <p><strong>{ts 1=$frequency_interval 2=$frequency_unit 3=$installments}This recurring contribution will be automatically processed every %1 %2(s) for a total %3 installments (including this initial contribution).{/ts}</strong></p>
+                 <p><strong>{ts 1=$frequency_interval 2=$frequency_unit 3=$installments}This recurring contribution will be automatically processed every %1 %2(s) for a total %3 installments (including this initial contribution).{/ts}</strong></p>
                     {else}
                         <p><strong>{ts 1=$frequency_interval 2=$frequency_unit}This recurring contribution will be automatically processed every %1 %2(s).{/ts}</strong></p>
                     {/if}
@@ -147,8 +155,10 @@
                         {ts}You will receive an email receipt which includes information about how to update or cancel this recurring contribution.{/ts}
                     {/if}
                     </p>
+{/crmRegion}
                 {/if}
             {/if}
+
             {if $is_pledge}
                 {if $pledge_frequency_interval GT 1}
                     <p><strong>{ts 1=$pledge_frequency_interval 2=$pledge_frequency_unit 3=$pledge_installments}I pledge to contribute this amount every %1 %2s for %3 installments.{/ts}</strong></p>
@@ -193,7 +203,7 @@
                      {/if}
                 {/if}
             {else}
-		        {ts}Don't list my contribution in the honor roll.{/ts}
+            {ts}Don't list my contribution in the honor roll.{/ts}
             {/if}
             <br />
        </div>
@@ -201,7 +211,7 @@
     {/if}
 
     {if $onbehalfProfile}
-      <div class="crm-group onBehalf_display-group">
+      <div class="crm-group onBehalf_display-group label-left crm-profile-view">
          {include file="CRM/UF/Form/Block.tpl" fields=$onbehalfProfile}
          <div class="crm-section organization_email-section">
             <div class="label">{ts}Organization Email{/ts}</div>
@@ -211,12 +221,11 @@
       </div>
     {/if}
 
-{* Remove Billing Info *}
+    {* Remove Billing Address *}
 
     <div class="action-link">
-        <a title='Family Profile' class='button' href='{crmURL p='civicrm/user' q='reset=1'}'><span><div class='icon dashboard-icon'></div> Return to Family Profile </span></a>
     {if $membershipBlock}
-        <a title='Group Class' class='button'  href='{$config->userFrameworkBaseURL}form/group-class-selection?cid={$cid}'><span><div class='icon next-icon'></div> Register for Group Class </span></a>
+        <a title='You can now Register for Group Class' class='button'  href='{$config->userFrameworkBaseURL}form/group-class-selection?cid={$cid}'><span><div class='icon next-icon'></div> Register for Group Class </span></a>
     {/if}
     {if $paymentProcessor.payment_processor_type eq 'drupalcommerce'} 
         <a title='Check Out' class='button'  href='{$config->userFrameworkBaseURL}checkout/'><span><div class='icon check-icon'></div> Check Out </span></a>
@@ -231,7 +240,7 @@
         </p>
     </div>
     {if $isShare}
-    {capture assign=contributionUrl}{crmURL p='civicrm/contribute/transact' q="$qParams" a=true fe=1 h=1}{/capture}
+    {capture assign=contributionUrl}{crmURL p='civicrm/contribute/transact' q="$qParams" a=1 fe=1 h=1}{/capture}
     {include file="CRM/common/SocialNetwork.tpl" url=$contributionUrl title=$title pageURL=$contributionUrl}
     {/if}
 </div>

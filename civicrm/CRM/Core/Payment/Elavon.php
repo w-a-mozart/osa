@@ -1,7 +1,7 @@
 <?php
 /*
  +----------------------------------------------------------------------------+
- | Elavon (Nova) Virtual Merchant Core Payment Module for CiviCRM version 4.2 |
+ | Elavon (Nova) Virtual Merchant Core Payment Module for CiviCRM version 4.3 |
  +----------------------------------------------------------------------------+
  | Licensed to CiviCRM under the Academic Free License version 3.0            |
  |                                                                            |
@@ -80,7 +80,7 @@ class CRM_Core_Payment_Elavon extends CRM_Core_Payment {
     // credit card name
     $requestFields['ssl_first_name'] = $params['billing_first_name'];
     // credit card name
-    //$requestFields['ssl_middle_name']	     = $params['billing_middle_name'];
+    //$requestFields['ssl_middle_name']       = $params['billing_middle_name'];
     // credit card name
     $requestFields['ssl_last_name'] = $params['billing_last_name'];
     // contact name
@@ -101,7 +101,6 @@ class CRM_Core_Payment_Elavon extends CRM_Core_Payment {
     $requestFields['ssl_email'] = $params['email'];
     // 32 character string
     $requestFields['ssl_invoice_number'] = $params['invoiceID'];
-    $requestFields['ssl_transaction_type'] = "CCSALE";
     $requestFields['ssl_description'] = $params['description'];
     $requestFields['ssl_customer_number'] = substr($params['credit_card_number'], -4);
 
@@ -111,7 +110,7 @@ class CRM_Core_Payment_Elavon extends CRM_Core_Payment {
      *  $params['qfKey'];
      *  $params['amount_other'];
      *  $params['ip_address'];
-     *  $params['contributionType_name'	];
+     *  $params['contributionType_name'  ];
      *  $params['contributionPageID'];
      *  $params['contributionType_accounting_code'];
      *  $params['amount_level'];
@@ -134,7 +133,7 @@ class CRM_Core_Payment_Elavon extends CRM_Core_Payment {
     }
 
     /*
-     *Create the array of variables to be sent to the processor from the $params array
+     * Create the array of variables to be sent to the processor from the $params array
      * passed into this function
      */
     $requestFields = self::mapProcessorFieldstoParams($params);
@@ -145,6 +144,8 @@ class CRM_Core_Payment_Elavon extends CRM_Core_Payment {
     $requestFields['ssl_merchant_id'] = $this->_paymentProcessor['user_name'];
     $requestFields['user_id'] = $this->_paymentProcessor['password'];
     $requestFields['ssl_pin'] = $this->_paymentProcessor['signature'];
+    $requestFields['ssl_transaction_type'] = 'ccsale';
+    $requestFields['ssl_test_mode'] = 'false';
     $host = $this->_paymentProcessor['url_site'];
 
     if ($this->_mode == "test") {
@@ -166,6 +167,12 @@ class CRM_Core_Payment_Elavon extends CRM_Core_Payment {
      **********************************************************/
     $xml = self::buildXML($requestFields);
 
+    // log the outgoing request - ensure card number is masked
+    $card_number_len = strlen($requestFields['ssl_card_number']);
+    $pci_card_number = $card_number_len > 9 ? substr(substr_replace($requestFields['ssl_card_number'], str_repeat( '*', $card_number_len - 6), 2, -4 ), -1 * $card_number_len) : str_repeat( '*', $card_number_len);
+    $log_xml = str_replace("<ssl_card_number>{$requestFields['ssl_card_number']}" , "<ssl_card_number>{$pci_card_number}" , $xml);
+    watchdog('civicrm_elavon', 'Request: <pre>' . htmlspecialchars($log_xml) . '</pre>', array(), WATCHDOG_INFO);
+
     /**********************************************************
      * Send to the payment processor using cURL
      **********************************************************/
@@ -175,19 +182,20 @@ class CRM_Core_Payment_Elavon extends CRM_Core_Payment {
     }
     
     curl_setopt($ch, CURLOPT_URL, $host);
-    curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, FALSE);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, CRM_Core_BAO_Setting::getItem(CRM_Core_BAO_Setting::SYSTEM_PREFERENCES_NAME, 'verifySSL') ? 2 : 0);
     curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, CRM_Core_BAO_Setting::getItem(CRM_Core_BAO_Setting::SYSTEM_PREFERENCES_NAME, 'verifySSL'));
     // return the result on success, FALSE on failure
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
     curl_setopt($ch, CURLOPT_TIMEOUT, 36000);
     // set this for debugging -look for output in apache error log
-    // curl_setopt ($ch,CURLOPT_VERBOSE,1 );
+    // curl_setopt($ch,CURLOPT_VERBOSE, 1);
     // ensures any Location headers are followed
     curl_setopt($ch, CURLOPT_FOLLOWLOCATION, 1);
     // use HTTP POST
-		curl_setopt($ch, CURLOPT_POST, TRUE);
+    curl_setopt($ch, CURLOPT_POST, TRUE);
     curl_setopt($ch, CURLOPT_POSTFIELDS, 'xmldata=' . $xml);
 
+    
     /**********************************************************
      * Send the data out over the wire
      **********************************************************/
@@ -198,7 +206,6 @@ class CRM_Core_Payment_Elavon extends CRM_Core_Payment {
       // dummy response
       $now = date('Y/m/d h:i:s A'); 
       $id = strtoupper(hash('crc32b', $now));
-      $pci_card_number = sprintf( "%'*16s", substr($requestFields['ssl_card_number'], -4));
       $responseData = <<<EOD
 <txn>
 <ssl_card_number>{$pci_card_number}</ssl_card_number>
@@ -214,6 +221,9 @@ class CRM_Core_Payment_Elavon extends CRM_Core_Payment {
 EOD;
     }
     
+    // log all responses
+    watchdog('civicrm_elavon', 'Response: <pre>' . htmlspecialchars($responseData) . '</pre>', array(), WATCHDOG_INFO);
+
     /**********************************************************
      * See if we had a curl error - if so tell 'em and bail out
      *
@@ -265,7 +275,7 @@ EOD;
     curl_close($ch);
 
     /**********************************************************
-     * Payment succesfully sent to gateway - process the response now
+     * Payment successfully sent to gateway - process the response now
      **********************************************************/
     $processorResponse = self::decodeXMLResponse($responseData);
 
@@ -378,6 +388,7 @@ EOD;
   //end check config
 
   function buildXML($requestFields) {
+
     $xml = '<txn>';
     foreach ($requestFields as $key => $value) {
       if (isset($value)) {

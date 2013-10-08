@@ -65,9 +65,9 @@
                 </thead>
     {foreach from=$students item=student}
                 <tr id="student_{$student.contact.id}" class="{cycle values="odd-row,even-row"} row-relationship">
-                    <td class="bold">{$student.contact.display_name}</td>
+                    <td style="white-space: nowrap;" class="bold">{$student.contact.display_name}</td>
                     <td>{$student.contact.gender}</td>
-                    <td>{$student.contact.birth_date}</td>
+                    <td style="white-space: nowrap;">{$student.contact.birth_date}</td>
         {if $student.contact.is_current_member}
                     <td align='center'><img src="/images/Membership.png"></td>
         {else}

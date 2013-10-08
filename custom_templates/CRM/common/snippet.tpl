@@ -1,7 +1,6 @@
 {*
  +--------------------------------------------------------------------+
  | CiviCRM version 4.3                                                |
- | Custom OSA User Dashboard (Family Profile)                         |
  +--------------------------------------------------------------------+
  | Copyright CiviCRM LLC (c) 2004-2013                                |
  +--------------------------------------------------------------------+
@@ -24,35 +23,37 @@
  | see the CiviCRM license FAQ at http://civicrm.org/licensing        |
  +--------------------------------------------------------------------+
 *}
-{foreach from=$profileElements item=element}
-<fieldset><legend>{$element.title}</legend>
-{if $element.edit_gid}
-<div class='osa-profile-edit'><a title='{$element.edit_title}' class='edit button box-load'  href='{crmURL p='civicrm/profile/edit' q="reset=1&snippet=1&context=boxload&gid=`$element.edit_gid`&id=`$element.edit_cid`"}&width=50%'><span><div class='icon edit-icon'></div> Edit </span></a></div>
+{if $config->debug}
+    {include file="CRM/common/debug.tpl"}
 {/if}
-{$element.html}
-</fieldset>
-{/foreach}
 
-{include file="CRM/common/jsortable.tpl" useAjax=0}   
+{if $smarty.get.snippet eq 4}
+    {if $isForm}
+        {include file="CRM/Form/default.tpl"}
+    {else}
+        {include file=$tplFile}
+    {/if}
+{else}
+    {if $smarty.get.snippet eq 2}
+    {include file="CRM/common/print.tpl"}
+    {else}
+    <div class="crm-container" bgColor="white">
 
-{foreach from=$dashboardElements item=element}
-<div class="crm-accordion-wrapper crm-accordion_title-accordion {$element.sectionState}">
-    <div class="crm-accordion-header">
-        <div class="icon crm-accordion-pointer"></div>
-        {$element.sectionTitle}
+    {* Check for Status message for the page (stored in session->getStatus). Status is cleared on retrieval. *}
+    {if $session->getStatus(false)}
+    <div class="messages status no-popup">
+      <div class="icon alert-icon"></div>
+      {$session->getStatus(true)}
     </div>
-    <div class="crm-accordion-body">
-        {include file=$element.templatePath}
-    </div>
-</div>
-<br>
-{/foreach}
+    {/if}
 
-{literal}
-<script>
-    jQuery('a.box-load').colorbox({width:"50%", opacity:0.6, overlayClose:false});
-    cj(function() {
-        cj().crmAccordions();
-    });
-</script>
-{/literal}
+    <!-- .tpl file invoked: {$tplFile}. Call via form.tpl if we have a form in the page. -->
+    {if !empty($isForm)}
+        {include file="CRM/Form/default.tpl"}
+    {else}
+        {include file=$tplFile}
+    {/if}
+
+    </div> {* end crm-container-snippet div *}
+    {/if}
+{/if}

@@ -17,10 +17,9 @@
       <table id="membership" class="display">
         <thead>
           <tr>
-            <th>{ts}Membership{/ts}</th>
-            <th></th>
-            <th>{ts}Start Date{/ts}</th>
-            <th>{ts}End Date{/ts}</th>
+            <th>{ts}Member{/ts}</th>
+            <th>{ts}Member Since{/ts}</th>
+            <th>{ts}School Year{/ts}</th>
             <th>{ts}Status{/ts}</th>
             <th></th>
           </tr>
@@ -28,11 +27,10 @@
   {foreach from=$members item=member}
         <tr class="{cycle values="odd-row,even-row"}">
           <td class="bold">{$member.display_name}</td>
-          <td>{$member.membership_name}</td>
-          <td>{$member.start_date|crmDate}</td>
-          <td>{$member.end_date|crmDate}</td>
+          <td>{$member.join_date|crmDate}</td>
+          <td>{$member.school_year}</td>
           <td>{$member.status}</td>
-          <td>{if $member.renewPageId}<a href="{crmURL p='civicrm/contribute/transact' q="id=`$member.renewPageId`&cid=`$member.contact_id`&reset=1"}">[ {ts}Renew Now{/ts} ]</a>{/if}</td>
+          <td>{if $member.renew_href}{$member.renew_href}{/if}</td>
         </tr>
   {/foreach}
       </table>

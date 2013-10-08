@@ -1,9 +1,9 @@
 <?php
 /*
  +--------------------------------------------------------------------+
- | CiviCRM version 4.2                                                |
+ | CiviCRM version 4.3                                                |
  +--------------------------------------------------------------------+
- | Copyright CiviCRM LLC (c) 2004-2012                                |
+ | Copyright CiviCRM LLC (c) 2004-2013                                |
  +--------------------------------------------------------------------+
  | This file is a part of CiviCRM.                                    |
  |                                                                    |
@@ -28,7 +28,7 @@
 /**
  *
  * @package CRM
- * @copyright CiviCRM LLC (c) 2004-2012
+ * @copyright CiviCRM LLC (c) 2004-2013
  * $Id$
  *
  */
@@ -71,10 +71,8 @@ class CRM_Contact_Form_Task_EmailCommon {
 
     foreach ($contactEmails as $emailId => $item) {
       $email = $item['email'];
-      if (!$email &&
-        (count($emails) <= 1)
-      ) {
-        $emails[$emailId] = '"' . $fromDisplayName . '"';
+      if (!$email && (count($emails) < 1)) {
+        // set it if no emails are present at all
         $form->_noEmails = TRUE;
       }
       else {
@@ -86,11 +84,11 @@ class CRM_Contact_Form_Task_EmailCommon {
 
           $emails[$emailId] = '"' . $fromDisplayName . '" <' . $email . '> ';
           $form->_onHold[$emailId] = $item['on_hold'];
+          $form->_noEmails = FALSE;
         }
       }
 
       $form->_emails[$emailId] = $emails[$emailId];
-
       $emails[$emailId] .= $item['locationType'];
 
       if ($item['is_primary']) {
@@ -124,8 +122,7 @@ class CRM_Contact_Form_Task_EmailCommon {
    *
    * @return void
    */
-  static
-  function buildQuickForm(&$form) {
+  static function buildQuickForm(&$form) {
     $toArray = $ccArray = $bccArray = array();
     $suppressedEmails = 0;
     //here we are getting logged in user id as array but we need target contact id. CRM-5988
@@ -286,8 +283,7 @@ class CRM_Contact_Form_Task_EmailCommon {
    * @access public
    *
    */
-  static
-  function formRule($fields, $dontCare, $self) {
+  static function formRule($fields, $dontCare, $self) {
     $errors = array();
     $template = CRM_Core_Smarty::singleton();
 
@@ -312,8 +308,7 @@ class CRM_Contact_Form_Task_EmailCommon {
    *
    * @return None
    */
-  static
-  function postProcess(&$form) {
+  static function postProcess(&$form) {
     if (count($form->_contactIds) > self::MAX_EMAILS_KILL_SWITCH) {
       CRM_Core_Error::fatal(ts('Please do not use this task to send a lot of emails (greater than %1). We recommend using CiviMail instead.',
           array(1 => self::MAX_EMAILS_KILL_SWITCH)
@@ -371,6 +366,11 @@ class CRM_Contact_Form_Task_EmailCommon {
     $tempEmails = array();
 
     foreach ($form->_contactIds as $key => $contactId) {
+      // if we dont have details on this contactID, we should ignore
+      // potentially this is due to the contact not wanting to receive email
+      if (!isset($form->_contactDetails[$contactId])) {
+        continue;
+      }
       $email = $form->_toContactEmails[$key];
       // prevent duplicate emails if same email address is selected CRM-4067
       // we should allow same emails for different contacts
@@ -385,7 +385,8 @@ class CRM_Contact_Form_Task_EmailCommon {
     }
 
     // send the mail
-    list($sent, $activityId) = CRM_Activity_BAO_Activity::sendEmail($formattedContactDetails,
+    list($sent, $activityId) = CRM_Activity_BAO_Activity::sendEmail(
+      $formattedContactDetails,
       $subject,
       $formValues['text_message'],
       $formValues['html_message'],
@@ -399,30 +400,26 @@ class CRM_Contact_Form_Task_EmailCommon {
     );
 
     if ($sent) {
-      $status = array('', ts('Your message has been sent.'));
+      $count_success = count($form->_contactDetails);
+      CRM_Core_Session::setStatus(ts('One message was sent successfully.', array('plural' => '%count messages were sent successfully.', 'count' => $count_success)), ts('Message Sent', array('plural' => 'Messages Sent', 'count' => $count_success)), 'success');
     }
 
-    //Display the name and number of contacts for those email is not sent.
-    $emailsNotSent = array_diff_assoc($form->_allContactDetails, $form->_contactDetails);
+    // Display the name and number of contacts for those email is not sent.
+    // php 5.4 throws out a notice since the values of these below arrays are arrays.
+    // the behavior is not documented in the php manual, but it does the right thing
+    // suppressing the notices to get things in good shape going forward
+    $emailsNotSent = @array_diff_assoc($form->_allContactDetails, $form->_contactDetails);
 
-    $statusOnHold = '';
-    if (!empty($emailsNotSent)) {
-      $statusDisplay = ts('Email not sent to contact(s) (no email address on file or communication preferences specify DO NOT EMAIL or Contact is deceased or Primary email address is On Hold): %1', array(
-        1 => count($emailsNotSent))) . '<br />' . ts('Details') . ': ';
+    if ($emailsNotSent) {
+      $not_sent = array();
       foreach ($emailsNotSent as $contactId => $values) {
         $displayName    = $values['display_name'];
         $email          = $values['email'];
-        $contactViewUrl = CRM_Utils_System::url('civicrm/contact/view', "reset=1&cid={$contactId}");
-        $statusDisplay .= "<a href='{$contactViewUrl}'>{$displayName}</a>, ";
-
-        // build separate status for on hold messages
-        if ($values['on_hold']) {
-          $statusOnHold .= ts('Email was not sent to %1 because primary email address (%2) is On Hold.',
-            array(1 => "<a href='{$contactViewUrl}'>{$displayName}</a>", 2 => "<strong>{$email}</strong>")
-          ) . '<br />';
-        }
+        $contactViewUrl = CRM_Utils_System::url('civicrm/contact/view', "reset=1&cid=$contactId");
+        $not_sent[] = "<a href='$contactViewUrl' title='$email'>$displayName</a>" . ($values['on_hold'] ? '(' . ts('on hold') . ')' : '');
       }
-      $status[] = $statusDisplay;
+      $status = '(' . ts('because no email address on file or communication preferences specify DO NOT EMAIL or Contact is deceased or Primary email address is On Hold') . ')<ul><li>' . implode('</li><li>', $not_sent) . '</li></ul>';
+      CRM_Core_Session::setStatus($status, ts('One Message Not Sent', array('count' => count($emailsNotSent), 'plural' => '%count Messages Not Sent')), 'info');
     }
 
     if (isset($form->_caseId) && is_numeric($form->_caseId)) {
@@ -433,13 +430,6 @@ class CRM_Contact_Form_Task_EmailCommon {
       );
       CRM_Case_BAO_Case::processCaseActivity($caseParams);
     }
-
-    if (strlen($statusOnHold)) {
-      $status[] = $statusOnHold;
-    }
-
-    CRM_Core_Session::setStatus($status);
   }
   //end of function
 }
-

@@ -1,9 +1,9 @@
 <?php
 /*
  +--------------------------------------------------------------------+
- | CiviCRM version 4.2                                                |
+ | CiviCRM version 4.3                                                |
  +--------------------------------------------------------------------+
- | Copyright CiviCRM LLC (c) 2004-2012                                |
+ | Copyright CiviCRM LLC (c) 2004-2013                                |
  +--------------------------------------------------------------------+
  | This file is a part of CiviCRM.                                    |
  |                                                                    |
@@ -39,8 +39,11 @@
  * currently we're getting the data from the underlying database. this
  * will be reworked to use caching.
  *
+ * Note: All pseudoconstants should be uninitialized or default to NULL.
+ * This provides greater consistency/predictability after flushing.
+ *
  * @package CRM
- * @copyright CiviCRM LLC (c) 2004-2012
+ * @copyright CiviCRM LLC (c) 2004-2013
  * $Id$
  *
  */
@@ -72,7 +75,7 @@ class CRM_Core_PseudoConstant {
    * @var array
    * @static
    */
-  private static $activityType = array();
+  private static $activityType;
 
   /**
    * payment processor billing modes
@@ -275,14 +278,14 @@ class CRM_Core_PseudoConstant {
    * @var array
    * @static
    */
-  private static $activityStatus = array();
+  private static $activityStatus;
 
   /**
    * priority
    * @var array
    * @static
    */
-  private static $priority = array();
+  private static $priority;
 
   /**
    * wysiwyg Editor
@@ -324,28 +327,21 @@ class CRM_Core_PseudoConstant {
    * @var array
    * @static
    */
-  private static $greeting = array();
+  private static $greeting;
 
   /**
    * Default Greetings
    * @var array
    * @static
    */
-  private static $greetingDefaults = array();
-
-  /**
-   * Extensions
-   * @var array
-   * @static
-   */
-  private static $extensions = array();
+  private static $greetingDefaults;
 
   /**
    * Extensions of type module
    * @var array
    * @static
    */
-  private static $moduleExtensions;
+  private static $extensions;
 
   /**
    * activity contacts
@@ -369,6 +365,13 @@ class CRM_Core_PseudoConstant {
   private static $autoRenew;
 
   /**
+   * batch mode options
+   * @var array
+   * @static
+   */
+  private static $batchModes;
+
+  /**
    * batch type options
    * @var array
    * @static
@@ -387,7 +390,14 @@ class CRM_Core_PseudoConstant {
    * @var array
    * @static
    */
-  private static $contactType = array();
+  private static $contactType;
+
+  /**
+   * Financial Account Type
+   * @var array
+   * @static
+   */
+  private static $accountOptionValues;
 
   /**
    * populate the object from the database. generic populate
@@ -409,7 +419,17 @@ class CRM_Core_PseudoConstant {
    * @access public
    * @static
    */
-  public static function populate(&$var, $name, $all = FALSE, $retrieve = 'name', $filter = 'is_active', $condition = NULL, $orderby = NULL, $key = 'id', $force = NULL) {
+  public static function populate(
+    &$var,
+    $name,
+    $all = FALSE,
+    $retrieve = 'name',
+    $filter = 'is_active',
+    $condition = NULL,
+    $orderby = NULL,
+    $key = 'id',
+    $force = NULL
+  ) {
     $cacheKey = "CRM_PC_{$name}_{$all}_{$key}_{$retrieve}_{$filter}_{$condition}_{$orderby}";
     $cache    = CRM_Utils_Cache::singleton();
     $var      = $cache->get($cacheKey);
@@ -417,8 +437,7 @@ class CRM_Core_PseudoConstant {
       return $var;
     }
 
-    require_once (str_replace('_', DIRECTORY_SEPARATOR, $name) . ".php");
-    eval('$object = new ' . $name . '( );');
+    $object = new $name ( );
 
     $object->selectAdd();
     $object->selectAdd("$key, $retrieve");
@@ -457,7 +476,9 @@ class CRM_Core_PseudoConstant {
    *
    */
   public static function flush($name) {
-    self::$$name = NULL;
+    if (isset(self::$$name)) {
+      self::$$name = NULL;
+    }
   }
 
   /**
@@ -544,7 +565,11 @@ class CRM_Core_PseudoConstant {
     $index .= '_' . (int) $includeCampaignActivities;
     $index .= '_' . (int) $onlyComponentActivities;
 
-    if (!array_key_exists($index, self::$activityType) || $reset) {
+    if (NULL === self::$activityType) {
+      self::$activityType = array();
+    }
+
+    if (!isset(self::$activityType[$index]) || $reset) {
       $condition = NULL;
       if (!$all) {
         $condition = 'AND filter = 0';
@@ -983,7 +1008,7 @@ WHERE  id = %1";
         return self::$country[$id];
       }
       else {
-        return NULL;
+        return CRM_Core_DAO::$_nullObject;
       }
     }
     return self::$country;
@@ -1013,7 +1038,7 @@ WHERE  id = %1";
         return self::$countryIsoCode[$id];
       }
       else {
-        return NULL;
+        return CRM_Core_DAO::$_nullObject;
       }
     }
     return self::$countryIsoCode;
@@ -1092,10 +1117,9 @@ WHERE  id = %1";
   public static function &groupIterator($styledLabels = FALSE) {
     if (!self::$groupIterator) {
       /*
-             When used as an object, GroupNesting implements Iterator
-             and iterates nested groups in a logical manner for us
-            */
-
+        When used as an object, GroupNesting implements Iterator
+        and iterates nested groups in a logical manner for us
+      */
       self::$groupIterator = new CRM_Contact_BAO_GroupNesting($styledLabels);
     }
     return self::$groupIterator;
@@ -1237,6 +1261,7 @@ WHERE  id = %1";
       while ($relationshipTypeDAO->fetch()) {
 
         self::$relationshipType[$valueColumnName][$relationshipTypeDAO->id] = array(
+          'id' => $relationshipTypeDAO->id,
           $column_a_b => $relationshipTypeDAO->$column_a_b,
           $column_b_a => $relationshipTypeDAO->$column_b_a,
           'contact_type_a' => "$relationshipTypeDAO->contact_type_a",
@@ -1261,7 +1286,7 @@ WHERE  id = %1";
   public static function &currencySymbols($name = 'symbol', $key = 'id') {
     $cacheKey = "{$name}_{$key}";
     if (!isset(self::$currencySymbols[$cacheKey])) {
-      self::populate(self::$currencySymbols[$cacheKey], 'CRM_Core_DAO_Currency', TRUE, $name, NULL, NULL, 'name', $key);
+      self::populate(self::$currencySymbols[$cacheKey], 'CRM_Financial_DAO_Currency', TRUE, $name, NULL, NULL, 'name', $key);
     }
 
     return self::$currencySymbols[$cacheKey];
@@ -1581,7 +1606,7 @@ WHERE  id = %1";
         return self::$county[$id];
       }
       else {
-        return NULL;
+        return CRM_Core_DAO::$_nullObject;
       }
     }
     return self::$county;
@@ -1601,6 +1626,13 @@ WHERE  id = %1";
       self::$pcm = CRM_Core_OptionGroup::values('preferred_communication_method', FALSE, FALSE, $localize);
     }
     return self::$pcm;
+  }
+
+  /**
+   * Alias of pcm
+   */
+  public static function preferredCommunicationMethod($localize = FALSE) {
+    return self::pcm($localize);
   }
 
   /**
@@ -1631,7 +1663,7 @@ WHERE  id = %1";
 
     $cacheKey = $condition . '_' . (int) $all;
     if (!isset(self::$paymentProcessor[$cacheKey])) {
-      self::populate(self::$paymentProcessor[$cacheKey], 'CRM_Core_DAO_PaymentProcessor', $all, 'name', 'is_active', $condition, 'is_default desc, name');
+      self::populate(self::$paymentProcessor[$cacheKey], 'CRM_Financial_DAO_PaymentProcessor', $all, 'name', 'is_active', $condition, 'is_default desc, name');
     }
 
     return self::$paymentProcessor[$cacheKey];
@@ -1650,11 +1682,15 @@ WHERE  id = %1";
    * @return array - array of all payment processor types
    *
    */
-  public static function &paymentProcessorType($all = FALSE) {
-    if (!self::$paymentProcessorType) {
-      self::populate(self::$paymentProcessorType, 'CRM_Core_DAO_PaymentProcessorType', $all, 'title', 'is_active', NULL, 'is_default, title', 'name');
+  public static function &paymentProcessorType($all = FALSE, $id = NULL, $return = 'title') {
+    $cacheKey = $id . '_' .$return;
+    if (empty(self::$paymentProcessorType[$cacheKey])) {
+      self::populate(self::$paymentProcessorType[$cacheKey], 'CRM_Financial_DAO_PaymentProcessorType', $all, $return, 'is_active', NULL, "is_default, $return", 'id');
     }
-    return self::$paymentProcessorType;
+    if ($id && CRM_Utils_Array::value($id, self::$paymentProcessorType[$cacheKey])) {
+      return self::$paymentProcessorType[$cacheKey][$id];
+    }
+    return self::$paymentProcessorType[$cacheKey];
   }
 
   /**
@@ -1675,7 +1711,7 @@ WHERE  id = %1";
         return self::$worldRegions[$id];
       }
       else {
-        return NULL;
+        return CRM_Core_DAO::$_nullObject;
       }
     }
 
@@ -1713,6 +1749,9 @@ WHERE  id = %1";
    * @return array - array reference of all activity statuses
    */
   public static function &activityStatus($column = 'label') {
+    if (NULL === self::$activityStatus) {
+      self::$activityStatus = array();
+    }
     if (!array_key_exists($column, self::$activityStatus)) {
       self::$activityStatus[$column] = array();
 
@@ -1775,7 +1814,7 @@ WHERE  id = %1";
 
     if (!isset(self::$visibility[$column])) {
       self::$visibility[$column] = CRM_Core_OptionGroup::values('visibility', FALSE, FALSE, FALSE, NULL, $column);
-    }
+  }
 
     return self::$visibility[$column];
   }
@@ -1835,7 +1874,9 @@ ORDER BY name";
     global $tsLocale;
     if ($tsLocale != '' and $tsLocale != 'en_US') {
       $i18n = CRM_Core_I18n::singleton();
-      $i18n->localizeArray($result);
+      $i18n->localizeArray($result, array(
+        'context' => 'province',
+      ));
       $result = CRM_Utils_Array::asort($result);
     }
 
@@ -1900,6 +1941,31 @@ ORDER BY name";
   }
 
   /**
+   * Given a state ID return the country ID, this allows
+   * us to populate forms and values for downstream code
+   *
+   * @param $stateID int
+   *
+   * @return int the country id that the state belongs to
+   * @static
+   * @public
+   */
+  static function countryIDForStateID($stateID) {
+    if (empty($stateID)) {
+      return CRM_Core_DAO::$_nullObject;
+    }
+
+    $query = "
+SELECT country_id
+FROM   civicrm_state_province
+WHERE  id = %1
+";
+    $params = array(1 => array($stateID, 'Integer'));
+
+    return CRM_Core_DAO::singleValueQuery($query, $params);
+  }
+
+  /**
    * Get all types of Greetings.
    *
    * The static array of greeting is returned
@@ -1919,6 +1985,10 @@ ORDER BY name";
     $contactType = CRM_Utils_Array::value('contact_type', $filter);
     if ($contactType) {
       $index .= '_' . $contactType;
+    }
+
+    if (NULL === self::$greeting) {
+      self::$greeting = array();
     }
 
     if (!CRM_Utils_Array::value($index, self::$greeting)) {
@@ -1994,9 +2064,19 @@ ORDER BY name";
   }
 
   /**
+   * Alias of above
+   */
+  public static function &preferredLanguage() {
+    return CRM_Core_I18n_PseudoConstant::languages();
+  }
+
+  /**
    * Get all extensions
    *
    * The static array extensions
+   *
+   * FIXME: This is called by civix but not by any core code. We
+   * should provide an API call which civix can use instead.
    *
    * @access public
    * @static
@@ -2030,53 +2110,7 @@ ORDER BY name";
    * @return array - array(array('prefix' => $, 'file' => $))
    */
   public static function getModuleExtensions($fresh = FALSE) {
-    $config = CRM_Core_Config::singleton();
-    if ($config->isUpgradeMode() || !isset($config->extensionsDir)) {
-      return array(); // hmm, ok
-    }
-
-    /*
-    if (!is_array(self::$moduleExtensions)) {
-      // Check prefetched module list
-
-      // ISSUE: 'Directory Preferences' can only store strings
-      self::$moduleExtensions = CRM_Core_BAO_Setting::getItem(
-        CRM_Core_BAO_Setting::DIRECTORY_PREFERENCES_NAME,
-        'modulePaths');
-    }
-    */
-
-    if ($fresh || !is_array(self::$moduleExtensions)) {
-      // Check canonical module list
-
-      self::$moduleExtensions = array();
-      $sql = '
-        SELECT full_name, file
-        FROM civicrm_extension
-        WHERE is_active = 1
-        AND type = "module"
-      ';
-      $dao = CRM_Core_DAO::executeQuery($sql);
-      while ($dao->fetch()) {
-        self::$moduleExtensions[] = array(
-          'prefix' => $dao->file,
-          'filePath' => $config->extensionsDir
-            . DIRECTORY_SEPARATOR . $dao->full_name
-            . DIRECTORY_SEPARATOR . $dao->file . '.php',
-        );
-      }
-
-      /*
-      // Store for future pre-fetching
-      // ISSUE: 'Directory Preferences' can only store strings
-      CRM_Core_BAO_Setting::setItem(
-        self::$moduleExtensions,
-        CRM_Core_BAO_Setting::DIRECTORY_PREFERENCES_NAME,
-        'modulePaths'
-        );
-      */
-    }
-    return self::$moduleExtensions;
+    return CRM_Extension_System::singleton()->getMapper()->getActiveModuleFiles($fresh);
   }
 
   /**
@@ -2117,6 +2151,49 @@ ORDER BY name";
       self::$eventContacts = CRM_Core_OptionGroup::values('event_contacts', FALSE, FALSE, FALSE, NULL, $column);
     }
     return self::$eventContacts;
+  }
+
+  /**
+   * Get all options values
+   *
+   * The static array option values is returned
+   *
+   * @access public
+   * @static
+   *
+   * @param boolean $optionGroupName - get All  Option Group values- default is to get only active ones.
+   *
+   * @return array - array reference of all Option Group Name
+   *
+   */
+  public static function accountOptionValues($optionGroupName, $id = null, $condition = null) {
+    $cacheKey = $optionGroupName . '_' . $condition;
+    if (empty(self::$accountOptionValues[$cacheKey])) {
+      self::$accountOptionValues[$cacheKey] = CRM_Core_OptionGroup::values($optionGroupName, false, false, false, $condition);
+    }
+    if ($id) {
+      return CRM_Utils_Array::value($id, self::$accountOptionValues[$cacheKey]);
+    }
+
+    return self::$accountOptionValues[$cacheKey];
+  }
+
+  /**
+   * Get all batch modes
+   *
+   * The static array batchModes
+   *
+   * @access public
+   * @static
+   *
+   * @return array - array reference of all batch modes
+   */
+  public static function &getBatchMode($columnName = 'label') {
+    if (!self::$batchModes) {
+      self::$batchModes = CRM_Core_OptionGroup::values('batch_mode', false, false, false, null, $columnName);
+    }
+
+    return self::$batchModes;
   }
 
   /**
@@ -2172,29 +2249,6 @@ ORDER BY name";
     }
     return self::$contactType;
   }
-
-  /**
-   * Get constant
-   *
-   * Wrapper for Pseudoconstant methods. We use this so the calling function
-   * doesn't need to know which class the Pseudoconstant is on
-   * (some are on the Contribute_Pseudoconsant Class etc
-   *
-   * @access public
-   * @static
-   *
-   * @return array - array reference of all relevant constant
-   */
-  public static function getConstant($constant) {
-    if (!self::$$constant) {
-      if (method_exists(get_class(), $constant)) {
-        self::$$constant = self::$constant();
-      }
-    }
-
-    return self::$$constant;
-  }
-
 
   /**
    * Get all the auto renew options

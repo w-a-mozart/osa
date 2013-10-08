@@ -1,0 +1,1 @@
+Overriding this class in the custom_php directory cause a PHP error so we have to override it directly.

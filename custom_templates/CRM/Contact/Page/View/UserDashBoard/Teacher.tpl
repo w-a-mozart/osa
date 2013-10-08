@@ -19,8 +19,10 @@
           <tr>
             <th>{ts}Student{/ts}</th>
             <th>{ts}Teacher{/ts}</th>
-            <th>{ts}Start Date{/ts}</th>
-            <th>{ts}End Date{/ts}</th>
+            <th>{ts}School Year{/ts}</th>
+            <th>{ts}Instrument{/ts}</th>
+            <th>{ts}Location{/ts}</th>
+            <th>{ts}Lesson Length{/ts}</th>
             <th>{ts}Status{/ts}</th>
           </tr>
         </thead>
@@ -28,9 +30,17 @@
         <tr class="{cycle values="odd-row,even-row"}">
           <td class="bold">{$teacher.student.display_name}</td>
           <td>{$teacher.display_name}</td>
-          <td>{$teacher.start_date|crmDate}</td>
-          <td>{$teacher.end_date|crmDate}</td>
-          <td>{$teacher.status}</td>
+          <td>{$teacher.school_year}</td>
+          <td>{$teacher.lesson_instrument}</td>
+          <td>{$teacher.lesson_location}</td>
+          <td>{$teacher.lesson_length}</td>
+          <td>
+            {if $teacher.status neq 'Expired'}
+              {$teacher.status}
+            {else}
+              <a href="{crmURL p='civicrm/contribute/transact' q='reset=1&id=2'}&cid={$teacher.student.contact_id}">{$teacher.status}</a>
+            {/if}
+          </td>
         </tr>
   {/foreach}
       </table>
@@ -41,6 +51,11 @@
 {if NOT ($teachers)}
     <div class="messages status">
       <div class="icon inform-icon"></div> {ts}There are no teacher registrations on record for this profile.{/ts}
+    </div>
+{/if}
+{if $contact.contact_type eq 'Household'}
+    <div class="action-link">
+      <a title='New Teacher Registration' class='add button'  href="{crmURL p='civicrm/contribute/transact' q='reset=1&id=2'}"><span><div class='icon add-icon'></div> Register for Private Lessons </span></a>
     </div>
 {/if}
   </div>

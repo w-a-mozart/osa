@@ -1,8 +1,8 @@
 {*
  +--------------------------------------------------------------------+
- | CiviCRM version 4.2                                                |
+ | CiviCRM version 4.3                                                |
  +--------------------------------------------------------------------+
- | Copyright CiviCRM LLC (c) 2004-2012                                |
+ | Copyright CiviCRM LLC (c) 2004-2013                                |
  +--------------------------------------------------------------------+
  | This file is a part of CiviCRM.                                    |
  |                                                                    |
@@ -30,7 +30,7 @@
         <fieldset>
         {if $renewal_mode}
             {if $membershipBlock.renewal_title}
-                <legend>{$membershipBlock.renewal_title}</legend>
+                <legend>{$membershipBlock.renewal_title} for {$form.first_name.value} {$form.last_name.value}</legend>
             {/if}
             {if $membershipBlock.renewal_text}
                 <div id="membership-intro" class="crm-section membership_renewal_intro-section">
@@ -47,36 +47,19 @@
               </div>
           {/if}
         {/if}
-        {if !empty($membershipTypes)}
-            {foreach from=$membershipTypes item=row}
-                {if array_key_exists( 'current_membership', $row )}
-                    <div id='help'>
-                    {* Lifetime memberships have no end-date so current_membership array key exists but is NULL *}
-                    {if $row.current_membership}
-                        {if $row.current_membership|date_format:"%Y%m%d" LT $smarty.now|date_format:"%Y%m%d"}
-                            {ts 1=$row.current_membership|crmDate 2=$row.name}Your <strong>%2</strong> membership expired on <strong>%1</strong>.{/ts}<br />
-                        {else}
-                            {ts 1=$row.current_membership|crmDate 2=$row.name}Your current <strong>%2</strong> membership expires on <strong>%1</strong>.{/ts}<br />
-                        {/if}
-                    {else}
-                        {ts 1=$row.name}Your <strong>%1</strong> membership does not expire (you do not need to renew that membership).{/ts}<br />
-                    {/if}
-                    </div>
-                {/if}
-            {/foreach}
-        {/if}
+
+        {* remove help div *}
 
         {include file="CRM/Price/Form/PriceSet.tpl" extends="Membership"}
         {if $paymentProcessor.payment_processor_type eq 'drupalcommerce'} 
           <div class="discount-info">Applicable discounts will be applied in the shopping cart.</div>
         {/if}
-      	<div id="allow_auto_renew">
+        <div id="allow_auto_renew">
             <div class='crm-section auto-renew'>
                 <div class='label'></div>
                 <div class ='content'>
                     {if isset($form.auto_renew) }
                         {$form.auto_renew.html}&nbsp;{$form.auto_renew.label}
-                        <span class="description crm-auto-renew-cancel-info">({ts}Your initial membership fee will be processed once you complete the confirmation step. You will be able to cancel automatic renewals at any time by logging in to your account or contacting us.{/ts})</span>
                     {/if}
                 </div>
             </div>
@@ -190,7 +173,7 @@ cj(function(){
                 <td>&nbsp;</td>
             {/if}
            <td style="width: auto;">
-                <span class="bold"><br />{$row.name}: &nbsp;
+                <span class="bold"><br />{$row.name}: {$contact.display_name}
                 {if ($membershipBlock.display_min_fee AND $context EQ "makeContribution") AND $row.minimum_fee GT 0 }
                     {if $is_separate_payment OR ! $form.amount.label}
                         - {$row.minimum_fee|crmMoney}
@@ -202,7 +185,7 @@ cj(function(){
                 {$row.description} &nbsp;
            </td>
 
-           <td style="width: auto;">
+            <td style="width: auto;">
               {* Check if there is an existing membership of this type (current_membership NOT empty) and if the end-date is prior to today. *}
               {if array_key_exists( 'current_membership', $row ) AND $context EQ "makeContribution" }
                   {if $row.current_membership}
@@ -221,14 +204,13 @@ cj(function(){
         </tr>
 
         {/foreach}
-	    {if isset($form.auto_renew) }
-	        <tr id="allow_auto_renew">
-	        <td style="width: auto;">{$form.auto_renew.html}</td>
-	        <td style="width: auto;">
-	            {$form.auto_renew.label}
-                <div class="description crm-auto-renew-cancel-info">({ts}Your initial membership fee will be processed once you complete the confirmation step. You will be able to cancel automatic renewals at any time by logging in to your account or contacting us.{/ts})</div>
-	        </td>
-    	    </tr>
+      {if isset($form.auto_renew) }
+          <tr id="allow_auto_renew">
+          <td style="width: auto;">{$form.auto_renew.html}</td>
+          <td style="width: auto;">
+              {$form.auto_renew.label}
+          </td>
+          </tr>
         {/if}
         {if $showRadio}
             {if $showRadioNoThanks } {* Provide no-thanks option when Membership signup is not required - per membership block configuration. *}

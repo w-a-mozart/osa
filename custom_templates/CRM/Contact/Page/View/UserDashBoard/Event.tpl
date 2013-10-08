@@ -56,5 +56,10 @@
       <div class="icon inform-icon"></div>&nbsp;{ts}There are no current or upcoming events on record.{/ts}            
     </div>
 {/if}
+{if $contact.contact_type eq 'Household'}
+    <div class="action-link">
+      <a title='Register for Special Events' class='add button' href="{$config->userFrameworkBaseURL}events"><span><div class='icon add-icon'></div> Register for an Event </span></a>
+    </div>
+{/if}
   </div>
 </div>

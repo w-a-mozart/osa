@@ -1,9 +1,9 @@
 <?php
 /*
  +--------------------------------------------------------------------+
- | CiviCRM version 4.2                                                |
+ | CiviCRM version 4.3                                                |
  +--------------------------------------------------------------------+
- | Copyright CiviCRM LLC (c) 2004-2012                                |
+ | Copyright CiviCRM LLC (c) 2004-2013                                |
  +--------------------------------------------------------------------+
  | This file is a part of CiviCRM.                                    |
  |                                                                    |
@@ -28,7 +28,7 @@
 /**
  *
  * @package CRM
- * @copyright CiviCRM LLC (c) 2004-2012
+ * @copyright CiviCRM LLC (c) 2004-2013
  * $Id$
  *
  */
@@ -179,7 +179,7 @@ class CRM_Contribute_Form_ContributionBase extends CRM_Core_Form {
   public $_priceSet;
 
   public $_action;
-  
+
   /**
    * Function to set variables up before form is built
    *
@@ -191,16 +191,18 @@ class CRM_Contribute_Form_ContributionBase extends CRM_Core_Form {
     $session = CRM_Core_Session::singleton();
 
     // current contribution page id
-    $this->_id = CRM_Utils_Request::retrieve('id', 'Positive',
-      $this
-    );
+    $this->_id = CRM_Utils_Request::retrieve('id', 'Positive', $this);
     if (!$this->_id) {
       $pastContributionID = $session->get('pastContributionID');
       if (!$pastContributionID) {
-        CRM_Core_Error::fatal(ts('We can\'t load the requested web page due to an incomplete link. This can be caused by using your browser\'s Back button or by using an incomplete or invalid link.'));
+        drupal_goto($_SERVER['HTTP_REFERER']);
+        return;
+        // CRM_Core_Error::fatal(ts('We can\'t load the requested web page due to an incomplete link. This can be caused by using your browser\'s Back button or by using an incomplete or invalid link.'));
       }
       else {
-        CRM_Core_Error::fatal(ts('An error occurred during form submission. This page requires form data to be submitted for processing and no form data was submitted or processed. We are sorry for any inconvience. Please click <a href=\'%1\'>here</a> to visit the contribution page and re-start the contribution process.', array(1 => CRM_Utils_System::url('civicrm/contribute/transact', 'reset=1&id=' . $pastContributionID))));
+        drupal_goto(CRM_Utils_System::url('civicrm/contribute/transact', 'reset=1&id=' . $pastContributionID));
+        return;
+        // CRM_Core_Error::fatal(ts('An error occurred during form submission. This page requires form data to be submitted for processing and no form data was submitted or processed. We are sorry for any inconvience. Please click <a href=\'%1\'>here</a> to visit the contribution page and re-start the contribution process.', array(1 => CRM_Utils_System::url('civicrm/contribute/transact', 'reset=1&id=' . $pastContributionID))));
       }
     }
     else {
@@ -225,12 +227,12 @@ class CRM_Contribute_Form_ContributionBase extends CRM_Core_Form {
               $this->assign('membershipContactName', $employers[$this->_membershipContactID]['name']);
             }
             else {
-              CRM_Core_Session::setStatus(ts("Oops. The membership you're trying to renew appears to be invalid. Contact your site administrator if you need assistance. If you continue, you will be issued a new membership."));
+              CRM_Core_Session::setStatus(ts("Oops. The membership you're trying to renew appears to be invalid. Contact your site administrator if you need assistance. If you continue, you will be issued a new membership."), ts('Membership Invalid'), 'alert');
             }
           }
         }
         else {
-          CRM_Core_Session::setStatus(ts("Oops. The membership you're trying to renew appears to be invalid. Contact your site administrator if you need assistance. If you continue, you will be issued a new membership."));
+          CRM_Core_Session::setStatus(ts("Oops. The membership you're trying to renew appears to be invalid. Contact your site administrator if you need assistance. If you continue, you will be issued a new membership."), ts('Membership Invalid'), 'alert');
         }
         unset($membership);
       }
@@ -243,9 +245,7 @@ class CRM_Contribute_Form_ContributionBase extends CRM_Core_Form {
     $this->assign('browserPrint', TRUE);
 
     // action
-    $this->_action = CRM_Utils_Request::retrieve('action', 'String',
-      $this, FALSE, 'add'
-    );
+    $this->_action = CRM_Utils_Request::retrieve('action', 'String', $this, FALSE, 'add');
     $this->assign('action', $this->_action);
 
     // current mode
@@ -257,7 +257,7 @@ class CRM_Contribute_Form_ContributionBase extends CRM_Core_Form {
     $this->_paymentProcessor = $this->get('paymentProcessor');
     $this->_priceSetId = $this->get('priceSetId');
     $this->_priceSet = $this->get('priceSet');
-        
+
     if (!$this->_values) {
       // get all the values from the dao object
       $this->_values = array();
@@ -296,10 +296,8 @@ class CRM_Contribute_Form_ContributionBase extends CRM_Core_Form {
         }
 
         $ppIds = explode(CRM_Core_DAO::VALUE_SEPARATOR, $ppID);
-        $this->_paymentProcessors = CRM_Core_BAO_PaymentProcessor::getPayments($ppIds,
-          $this->_mode
-        );
-        
+        $this->_paymentProcessors = CRM_Financial_BAO_PaymentProcessor::getPayments($ppIds, $this->_mode);
+
         $this->set('paymentProcessors', $this->_paymentProcessors);
 
         //set default payment processor
@@ -311,10 +309,10 @@ class CRM_Contribute_Form_ContributionBase extends CRM_Core_Form {
             }
           }
         }
-        
+
         if (isset($defaultProcessorId)) {
-          $this->_paymentProcessor = CRM_Core_BAO_PaymentProcessor::getPayment($defaultProcessorId, $this->_mode);
-          $this->assign_by_ref('paymentProcessor', $this->_paymentProcessor);    
+          $this->_paymentProcessor = CRM_Financial_BAO_PaymentProcessor::getPayment($defaultProcessorId, $this->_mode);
+          $this->assign_by_ref('paymentProcessor', $this->_paymentProcessor);
         }
 
         if (!CRM_Utils_System::isNull($this->_paymentProcessors)) {
@@ -516,7 +514,7 @@ class CRM_Contribute_Form_ContributionBase extends CRM_Core_Form {
 
     $config = CRM_Core_Config::singleton();
     if (isset($this->_values['is_recur']) &&
-      $this->_paymentProcessor['is_recur']
+      CRM_Utils_Array::value('is_recur', $this->_paymentProcessor)
     ) {
       $this->assign('is_recur_enabled', 1);
       $vars = array_merge($vars, array(
@@ -543,12 +541,15 @@ class CRM_Contribute_Form_ContributionBase extends CRM_Core_Form {
     }
 
     foreach ($vars as $v) {
-      if (CRM_Utils_Array::value($v, $this->_params)) {
+      if (isset($this->_params[$v])) {
         if ($v == 'frequency_unit' || $v == 'pledge_frequency_unit') {
           $frequencyUnits = CRM_Core_OptionGroup::values('recur_frequency_units');
           if (array_key_exists($this->_params[$v], $frequencyUnits)) {
             $this->_params[$v] = $frequencyUnits[$this->_params[$v]];
           }
+        }
+        if ($v == "amount" && $this->_params[$v] === 0) {
+          $this->_params[$v] = CRM_Utils_Money::format($this->_params[$v], NULL, NULL, TRUE);
         }
         $this->assign($v, $this->_params[$v]);
       }
@@ -590,7 +591,9 @@ class CRM_Contribute_Form_ContributionBase extends CRM_Core_Form {
     }
 
     if ($this->_contributeMode == 'direct' && $assignCCInfo) {
-      if ($this->_paymentProcessor['payment_type'] & CRM_Core_Payment::PAYMENT_TYPE_DIRECT_DEBIT) {
+      if ($this->_paymentProcessor &&
+        $this->_paymentProcessor['payment_type'] & CRM_Core_Payment::PAYMENT_TYPE_DIRECT_DEBIT
+      ) {
         $this->assign('payment_type', $this->_paymentProcessor['payment_type']);
         $this->assign('account_holder', $this->_params['account_holder']);
         $this->assign('bank_identification_number', $this->_params['bank_identification_number']);
@@ -615,14 +618,6 @@ class CRM_Contribute_Form_ContributionBase extends CRM_Core_Form {
     if (isset($this->_values['receipt_text'])) {
       $this->assign('receipt_text', $this->_values['receipt_text']);
     }
-    /*
-        // assign pay later stuff
-        $this->_params['is_pay_later'] = CRM_Utils_Array::value( 'is_pay_later', $this->_params, false );
-        $this->assign( 'is_pay_later', $this->_params['is_pay_later'] );
-        if ( $this->_params['is_pay_later'] ) {
-            $this->assign( 'pay_later_text'   , $this->_values['pay_later_text']    );
-            $this->assign( 'pay_later_receipt', $this->_values['pay_later_receipt'] );
-            }*/
   }
 
   /**
@@ -635,7 +630,6 @@ class CRM_Contribute_Form_ContributionBase extends CRM_Core_Form {
     $stateCountryMap = array();
 
     if ($id) {
-      $session = CRM_Core_Session::singleton();
       $contactID = $this->_userID;
 
       // we don't allow conflicting fields to be
@@ -652,7 +646,7 @@ class CRM_Contribute_Form_ContributionBase extends CRM_Core_Form {
         'contribution_status_id' => 1,
         'payment_instrument' => 1,
         'check_number' => 1,
-        'contribution_type' => 1,
+        'financial_type' => 1,
       );
 
       $fields = NULL;
@@ -679,7 +673,7 @@ class CRM_Contribute_Form_ContributionBase extends CRM_Core_Form {
 
         if (array_intersect_key($fields, $fieldsToIgnore)) {
           $fields = array_diff_key($fields, $fieldsToIgnore);
-          CRM_Core_Session::setStatus(ts('Some of the profile fields cannot be configured for this page.'));
+          CRM_Core_Session::setStatus(ts('Some of the profile fields cannot be configured for this page.'), ts('Warning'), 'alert');
         }
 
         $fields = array_diff_assoc($fields, $this->_fields);
@@ -705,8 +699,12 @@ class CRM_Contribute_Form_ContributionBase extends CRM_Core_Form {
 
           if ($onBehalf) {
             if (!empty($fieldTypes) && in_array($field['field_type'], $fieldTypes)) {
-              CRM_Core_BAO_UFGroup::buildProfile($this, $field, CRM_Profile_Form::MODE_CREATE,
-                $contactID, TRUE
+              CRM_Core_BAO_UFGroup::buildProfile(
+                $this,
+                $field,
+                CRM_Profile_Form::MODE_CREATE,
+                $contactID,
+                TRUE
               );
               $this->_fields['onbehalf'][$key] = $field;
             }
@@ -715,7 +713,13 @@ class CRM_Contribute_Form_ContributionBase extends CRM_Core_Form {
             }
           }
           else {
-            CRM_Core_BAO_UFGroup::buildProfile($this, $field, CRM_Profile_Form::MODE_CREATE, $contactID, TRUE);
+            CRM_Core_BAO_UFGroup::buildProfile(
+              $this,
+              $field,
+              CRM_Profile_Form::MODE_CREATE,
+              $contactID,
+              TRUE
+            );
             $this->_fields[$key] = $field;
           }
           if ($field['add_captcha']) {
@@ -727,9 +731,7 @@ class CRM_Contribute_Form_ContributionBase extends CRM_Core_Form {
 
         CRM_Core_BAO_Address::addStateCountryMap($stateCountryMap);
 
-        if ($addCaptcha &&
-          !$viewOnly
-        ) {
+        if ($addCaptcha && !$viewOnly) {
           $captcha = CRM_Utils_ReCAPTCHA::singleton();
           $captcha->add($this);
           $this->assign('isCaptcha', TRUE);
