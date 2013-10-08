@@ -1,0 +1,9 @@
+name = QuickBooks Web Connector SOAP Service
+description = Supports realtime integration from Drupal to Quickbooks via the Intuit QuickBooks Web Connector utility (http://marketplace.intuit.com/webconnector/)
+package = QuickBooks
+core = 7.x
+
+dependencies[] = services
+
+configure = admin/config/quickbooks_webconnect
+version = "7.x-1.0"

@@ -10,6 +10,9 @@ Some of the things included are:
 civicrm to drupal commerce integration
 - a civicrm custom payment processor which adds membership registration, event registration, other generic contributions to a drupal commerce cart rather than an actual payment processor directly.
 
+drupal to QuickBooks integration
+- a drupal module that uses the Drupal 7 Queue, the PHP DevKit from ConsoliBYTE and the Intuit QuickBooks Web Connector utility. This allows us to post a combination of Drupal Commerce orders and CiviCRM contribution records into a desktop version of QuickBooks.
+
 paid civicrm relationships
 - extend civicrm to enable end users to create and pay for a time limited relationship with another contact. Our use-case is to allow students to register and pay for private lesson fees with a specific teacher.
 
