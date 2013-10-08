@@ -11,6 +11,7 @@ require_once 'osa.commerce.inc';
 require_once 'osa.group_class.inc';
 require_once 'osa.teacher.inc';
 require_once 'osa.camp.inc';
+require_once 'osa.quickbooks.inc';
 
 // CiviCRM hooks
 
@@ -102,8 +103,13 @@ function osa_civicrm_alterPaymentProcessorParams($paymentObj, &$rawParams, &$coo
   // add custom variables to the Elavon transaction
   if (isset($paymentObj) && ($paymentObj->_processorName == 'Elavon')) {
     $contact = _osa_get_contact(NULL, FALSE);
-    $cookedParams['osa_name_card'] = $contact['display_name'];
-    $cookedParams['osa_card_type'] = $rawParams['credit_card_type'];
+    $cookedParams['osa_name_card'] = htmlspecialchars($contact['display_name']);
+    $cookedParams['osa_card_type'] = strtolower($rawParams['credit_card_type']);
+    $cookedParams['osa_qb_name'] = htmlspecialchars(_osa_qb_name($contact['id']));
+    $cookedParams['ssl_description'] = htmlspecialchars($cookedParams['ssl_description']);
+    
+    unset($cookedParams['ssl_ship_to_first_name']);
+    unset($cookedParams['ssl_ship_to_last_name']);
     unset($cookedParams['ssl_customer_number']);
   }
 }
@@ -113,6 +119,7 @@ function osa_civicrm_alterPaymentProcessorParams($paymentObj, &$rawParams, &$coo
  *
  */
 function osa_civicrm_alterMailParams(&$params) {
+
   // Log the email to the maillog
   if (variable_get('maillog_log', TRUE)) {
     $record = new stdClass;
@@ -128,6 +135,15 @@ function osa_civicrm_alterMailParams(&$params) {
     $record->sent_date = REQUEST_TIME;
 
     drupal_write_record('maillog', $record);
+  }
+}
+
+/**
+ * Implements hook_civicrm_post to process CiviCRM database events (similar to triggers)
+ */
+function osa_civicrm_post($op, $objectName, $objectId, &$objectRef) {
+  if (function_exists("osa_civicrm_post_{$objectName}")) {
+    call_user_func_array("osa_civicrm_post_{$objectName}", array($op, $objectId, &$objectRef));
   }
 }
 
@@ -288,8 +304,6 @@ function osa_process_node(&$variables) {
  * Implements hook_js_alter to modify javascript added by other modules
  */
 function osa_js_alter(&$javascript) {
-  // 
-
 };
 
 /**
@@ -355,4 +369,32 @@ function osa_views_query_alter(&$view, &$query) {
   if (function_exists("osa_views_query_alter_{$view->name}")) {
     call_user_func_array("osa_views_query_alter_{$view->name}", array(&$view, &$query));
   }
+}
+
+/**
+ * Implements hook_watchdog_filtering to filter what gets added to the log table
+ */
+function osa_watchdog_filtering(array $log_entry) {
+  $return = WATCHDOG_FILTERING_IGNORE;
+  
+  // Don't log cron messages.
+  if ($log_entry['type'] == 'cron') {
+    return WATCHDOG_FILTERING_EXCLUDE;
+  }
+
+  // Don't log some anonymous messages (usually search bot)
+  if ($log_entry['uid'] == 0) {
+    if (($log_entry['type'] == 'civicrm') ||
+        ($log_entry['type'] == 'access denied') ||
+        ($log_entry['type'] == 'page not found')) {
+      return WATCHDOG_FILTERING_EXCLUDE;
+    }
+  }
+
+  // "Always" watchdog error messages.
+  if ($log_entry['severity'] == WATCHDOG_ERROR) {
+    $return = WATCHDOG_FILTERING_INCLUDE;
+  }
+
+  return $return;
 }

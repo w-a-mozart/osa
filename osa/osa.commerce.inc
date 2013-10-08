@@ -10,7 +10,6 @@ require_once 'osa.inc';
  * Modify the cart edit form to remove the update cart button, if all of the products have a fixed quantity
  */
 function osa_form_alter_views_form_commerce_cart_form_default(&$form, &$form_state) {
-
   global $user;
   
   // open the order record as read only: Issue 1514618
@@ -80,5 +79,6 @@ function osa_commerce_price_formatted_components_alter(&$components, &$item, &$e
  */
 function osa_commerce_elavon_transaction_alter( &$txn_array, $values, $order ) {
   $txn_array['osa_card_type'] = $values['type'];
-  $txn_array['osa_name_card'] = $values['owner'];
+  $txn_array['osa_name_card'] = htmlspecialchars($values['owner']);
+  $txn_array['osa_qb_name'] = htmlspecialchars(_osa_qb_name(_osa_get_contact_id($order->uid)));
 }
