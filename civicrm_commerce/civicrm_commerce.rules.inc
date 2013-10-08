@@ -24,23 +24,23 @@ function civicrm_commerce_rules_condition_info() {
     'module' => 'civicrm_commerce',
   );
   
-  $conditions['civicrm_commerce_contains_contribution_type'] = array(
-    'label' => t('Order contains a particular contribution type'),
+  $conditions['civicrm_commerce_contains_financial_type'] = array(
+    'label' => t('Order contains a particular financial type'),
     'parameter' => array(
       'commerce_order' => array(
         'type' => 'commerce_order',
         'label' => t('Order'),
-        'description' => t('The order whose line items should be checked for the specified contribution type. If the specified order does not exist, the comparison will act as if it is against a quantity of 0.'),
+        'description' => t('The order whose line items should be checked for the specified financial type. If the specified order does not exist, the comparison will act as if it is against a quantity of 0.'),
       ),
-      'contribution_type' => array(
+      'financial_type' => array(
         'type' => 'text',
-        'label' => t('Contribution Type'),
-        'description' => t('The type of contibution to look for on the order.'),
+        'label' => t('Financial Type'),
+        'description' => t('The type of contribution to look for on the order.'),
       ),
       'operator' => array(
         'type' => 'text',
         'label' => t('Operator'),
-        'description' => t('The operator used with the quantity value below to compare the quantity of the specified contribution type on the order.'),
+        'description' => t('The operator used with the quantity value below to compare the quantity of the specified financial type on the order.'),
         'default value' => '>=',
         'options list' => 'commerce_numeric_comparison_operator_options_list',
         'restriction' => 'input',
@@ -49,7 +49,7 @@ function civicrm_commerce_rules_condition_info() {
         'type' => 'text',
         'label' => t('Quantity'),
         'default value' => '1',
-        'description' => t('The value to compare against the quantity of the specified contribution type on the order.'),
+        'description' => t('The value to compare against the quantity of the specified financial type on the order.'),
       ),
     ),
     'group' => t('CiviCRM Commerce'),
@@ -89,17 +89,17 @@ function civicrm_commerce_is_member($commerce_line_item) {
 }
 
 /**
- * Rules condition: a particular contribution type exists on an order in the specified quantity.
+ * Rules condition: a particular financial type exists on an order in the specified quantity.
  */
-function civicrm_commerce_contains_contribution_type($order, $contribution_type, $operator, $value) {
-  $contribution_type_qty = 0;
+function civicrm_commerce_contains_financial_type($order, $financial_type, $operator, $value) {
+  $financial_type_qty = 0;
 
   // If we actually received a valid order...
   if (!empty($order)) {
     $order_wrapper = entity_metadata_wrapper('commerce_order', $order);
 
     civicrm_initialize();
-    // Count the quantities of each line item with the specified contribution type
+    // Count the quantities of each line item with the specified financial type
     foreach ($order_wrapper->commerce_line_items as $delta => $line_item_wrapper) {
       if (!isset($line_item_wrapper->civicrm_commerce_contribution_id)) {
         continue;
@@ -107,8 +107,8 @@ function civicrm_commerce_contains_contribution_type($order, $contribution_type,
 
       $contribution_id = $line_item_wrapper->civicrm_commerce_contribution_id->value();
       $result = civicrm_api('contribution', 'get', array('id' => $contribution_id, 'version' => 3));
-      if (isset($result['values'][$contribution_id]['contribution_type']) && ($result['values'][$contribution_id]['contribution_type'] == $contribution_type)) {
-        $contribution_type_qty += $line_item_wrapper->quantity->value();
+      if (isset($result['values'][$contribution_id]['financial_type']) && ($result['values'][$contribution_id]['financial_type'] == $financial_type)) {
+        $financial_type_qty += $line_item_wrapper->quantity->value();
       }
     }
   }
@@ -116,15 +116,15 @@ function civicrm_commerce_contains_contribution_type($order, $contribution_type,
   // Make a quantity comparison based on the operator.
   switch ($operator) {
     case '<':
-      return $contribution_type_qty < $value;
+      return $financial_type_qty < $value;
     case '<=':
-      return $contribution_type_qty <= $value;
+      return $financial_type_qty <= $value;
     case '=':
-      return $contribution_type_qty == $value;
+      return $financial_type_qty == $value;
     case '>=':
-      return $contribution_type_qty >= $value;
+      return $financial_type_qty >= $value;
     case '>':
-      return $contribution_type_qty > $value;
+      return $financial_type_qty > $value;
   }
 
   return FALSE;
@@ -208,6 +208,12 @@ function civicrm_commerce_update_contribution($commerce_payment_transaction) {
           $params['id'] = $line_item_wrapper->civicrm_commerce_contribution_id->value();
           $params['total_amount'] = commerce_currency_amount_to_decimal($price['amount'], $price['currency_code']);
           $params['trxn_id'] = $commerce_payment_transaction->remote_id . '-' . $line_item_wrapper->line_item_id->value();
+
+          // @TODO - don't know why this fails if financial_type_id is not specified
+          $contribution_id = $line_item_wrapper->civicrm_commerce_contribution_id->value();
+          $contribution = civicrm_api('contribution', 'getsingle', array('id' => $contribution_id, 'version' => 3));
+          $params['financial_type_id'] = $contribution['financial_type_id'];
+
           $result = civicrm_api('contribution', 'create', $params);
           if ($result['is_error'] != 0) {
             watchdog('civicrm_commerce', 'Error updating civicrm contribution %1: %2', array( '%1' => $params['id'], '%2' => $result['error_message']), WATCHDOG_ERROR);
@@ -216,20 +222,19 @@ function civicrm_commerce_update_contribution($commerce_payment_transaction) {
 
         // update the membership records
         if (($commerce_payment_transaction->status == COMMERCE_PAYMENT_STATUS_SUCCESS) && ($line_item_wrapper->type->value() == 'civi_membership')) {
-          $mid = $line_item_wrapper->civicrm_commerce_membership_id->value();
-          $result = civicrm_api('membership', 'get', array('id' => $mid, 'version' => 3));
+          $membership_id = $line_item_wrapper->civicrm_commerce_membership_id->value();
+          $result = civicrm_api('membership', 'get', array('id' => $membership_id, 'version' => 3));
           if ($result['is_error'] == 0) {
-            $membership_params = $result['values'][$mid];
+            $membership_params = $result['values'][$membership_id];
             unset($membership_params['status_id']);
             $membership_params['skipStatusCal'] = FALSE;
             $membership_params['version'] = 3;
 
-            $membershipType = new CRM_Member_BAO_MembershipType();
-            $dates = $membershipType->getDatesForMembershipType($membership_params['membership_type_id']);
+            $dates = CRM_Member_BAO_MembershipType::getDatesForMembershipType($membership_params['membership_type_id']);
 
             $membership_params['end_date'] = $dates['end_date'];
+            $membership_params['start_date'] = $dates['start_date'];
             $membership_params['join_date'] = isset($membership_params['join_date']) ? $membership_params['join_date'] : $dates['join_date'];
-            $membership_params['start_date'] = isset($membership_params['start_date']) ? $membership_params['start_date'] : $dates['start_date'];
 
             $result = civicrm_api('membership', 'create', $membership_params);
             if ($result['is_error'] != 0) {
@@ -266,39 +271,39 @@ function civicrm_commerce_remove_contribution($commerce_line_item) {
   $result = civicrm_api('contribution', 'delete', array('id' => $contribution_id, 'version' => 3));
 
   // membership status get messed up when you delete a pending contribution
-  // @todo must be a better way
   if (($commerce_line_item->type == 'civi_membership') && (isset($line_item_wrapper->civicrm_commerce_membership_id))) {
     $membership_id = $line_item_wrapper->civicrm_commerce_membership_id->value();
     
-    // delete the membership log entry created when item was added to the cart
-    require_once 'CRM/Core/DAO.php';
-    $last_id_query = 'SELECT MAX(id) FROM civicrm_membership_log WHERE membership_id = ' . $membership_id;
-    $last_id = CRM_Core_DAO::singleValueQuery( $last_id_query );
+    // 1 or 2 entries have been added to the membership log
+    // one when it was added to the cart and one when the status and end_date were updated if this was a renewal
+    $last_id_query = "SELECT MAX(id) FROM civicrm_membership_log WHERE membership_id = {$membership_id}";
+    $last_id = CRM_Core_DAO::singleValueQuery($last_id_query);
     if ($last_id) {
-      $del_query = 'DELETE FROM civicrm_membership_log WHERE id = ' . $last_id;
-      CRM_Core_DAO::executeQuery($del_query);
+      // delete the renewal update entry (if it's a new membership we don't care because we will just delete everything anyway)
+      CRM_Core_DAO::executeQuery("DELETE FROM civicrm_membership_log WHERE id = {$last_id}");
       
-      // get the end date from the previous entry
-      $end_date_query = 'SELECT end_date FROM civicrm_membership_log WHERE id in (' . $last_id_query . ')';
-      $end_date = CRM_Core_DAO::singleValueQuery($end_date_query);
-    }
-    // reset the end date of the membership
-    if (isset($end_date)) {
-      $result = civicrm_api('membership', 'create', array('id' => $membership_id, 'end_date' => $end_date, 'version' => 3));
-
-      // don't want this log entry either
-      $last_id = CRM_Core_DAO::singleValueQuery( $last_id_query );
+      // get the old end_date and status from the 'added to the cart' entry
+      $last_id = CRM_Core_DAO::singleValueQuery($last_id_query);
       if ($last_id) {
-        $del_query = 'DELETE FROM civicrm_membership_log WHERE id = ' . $last_id;
-        CRM_Core_DAO::executeQuery($del_query);
+        $end_date = CRM_Core_DAO::singleValueQuery("SELECT end_date FROM civicrm_membership_log WHERE id = {$last_id}");
+        $status_id = CRM_Core_DAO::singleValueQuery("SELECT status_id FROM civicrm_membership_log WHERE id = {$last_id}");
       }
+    }
+    
+    // reset the status and end_date of the membership
+    if (isset($end_date)) {
+      $result = civicrm_api('membership', 'create', array('id' => $membership_id, 'status_id' => $status_id, 'end_date' => $end_date, 'version' => 3));
     }
     // or delete the membership if there is no end date
     else {
       $result = civicrm_api('membership', 'delete', array('id' => $membership_id, 'version' => 3));
     }
+
+    // delete all of the unwanted log entries (the reset api call creates another entry)
+    $last_id = isset($last_id) ? $last_id : 0;
+    CRM_Core_DAO::executeQuery("DELETE FROM civicrm_membership_log WHERE membership_id = {$membership_id} AND id >= {$last_id}");
   }
-  
+
   // remove the participant record
   if (($commerce_line_item->type == 'civi_event') && (isset($line_item_wrapper->civicrm_commerce_participant_id))) {
     $participant_id = $line_item_wrapper->civicrm_commerce_participant_id->value();

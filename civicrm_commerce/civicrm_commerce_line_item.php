@@ -89,7 +89,7 @@ function civicrm_commerce_line_item_title($line_item) {
     $contribution_id = $line_item_wrapper->civicrm_commerce_contribution_id->value();
     civicrm_initialize();
     $result = civicrm_api('contribution', 'get', array('id' => $contribution_id, 'version' => 3));
-    $title = $result['values'][$contribution_id]['contribution_type'];
+    $title = $result['values'][$contribution_id]['financial_type'];
   }
   else {
     $title = '';
@@ -191,11 +191,13 @@ function civicrm_commerce_line_item_add_new($paymentObj, &$params, $component) {
   
   // determine the line item type to create
   if ($component == "contribute") {
-    $line_item_params['label'] = $contact['display_name'];
     if (isset($params['membershipID'])) {
+      $line_item_params['label'] = $params['contributionType_name'] . ' for ' . $contact['display_name'];
       $line_item_params['type'] = 'civi_membership';
     }
     else {
+      $result = civicrm_api('ContributionPage', 'getvalue', array('id' => $params['contributionPageID'], 'return' => 'title', 'version' => 3));
+      $line_item_params['label'] = $result . ' for ' . $contact['display_name'];
       $line_item_params['type'] = 'civi_contribution';
     }
   }
@@ -236,7 +238,7 @@ function civicrm_commerce_line_item_add_new($paymentObj, &$params, $component) {
   // change the products price to ensure a base price is added to the line item
   // this will be overwritten by the pricing rule
   $product_wrapper = entity_metadata_wrapper('commerce_product', $product);
-  $product_wrapper->title = $line_item_params['label'];
+  $product_wrapper->title = $params['contributionType_name'] . ' for ' . $contact['display_name'];
   $product_wrapper->commerce_price->amount = $line_item_params['amount'];
   $product_wrapper->commerce_price->currency_code = $line_item_params['currencyID'];
 
@@ -262,6 +264,17 @@ function civicrm_commerce_line_item_add_new($paymentObj, &$params, $component) {
   }
   if ($line_item_params['participantID']) {
     $line_item_wrapper->civicrm_commerce_participant_id = $line_item_params['participantID'];
+  }
+
+  // special code to fix the Membership on renewal
+  if ($line_item_params['membershipID']) {
+    $membership_id = $line_item_params['membershipID'];
+    $result = civicrm_api('membership', 'get', array('id' => $membership_id, 'version' => '3'));
+    $membership = $result['values'][$membership_id];
+    if (isset($membership['join_date'])) {
+      $renew_dates = CRM_Member_BAO_MembershipType::getRenewalDatesForMembershipType($membership_id);
+      $result = civicrm_api('membership', 'create', array('id' => $membership_id, 'status_id' => 5, 'version' => '3') + $renew_dates);
+    }
   }
 
   // add it to the current user's cart
