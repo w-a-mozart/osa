@@ -348,14 +348,15 @@ function osa_quickbooks_webconnect_element_alter(&$element, $element_type, &$ope
       $contribution = $result['values'][$contribution_id];
       $element += $contribution;
       $teacher = _osa_get_contact($contribution[_osa_field('selected_teacher')]);
-      $lesson_level = $teacher['lesson_fee_level'][$contribution[_osa_field('lesson_level')]];
 
       // set the line item
       $result = civicrm_api('LineItem', 'get', array('entity_id' => $contribution_id, 'entity_table' => 'civicrm_contribution', 'rowCount' => PHP_INT_MAX, 'version' => 3));
       foreach ($result['values'] as $lineitem) {
         if ($lineitem['line_total'] > 0) {
           $line['ItemRef FullName'] = $contribution['financial_type'];
-          $line['Desc'] = $teacher['display_name'] . ' - ' . trim(strip_tags($lineitem['label'])). ' (' . $lesson_level . ')';
+          $line['Desc'] = "Student: {$contribution['display_name']}\r\n";
+          $line['Desc'] .= "Teacher: {$teacher['display_name']}\r\n";
+          $line['Desc'] .= 'Lesson Length: ' . trim(strip_tags($lineitem['label']));
           $line['Quantity'] = $lineitem['qty'];
           $line['Amount'] = $lineitem['line_total'];
           $element["{$element_type}Line"][] = $line;
