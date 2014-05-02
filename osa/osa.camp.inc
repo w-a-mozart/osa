@@ -119,8 +119,8 @@ function _osa_camp_teacher_premiums($components, $submitted, &$component, &$form
   $weeks   = is_array($submitted[12]) ? $submitted[12][0] : $submitted[12];
   $week[1] = (($weeks == 'Week 1') || ($weeks == 'Both Weeks')) ? 1 : 0;
   $week[2] = (($weeks == 'Week 2') || ($weeks == 'Both Weeks')) ? 1 : 0;
-  // special condition where TD is only available week 2
-  $week[1] = ($teacher == 'Terry Durbin') ? 0 : $week[1];
+  // special condition where TD is only available week 1
+  $week[2] = ($teacher == 'Terry Durbin') ? 0 : $week[2];
   
   list($instrument, $other) = explode('_', $form_key, 2);
   $instrument = ($instrument == 'secondary') ? 'second' : $instrument; // why didn't I name them the same???
@@ -178,14 +178,14 @@ function _osa_camp_teacher_premiums($components, $submitted, &$component, &$form
 /**
  * Modify the camp application webform
  */
-function osa_form_alter_webform_client_form_103(&$form, &$form_state) {
+function osa_form_alter_summer_camp(&$form, &$form_state) {
 
   // find out if this is a new or existing submission
   $path = request_path();
   $matches = array();
   if (preg_match('#node\/(?P<nid>\d+)\/submission\/(?P<sid>\d+)#', $path, $matches) !== 1) {
     // new submission, so edit the form for the end user
-    _osa_form_alter_webform_client_form_103($form, $form_state);
+    _osa_form_alter_summer_camp($form, $form_state);
     // add a validation routine so we get called even when there is an error
     $form['#validate'][] = '_osa_camp_validate';
   }
@@ -196,14 +196,7 @@ function osa_form_alter_webform_client_form_103(&$form, &$form_state) {
       // save what we need from the current form
       $node = $form['#node'];
       $submission = $form['#submission'];
- /*
- $action = $form['#action'];
-      $id = $form['#id'];
-      $type = $form['#type'];
-      //$form_state = array();
-      // rebuild the form to include all pages
-      $form = webform_client_form(array(), $form_state, $node, $submission, FALSE, FALSE);
-*/
+
       $form = webform_client_form($form, $form_state, $node, $submission, FALSE, FALSE);
       $form['#attached']['css'][] = drupal_get_path('module', 'osa') . '/osa.camp.css';
       $form['details']['page_num']['#value'] = $form['details']['page_count']['#value'];
@@ -213,11 +206,7 @@ function osa_form_alter_webform_client_form_103(&$form, &$form_state) {
         '#value' => t('Submit'),
         '#weight' => 10,
       );
-/*
-      $form['#action'] = $action;
-      $form['#id'] = $id;
-      $form['#type'] = $type;
-*/
+
       $form['#validate'] = array();
 
       $first_time = FALSE;
@@ -227,7 +216,7 @@ function osa_form_alter_webform_client_form_103(&$form, &$form_state) {
 
 function _osa_camp_validate($form, &$form_state) {
   // call the shared routine
-  _osa_form_alter_webform_client_form_103($form, $form_state);
+  _osa_form_alter_summer_camp($form, $form_state);
   return $form;
 }
 
@@ -235,7 +224,7 @@ function _osa_camp_validate($form, &$form_state) {
  * Modify the camp application webform to include a javascript setting
  * This setting is used to control the "running total" display
  */
-function _osa_form_alter_webform_client_form_103(&$form, &$form_state) {
+function _osa_form_alter_summer_camp(&$form, &$form_state) {
   // only process once for a given page
   static $already_called = array();
   $page_num = $form_state['webform']['page_num'];
@@ -280,7 +269,7 @@ function _osa_form_alter_webform_client_form_103(&$form, &$form_state) {
 /**
  * Cleanup the submission before saving it to the db
  */
-function osa_webform_submission_presave_103(&$node, &$submission) {
+function osa_webform_submission_presave_summer_camp(&$node, &$submission) {
   // unset the Recorder Level if Recorder Option not set
   // same with Theory & Ukulele_level
   $is_set = array(
@@ -323,7 +312,8 @@ function osa_webform_submission_presave_103(&$node, &$submission) {
  * We need to create the participation record in civicrm and
  * Add the line item to the shopping cart
  */
-function osa_webform_submission_insert_103($node, $submission) {
+function osa_webform_submission_insert_summer_camp($node, $submission) {
+  civicrm_initialize();
 
   // create the values array & line item description
   $values = array();
@@ -331,18 +321,30 @@ function osa_webform_submission_insert_103($node, $submission) {
   $amount = 0.00;
   _osa_camp_parse_submission($node->webform['components'], $submission->data, $values, $amount, $desc, 'short');
 
-  // create a pending participant record
-  // @TODO don't hard code event ids
-  $events = array(
-    'Week 1' => 1025,
-    'Week 2' => 1026,
-    'Both Weeks' => 1027,
+  // need this year's event ids
+  $params = array(
+    'event_type_id' => OSA_EVENT_SUMMER_CAMP,
+    'filter.start_date_low' => date('Y0101000000'),
+    'version' => 3,
   );
-  
+  $result = civicrm_api('event', 'get', $params);
+  $events = array();
+  foreach ($result['values'] as $event_id => $event) {
+    if (strpos($event['title'], 'Week 1') !== FALSE) {
+      $events['Week 1'] = $event_id;
+    }
+    elseif (strpos($event['title'], 'Week 2') !== FALSE) {
+      $events['Week 2'] = $event_id;
+    }
+    else {
+      $events['Both Weeks'] = $event_id;
+    }
+  }
+
+  // create a pending participant record
   $contact_id = $values['camp_participant']['value'];
   $event_id   = $events[$values['weeks']['value']];
   
-  civicrm_initialize();
   $params = array(
     'contact_id' => $contact_id,
     'event_id' => $event_id,
@@ -365,7 +367,7 @@ function osa_webform_submission_insert_103($node, $submission) {
   $params = array(
     'entity_id' => $participant_id,
     'custom_78' => $submission->sid,
-    'custom_79' => $GLOBALS['base_url'] . "/node/103/submission/{$submission->sid}",
+    'custom_79' => $GLOBALS['base_url'] . "/node/{$node->nid}/submission/{$submission->sid}",
     'version' => 3,
   );
   $result = civicrm_api('CustomValue', 'Create', $params);
@@ -573,6 +575,7 @@ function osa_views_query_alter_summer_camp_student_allergies(&$view, &$query) {
   unset($query->table_queue['webform_submitted_data_webform_submissions']);
   $query->table_queue['webform_submitted_data_webform_submissions'] = $tmp; 
 }
+
 /**
  * Implements hook_views_query_alter() to join the civicrm_participant and the civicrm_contribution tables
  */

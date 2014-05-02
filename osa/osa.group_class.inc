@@ -344,13 +344,13 @@ function osa_civicrm_pageRun_group_class_info(&$page) {
     $page->assign('group_classes', $group_classes);
   }
   
-  $page->assign('registerURL', $GLOBALS['base_path'] . 'civicrm/user?reset=1');
+  $page->assign('allowRegistration', FALSE);
 }
 
 /**
  * Define options for the class type drop down on the class selection form
  */
-function osa_webform_options_class_types($component, $flat, $filter, $arguments) {
+function osa_webform_options_class_types($component, $flat, $arguments) {
 
   // get the list of group classes and make a list of types
   $cid = $_GET['cid'];
@@ -369,7 +369,7 @@ function osa_webform_options_class_types($component, $flat, $filter, $arguments)
 /**
  * Define options for the group class list (list of master events, which have schedules defined).
  */
-function osa_webform_options_class_list($component, $flat, $filter, $arguments) {
+function osa_webform_options_class_list($component, $flat, $arguments) {
   // Only include classes whos type is equal to the name (form_key) of the dropdown
   $cid = $_GET['cid'];
   $nodes = &_osa_get_class_nodes($cid, $component['form_key']);
@@ -390,7 +390,7 @@ function osa_webform_options_class_list($component, $flat, $filter, $arguments) 
 /**
  * Define options for the session list (days of the week with schedules defined).
  */
-function osa_webform_options_session_list($component, $flat, $filter, $arguments) {
+function osa_webform_options_session_list($component, $flat, $arguments) {
 
   // Only include classes whos type is equal to the name (form_key) of the dropdown
   $cid = $_GET['cid'];

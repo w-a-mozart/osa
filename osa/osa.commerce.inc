@@ -42,19 +42,22 @@ function osa_form_alter_views_form_commerce_cart_form_default(&$form, &$form_sta
  */
 function osa_form_alter_commerce_checkout_form_checkout(&$form, &$form_state) {
 
-  // all this just to set the default payment type on Commerce Checkout
-  if (!$form_state['rebuild']) {
-    if ($form['commerce_payment']['payment_method']['#default_value'] != 'commerce_elavon|commerce_payment_commerce_elavon') {
-      $form['commerce_payment']['payment_method']['#default_value'] = 'commerce_elavon|commerce_payment_commerce_elavon';
-      $payment_method = commerce_payment_method_load('commerce_elavon');
-      if ($callback = commerce_payment_method_callback($payment_method, 'submit_form')) {
-        $form['commerce_payment']['payment_details'] = $callback($payment_method, array(), $form['commerce_payment'], $form_state['order']);
-      }
-      $form['commerce_payment']['payment_details']['#prefix'] = '<div id="payment-details">';
-      $form['commerce_payment']['payment_details']['#suffix'] = '</div>';
-    }
+  // remove spaces from the card number
+  if (isset($form['commerce_payment']['payment_details']['credit_card']['number'])) {
+    $js = <<<EOD
+jQuery(document).ready(function () {
+  jQuery('#edit-commerce-payment-payment-details-credit-card-number').change(function() {
+    var cc = jQuery('#edit-commerce-payment-payment-details-credit-card-number').val()
+      .replace(/ /g, '')
+      .replace(/-/g, '');
+    jQuery('#edit-commerce-payment-payment-details-credit-card-number').val(cc);
+  });
+});
+EOD;
+    drupal_add_js($js, 'inline');
   }
-  
+
+  // re label the submit button
   $form['buttons']['continue']['#value'] = t('Pay Now');
 }
 

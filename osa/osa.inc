@@ -61,6 +61,7 @@ define('OSA_EVENT_MEETING', '4');
 define('OSA_EVENT_CONCERT', '5');
 define('OSA_EVENT_GROUP_CLASS_MASTER', '8');
 define('OSA_EVENT_GROUP_CLASS_CHILD', '9');
+define('OSA_EVENT_SUMMER_CAMP', '10');
 
 /**
  * Map name to CiviCRM Profile Ids
@@ -95,6 +96,12 @@ function _osa_field($field) {
   static $custom_fields = array();
 
   if (empty($custom_fields)) {
+    $custom_fields['primary_instrument'] = 'custom_1';
+    $custom_fields['primary_teacher'] = 'custom_86';
+    $custom_fields['second_instrument'] = 'custom_3';
+    $custom_fields['second_teacher'] = 'custom_87';
+    $custom_fields['third_instrument'] = 'custom_22';
+    $custom_fields['third_teacher'] = 'custom_88';
     $custom_fields['member_discount'] = 'custom_7_1';
     $custom_fields['private_lesson_instrument'] = 'custom_14';
     $custom_fields['private_lesson_location'] = 'custom_15';
@@ -456,6 +463,30 @@ function _osa_getHeadOfHousehold($cid = NULL) {
 }
 
 /**
+ *  Is the Drupal user an OSA voting member
+ *  Officially a voting member is the head of household with at least one OSA Student Membership
+ */
+function osa_isVotingMember($uid = NULL) {
+  civicrm_initialize();
+  $cid = _osa_get_contact_id($uid);
+  $head = _osa_getHeadOfHousehold($cid);
+  if ($head['contact_id'] <> $cid) return FALSE;
+
+  $family = _osa_getHouseholdMembers($cid, 'display_name');
+  $cids = array_keys($family);
+
+  foreach ($cids as $contact_id) {
+    $membership = _osa_get_membership($contact_id);
+    $is_member = isset($membership) ? $membership['is_current_member'] : FALSE;
+    if ($is_member) {
+      return TRUE;
+    }
+  }
+
+  return FALSE;
+}
+
+/**
  *  Return the contacts Name in Quickbooks
  */
 function _osa_qb_name($cid = NULL) {
@@ -574,11 +605,10 @@ function _osa_related_links($contact_type, $cid, $rid) {
     ),
     CRM_Core_Action::DELETE => array(
       'name'  => ts('Delete'),
-      'url'   => 'civicrm/contact/view/rel',
-      'qs'  => "action=delete&reset=1&cid=$cid&id=$rid",
-      'extra' => 'onclick = "if (confirm(\'Are you sure you want to delete this relationship?\')) this.href+=\'&amp;confirmed=1\'; else return FALSE;"',
+      'url'   => '#',
+      'extra' => " onclick=\"if (confirm('Are you sure you want to delete this {$contact_type}?')) { cj('html').addClass('wait'); CRM.api('relationship', 'delete', {'id': {$rid}}, {success: function(){cj('html').removeClass('wait');history.go(0);}}); } return false;\"",
       'title' => ts("Delete $contact_type")
-    )
+    ),
   );
 
   return CRM_Core_Action::formLink($links, NULL, array(), 'More');
@@ -1105,6 +1135,26 @@ function _osa_get_participant_events($contact_id, $current = TRUE) {
 }
 
 /**
+ * Returns the form_type field from the node associated with a form (i.e. a webform)
+ */
+function _osa_get_form_type(&$form) {
+  return isset($form['#node']) ? _osa_get_node_form_type($form['#node']) : NULL;
+}
+
+/**
+ * Returns the form_type field from a node
+ */
+function _osa_get_node_form_type(&$node) {
+  if (isset($node->field_form_type)) {
+    $node_wrapper = entity_metadata_wrapper('node', $node);
+    return $node_wrapper->field_form_type->value();
+  }
+  else {
+    return NULL;
+  }
+}
+
+/**
  * Returns a component object from a webform node
  */
 function &_osa_get_webform_component(&$node, $form_key) {
@@ -1253,6 +1303,19 @@ function _osa_get_next_date(&$series, &$start_date, &$end_date) {
   }
 }
 
+/**
+ * Return a formatted string for the event date
+ */
+function _osa_format_event_date($start_date, $end_date = NULL) {
+  $start = new DateTime($start_date);
+  $return = $start->format('M j, Y g:i A');
+  if (isset($end_date)) {
+    $end = new DateTime($end_date);
+    $return .= ($end->format('Ymd') == $start->format('Ymd')) ? $end->format(' - g:i A') : $end->format(' - M j, Y g:i A');
+  }
+  return $return;
+}
+
 /*
  * Helper function
  */
@@ -1264,6 +1327,7 @@ function _osa_object_to_array($obj) {
   }
   return $arr;
 }
+
 /*
  * Called to create the email with eTicket attachments
  */
@@ -1280,18 +1344,22 @@ This email contains your <strong>eTicket(s)</strong> for order #{$commerce_order
 <br />
 EOD;
 
-//  $tickets_html = array();
   $order_wrapper = entity_metadata_wrapper('commerce_order', $commerce_order);
   foreach ($order_wrapper->commerce_line_items as $line_item_wrapper) {
     $line_item = $line_item_wrapper->value();
+    $quantity = 0;
+
     if (($line_item->type == 'civi_event') && ($line_item->data['contributionTypeID'] == OSA_FINTYPE_CONCERT_TICKET)) {
-      $event_id = $line_item_wrapper->civicrm_commerce_event_id->value();
-      $contribution_id = $line_item_wrapper->civicrm_commerce_contribution_id->value();
       $quantity = $line_item->quantity;
-      for ($i = 1; $i <= $quantity; $i++) {
-//        $tickets_html[] = _osa_create_ticket($event_id, $contribution_id, $i);
-        $message['body'][] = _osa_create_ticket($event_id, $contribution_id, $i);
-      }
+      $event_id = $line_item_wrapper->civicrm_commerce_event_id->value();
+    }
+    elseif (($line_item->type == 'product') && ($line_item_wrapper->commerce_product->type->value() == 'commerce_ticket')) {
+      $quantity = $line_item->quantity;
+      $product = $line_item_wrapper->commerce_product->value();
+      $event_id = $product->field_event[LANGUAGE_NONE][0]['civicrm_reference_id'];
+    }
+    for ($i = 1; $i <= $quantity; $i++) {
+      $message['body'][] = _osa_create_ticket($event_id, $line_item->line_item_id, $i);
     }
   }
 
@@ -1318,10 +1386,10 @@ EOD;
 
 }
 
-function _osa_create_ticket($event_id, $contribution_id, $number) {
-  $ticket_number = sprintf('%05d-%05d-%03d', $event_id, $contribution_id, $number);
+function _osa_create_ticket($event_id, $line_item_id, $number) {
+  $ticket_number = sprintf('%05d-%05d-%03d', $event_id, $line_item_id, $number);
 
-  // get the contact record
+  // get the event details
   civicrm_initialize();
   $result = civicrm_api('event', 'get',  array('id' => $event_id, 'version' => 3));
   if (($result['is_error'] == 0) && ($result['count'] == 1)) {
@@ -1331,12 +1399,14 @@ function _osa_create_ticket($event_id, $contribution_id, $number) {
     return '';
   }
 
+  // clean up for display on the tickets
   $start_date = strftime('%A %B %#d, %I:%M %p', strtotime($event['start_date']));
   require_once 'CRM/Core/BAO/Location.php';
   $location = CRM_Core_BAO_Location::getValues(array('entity_id' => $event_id, 'entity_table' => 'civicrm_event'), TRUE);
   $address = $location['address'][1];
-  $address_html = "{$address['supplemental_address_1']}<br />";
+  $address_html = $address['supplemental_address_1'] . '<br />';
   $address_html .= str_replace($address['supplemental_address_1'] . PHP_EOL, '', $address['display_text']);
+  $description = str_replace('"/', '"http://oakvillesuzuki.org/', $event['description']);
 
   $ticket_html = <<<EOD
 <br />
@@ -1349,7 +1419,7 @@ function _osa_create_ticket($event_id, $contribution_id, $number) {
       <td>
         <span style="font-size: 125%;"><strong>{$event['title']}</strong></span><br />
         <br />
-        {$event['description']}
+        {$description}
       </td>
     </tr>
     <tr>

@@ -103,7 +103,7 @@ function osa_civicrm_pageRun_CRM_Contact_Page_View_UserDashBoard(&$page) {
       $students[] = $person;
     }
     if (!$person['contact']['is_parent'] && !$person['contact']['is_student']) {
-      $person['links'] = _osa_related_links('Other', $id, $person['relationship']['id']);
+      $person['links'] = _osa_related_links('Individual', $id, $person['relationship']['id']);
       $others[] = $person;
     }
 
@@ -243,11 +243,6 @@ function osa_civicrm_buildForm_CRM_Profile_Form_Edit(&$form) {
         $form->setDefaults($defaults);
       }
     }
-    // make sure we go back to the proper page
-    $form->removeElement('postURL');
-    $form->removeElement('cancelURL');
-    $form->addElement('hidden', 'postURL', $_SERVER['HTTP_REFERER']);
-    $form->addElement('hidden', 'cancelURL', CRM_Utils_System::url('civicrm/user', 'reset=1'));
     
     // hack a token (the school year) into the form message
     $yr = _osa_school_year($school_start_date, $school_end_date);
@@ -267,8 +262,6 @@ function osa_civicrm_buildForm_CRM_Profile_Form_Edit(&$form) {
   $context = CRM_Utils_Request::retrieve('context', 'String');
   if ($context == 'boxload') {
     // add required css and js
-    global $base_url;
-//    $pkg_path = $base_url . '/sites/all/modules/civicrm/packages/jquery/';
     $pkg_path = 'sites/all/modules/civicrm/packages/jquery/';
     $css_files = array(
       $pkg_path . 'jquery-ui-1.9.0/css/smoothness/jquery-ui-1.9.0.custom.min.css',
@@ -279,23 +272,19 @@ function osa_civicrm_buildForm_CRM_Profile_Form_Edit(&$form) {
       $pkg_path . 'plugins/jquery.chainedSelects.js',
     );
 
-    $out = '';
     foreach ($css_files as $css_file) {
-//      $out .= '<link type="text/css" rel="stylesheet" href="' . $css_file . '" media="all" />';
       drupal_add_css($css_file);
     }
-    $out .= '<script type="text/javascript">var cj = jQuery;</script>';
     foreach ($js_files as $js_file) {
-//      $out .= '<script type="text/javascript" src="' . $js_file . '"></script>';
       drupal_add_js($js_file);
     }
-//    echo $out;
     
     // make sure colorbox forms return to the current page
     $form->removeElement('postURL');
     $form->removeElement('cancelURL');
-    $form->addElement('hidden', 'postURL', $_SERVER['HTTP_REFERER']);
-    $form->addElement('hidden', 'cancelURL', $_SERVER['HTTP_REFERER']);
+    $rtn_url = empty($_SERVER['HTTP_REFERER']) ? CRM_Utils_System::url('civicrm/user', 'reset=1') : $_SERVER['HTTP_REFERER'];
+    $form->addElement('hidden', 'postURL', $rtn_url);
+    $form->addElement('hidden', 'cancelURL', $rtn_url);
     $button_group = $form->getElement('buttons');
     $buttons = $button_group->getElements();
     $cancelButton = $buttons[1];
@@ -308,6 +297,37 @@ function osa_civicrm_buildForm_CRM_Profile_Form_Edit(&$form) {
     $form->addElement('hidden', 'gid', $gid);
     $form->set('gid', $gid);
   }
+}
+
+/**
+ * Add custom validation to CiviCRM Profile based forms
+ */
+function osa_civicrm_validate_CRM_Profile_Form_Edit(&$fields, &$files, &$form) {
+  $errors = array();
+  $gid = $form->getVar('_gid');
+
+  // validate the Student Details Profile
+  if ($gid == _osa_profileId('Student')) {
+    // ensure a Teacher is entered for each instrument selected
+    $names = array('primary', 'second', 'third');
+    $f_ids = array();
+    foreach ($names as $name) {
+      $f_ids[] = array(
+        'instrument' => _osa_field("{$name}_instrument"),
+        'teacher' => _osa_field("{$name}_teacher"),
+      );
+    }
+    foreach ($f_ids as $f_id) {
+      if (isset($fields[$f_id['instrument']]) && !empty($fields[$f_id['instrument']])) {
+        if (isset($fields[$f_id['teacher']]) && empty($fields[$f_id['teacher']])) {
+          $errors[$f_id['teacher']] = ts('Teacher is a required field for the selected instrument.');
+          $form->setElementError($f_id['teacher'], $errors[$f_id['teacher']]);
+        }
+      }
+    }
+  }
+  
+  return empty($errors) ? TRUE : $errors;
 }
 
 /**
@@ -464,6 +484,16 @@ function osa_civicrm_buildForm_CRM_Contribute_Form_Contribution_Main(&$form) {
 function osa_civicrm_validate_CRM_Contribute_Form_Contribution_Main(&$fields, &$files, &$form) {
   $errors = array();
   
+  // custom processing for the membership registration form
+  if ($form->_id == OSA_CONTRIB_MEMBER) {
+    // validate the Student Info profile (not sure why this isn't automatic)
+    $form->setVar('_gid', _osa_profileId('Student'));
+    $tmp = osa_civicrm_validate_CRM_Profile_Form_Edit($fields, $files, $form);
+    if (is_array($tmp)) {
+      $errors += $tmp;
+    }
+  }
+
   // custom processing for the teacher registration form
   if ($form->_id == OSA_CONTRIB_TEACHER) {
     $tmp = osa_civicrm_validate_teacher_registration($fields, $files, $form);
@@ -538,15 +568,20 @@ function osa_civicrm_postProcess_CRM_Contribute_Form_Contribution_Confirm(&$form
 }
 
 /**
- * Add custom processing when generating Contribution Thankyou page
+ * Add custom processing when generating Contribution Thank you page
  *
  * @param $form
  *   The CRM_Contribute_Form_Contribution_Confirm object being rendered.
  */
 function osa_civicrm_buildForm_CRM_Contribute_Form_Contribution_ThankYou(&$form) {
 
-  // we need the logged in contact
-  $contact = _osa_get_contact();
+  // except for membership, we need the logged in user to be the contact
+  if ($form->_id == OSA_CONTRIB_MEMBER) {
+    $contact = _osa_get_contact($form->_membershipContactID);
+  }
+  else {
+    $contact = _osa_get_contact();
+  }
   $form->assign('contact', $contact);
   $form->assign('cid', $contact['id']);
   $form->assign('email', $contact['email']);
@@ -838,6 +873,190 @@ function osa_civicrm_buildForm_CRM_Event_Form_Registration_ThankYou(&$form) {
   if ($form->_values['event']['event_type_id'] == OSA_EVENT_GROUP_CLASS_MASTER) {
     osa_civicrm_buildForm_group_class_thankyou($form);
   }
+
+  // add processing for Volunteers
+  if (class_exists('CRM_Volunteer_BAO_Project')) {
+    $projects = CRM_Volunteer_BAO_Project::retrieve(array('entity_id' => $form->_eventId, 'entity_table' => 'civicrm_event', 'is_active' => 1,));
+
+    if (count($projects) && CRM_Core_Permission::check('register to volunteer')) {
+      $project = current($projects);
+      $volunteer['url'] = CRM_Utils_System::url('civicrm/volunteer/signup', array('reset' => 1, 'vid' => $project->id), FALSE, NULL, TRUE, TRUE);
+      $volunteer['button_text'] = ts('Volunteer Now');
+      $volunteer['text'] = ts('<strong>We need your help!</strong> Events like this cannot be successful without volunteers.');
+      $form->assign('volunteer', $volunteer);
+    }
+  }
+}
+
+/**
+ * There is no nice CiviCRM way to display the participant details to the participant
+ */
+function osa_civicrm_participant_view() {
+  $pid = $_REQUEST['id'];
+  $snippet = $_REQUEST['snippet'];
+
+  // make sure this user can view this record
+  civicrm_initialize();
+  $participant = civicrm_api('Participant', 'getsingle', array('id' => $pid, 'version' => 3));
+  if ((_osa_get_contact_id() != $participant['contact_id']) && !CRM_Contact_BAO_Contact_Permission::allow($participant['contact_id'])) {
+    CRM_Core_Error::fatal(ts('You do not have permission to view this participant'));
+  }
+
+  $html = _osa_civicrm_participant_theme($pid, 'long');
+
+  // output either the raw html or return of a full themed page
+  if ($snippet) {
+    $html = '<div class="crm-container" bgColor="white">' . $html . '<br/><a class="button" href="#" onclick="jQuery.colorbox.close();" style="margin: 5px"> OK </a><br/></div>';
+    print $html;
+    die();
+  }
+  return $html;
+}
+
+/**
+ * generate an html table with the participant data
+ */
+function _osa_civicrm_participant_theme($pid, $style) {
+  $html = '';
+  $rows = array();
+
+  // get all of the data associated with the participant
+  civicrm_initialize();
+  $template = CRM_Core_Smarty::singleton();
+
+  $participant = civicrm_api('Participant', 'getsingle', array('id' => $pid, 'version' => 3,));
+  $event = civicrm_api('Event', 'getsingle', array('id' => $participant['event_id'], 'version' => 3,));
+  $line_items = CRM_Price_BAO_LineItem::getLineItems($pid);
+
+  $profiles = array();
+  $result = civicrm_api('UFJoin', 'get', array('entity_table' => 'civicrm_event', 'module' => 'CiviEvent', 'entity_id' => $participant['event_id'], 'version' => 3));
+  foreach($result['values'] as $id => $ufjoin) {
+    $group_id = $ufjoin['uf_group_id'];
+    if (($group_id == 29) || ($group_id == 34)) continue; // Participant Info
+    $profiles[$group_id] = civicrm_api('UFGroup', 'getsingle', array('id' => $group_id,'version' => 3,));
+    $custom_display = CRM_Event_BAO_Event::buildCustomDisplay($group_id, 'custom', $participant['contact_id'], $template, $pid, FALSE, TRUE);
+    $profiles[$group_id]['fields'] = isset($custom_display[0][0]) ? $custom_display[0][0] : array();
+  }
+  // special processing for group class
+  if (($event['event_type_id'] == OSA_EVENT_GROUP_CLASS_MASTER) && !empty($participant[_osa_field('additional_data')]) && isset($profiles[31]['fields'])) {
+    $profiles[31]['fields']['Additional Data'] = $participant[_osa_field('additional_data')];
+  }
+
+  // Event/Participant Info Section
+  $display = array(
+    'Event' => $event['title'],
+    'Date' => _osa_format_event_date($event['start_date'], $event['end_date']),
+    'Participant' => $participant['display_name'],
+  );
+  if ($event['event_type_id'] == OSA_EVENT_GROUP_CLASS_MASTER) {
+    unset($display['Date']);
+  }
+  if ($style == 'long') {
+    $display += array(
+      'Registered Date' => _osa_format_event_date($participant['participant_register_date']),
+      'Status' => $participant['participant_status'],
+    );
+  }
+  // create the table rows
+  foreach ($display as $name => $val) {
+    $rows[] = array(
+      'data' => array(
+        array('data' => $name,),
+        array('data' => $val),
+      ),
+    );
+  }
+
+  // when style is long, add a header row a separate table for each subsection of data 
+  if ($style == 'long') {
+    $header = array(
+      array('data' => 'Participant Details', 'colspan' => 2),
+    );
+    $html .= htmlspecialchars_decode(theme('table', array('header' => $header, 'rows' => $rows, 'sticky' => FALSE, 'no_striping' => TRUE,)));
+    $rows = array();
+  }
+
+   // custom processing for Summer Camp
+  if ($event['event_type_id'] == OSA_EVENT_SUMMER_CAMP) {
+    $sid = $participant['custom_78'];
+    module_load_include('inc', 'webform', 'includes/webform.submissions');
+    $submissions = webform_get_submissions(array('sid' => $sid));
+    $node = node_load($submissions[$sid]->nid);
+    $values = array();
+    $amount = 0.00;
+    $camp_html = '';
+    _osa_camp_parse_submission($node->webform['components'], $submissions[$sid]->data, $values, $amount, $camp_html, $style);
+    $html .= $camp_html;
+  }
+  else {
+    // Pricing Section
+    foreach ($line_items as $line_item) {
+      if ($line_item['field_title'] == 'Fees' || $line_item['field_title'] == 'Fee(s)') {
+        $label = $line_item['label'];
+      }
+      else {
+        $label = $line_item['field_title'] . ' - ' . $line_item['label'];
+      }
+      if ($line_item['qty'] > 1) {
+        $label .= " (x {$line_item['qty']})";
+      }
+      
+      $rows[] = array(
+        'data' => array(
+          array('data' => $label,),
+          array('data' => ((float)$line_item['line_total'] > 0.001) ? '$ ' . $line_item['line_total'] : '', 'style' => 'text-align: right;'),
+        ),
+      );
+    }
+    
+    if ($style == 'long') {
+      $html .= '<br/>';
+      $header = array(
+        array('data' => 'Event Fee(s)', 'colspan' => 2),
+      );
+      if ((float)$participant['participant_fee_amount'] > 0.001) {
+        $rows[] = array(
+          'data' => array(
+            array('data' => 'Total Amount', ),
+            array('data' => '$ ' . $participant['participant_fee_amount'], 'style' => 'text-align: right;'),
+          ),
+          'style' => 'font-weight: bold; background-color: transparent;',
+        );
+      }
+      $html .= htmlspecialchars_decode(theme('table', array('header' => $header, 'rows' => $rows, 'sticky' => FALSE, 'no_striping' => TRUE,)));
+      $rows = array();
+    }
+    
+    // Show custom data elements
+    foreach ($profiles as $gid => $profile) {
+      $has_values = FALSE;
+      foreach ($profile['fields'] as $fname => $fvalue) {
+        if (!empty($fvalue)) {
+          $has_values = TRUE;
+          $rows[] = array(
+            'data' => array(
+              array('data' => $fname,),
+              array('data' => is_array($fvalue) ? implode(', ', $fvalue) : $fvalue,),
+            ),
+          );
+        }
+      }
+      if ($has_values && ($style == 'long')) {
+        $html .= '<br/>';
+        $header = array(
+          array('data' => $profile['title'], 'colspan' => 2),
+        );
+        $html .= htmlspecialchars_decode(theme('table', array('header' => $header, 'rows' => $rows, 'sticky' => FALSE, 'no_striping' => TRUE,)));
+        $rows = array();
+      }
+    }
+    // if we haven't generated the table yet
+    if (!empty($rows)) {
+      $html .= htmlspecialchars_decode(theme('table', array('header' => $header, 'rows' => $rows, 'sticky' => FALSE, 'no_striping' => TRUE,)));
+    }
+  }
+
+  return $html;
 }
 
 /**
@@ -892,6 +1111,21 @@ function osa_civicrm_customFieldOptions($fieldID, &$options, $detailedFormat = F
       }
       uasort($cache[$fieldID]['detail'], function ($a, $b) {return strcmp($a['label'], $b['label']);});
       asort($cache[$fieldID]['std']);
+      
+      // add a non-OSA teacher
+      $value = 'nonOSA';
+      $label = 'Non-OSA teacher';
+      $cache[$fieldID]['detail']['teacher_' . $value] = array(
+        'id'    => 'teacher_' . $value,
+        'value' => $value,
+        'label' => $label,
+      );
+      $cache[$fieldID]['std'][$value] = $label;
+
+      $cache[24] = $cache[$fieldID];
+      $cache[86] = $cache[$fieldID];
+      $cache[87] = $cache[$fieldID];
+      $cache[88] = $cache[$fieldID];
     }
 
     // Group Node selection
