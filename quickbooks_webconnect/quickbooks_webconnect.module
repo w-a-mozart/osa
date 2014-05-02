@@ -47,7 +47,6 @@ function quickbooks_webconnect_server() {
     watchdog('quickbooks_webconnect', $e->getMessage(), array(), WATCHDOG_ERROR);
   }
 
-  drupal_session_commit();
   exit;
 }
 

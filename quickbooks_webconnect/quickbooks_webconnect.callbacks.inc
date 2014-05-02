@@ -225,9 +225,9 @@ function quickbooks_webconnect_closeConnection($request) {
 
   module_load_include('inc', 'services', 'resources/user_resource');
   try {
-    $acct = $user;
-    drupal_session_initialize();
-    $user = $acct;
+//    $acct = $user;
+//    drupal_session_initialize();
+//    $user = $acct;
     drupal_save_session(TRUE);
     drupal_session_destroy_uid($user->uid);
     _user_resource_logout();
@@ -289,11 +289,16 @@ function _quickbooks_webconnect_check_session($sid) {
   // create a dummy cookie and load the session
   $_COOKIE[session_name()] = $sid;
   $_COOKIE[substr(session_name(), 1)] = $sid;
+  
+  session_id($sid);
+  drupal_session_start();
   _drupal_session_read($sid);
+//  drupal_save_session(TRUE);
+//  drupal_session_initialize();
     
   if (!user_access('access quickbooks webconnect server')) {
     drupal_add_http_header('Status', '403 Forbidden');
-    watchdog('quickbooks_webconnect', 'Invalid user session', array(), WATCHDOG_ERROR);
+    watchdog('quickbooks_webconnect', 'Invalid user session sid = %sid', array('%sid' => $sid), WATCHDOG_ERROR);
     return FALSE;
   }
 
