@@ -51,7 +51,8 @@ function commerce_elavon_transaction($payment_method, $values, $order, $charge) 
   // if we are going to call hook_commerce_elavon_transaction_alter
   // don't allow other modules to see the actual PAN.
   $clr_card_number = $values['number'];
-  $pci_card_number = sprintf( "%'*16s", substr($clr_card_number, -4));
+  $card_number_len = strlen($clr_card_number);
+  $pci_card_number = $card_number_len > 9 ? substr(substr_replace($clr_card_number, str_repeat( '*', $card_number_len - 6), 2, -4 ), -1 * $card_number_len) : str_repeat( '*', $card_number_len);
   $values['number'] = $pci_card_number;
   
   // create an Elavon transaction
@@ -99,6 +100,10 @@ function commerce_elavon_transaction($payment_method, $values, $order, $charge) 
   
   // convert to XML
   $request = _commerce_elavon_txnXML($txn_array);
+
+  // log the request - but remember to mask the PAN
+  $log_xml = str_replace("<ssl_card_number>{$txn_array['ssl_card_number']}" , "<ssl_card_number>{$pci_card_number}" , $request);
+  watchdog('commerce_elavon', 'Request: !1', array('!1' => '<pre>' . check_plain(print_r($log_xml, TRUE)) . '</pre>'), WATCHDOG_INFO);
 
   // use curl to send the transaction to Elavon
   $chURL = ($txn_array['ssl_test_mode'] == 'true') ? COMMERCE_ELAVON_TEST_URL : COMMERCE_ELAVON_URL;
@@ -213,7 +218,7 @@ function _commerce_elavon_txnXML($txn_array) {
 }
 
 /**
- * Generates an array from the xml returned by Evalon.
+ * Generates an array from the xml returned by Elavon.
  *
  * @param String $response
  *   Data from Elavon.
