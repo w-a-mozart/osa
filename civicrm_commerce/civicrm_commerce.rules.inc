@@ -169,6 +169,8 @@ function civicrm_commerce_rules_action_info() {
  * Rules action: update CiviCRM Contribution status
  */
 function civicrm_commerce_update_contribution($commerce_payment_transaction) {
+  civicrm_initialize();
+
   // open the order record as read only: Issue 1514618
   $order = commerce_order_load($commerce_payment_transaction->order_id);
   entity_get_controller('commerce_order')->resetCache(array($order->order_id));
@@ -195,11 +197,12 @@ function civicrm_commerce_update_contribution($commerce_payment_transaction) {
     $params['payment_instrument_id'] = 4;
     $participant_params['status_id'] = 5;
   }
-  
+
   if (!empty($order)) {
     $order_wrapper = entity_metadata_wrapper('commerce_order', $order);
+    // get the contact id of the order owner (see below)
+    $uf_match = civicrm_api('UFMatch', 'getsingle', array('uf_id' => $order->uid, 'version' => 3));
     
-    civicrm_initialize();
     foreach ($order_wrapper->commerce_line_items as $delta => $line_item_wrapper) {
       if (in_array($line_item_wrapper->type->value(), $civi_line_item_types)) {
 
@@ -209,6 +212,18 @@ function civicrm_commerce_update_contribution($commerce_payment_transaction) {
           $params['total_amount'] = commerce_currency_amount_to_decimal($price['amount'], $price['currency_code']);
           $params['trxn_id'] = $commerce_payment_transaction->remote_id . '-' . $line_item_wrapper->line_item_id->value();
 
+          // getting error "Not enough data to create activity object," when the shopping cart was originally Anonymous (I think)
+          // so set the source_contact_id to the owner of the order : or the line item contact : or Admin
+          if (isset($uf_match['contact_id'])) {
+            $params['source_contact_id'] = $uf_match['contact_id'];
+          }
+          elseif (isset($line_item_wrapper->civicrm_commerce_contact_id) && ($line_item_wrapper->civicrm_commerce_contact_id->value() > 0)) {
+            $params['source_contact_id'] = $line_item_wrapper->civicrm_commerce_contact_id->value();
+          }
+          else {
+            $params['source_contact_id'] = 1;
+          }
+
           // @TODO - don't know why this fails if financial_type_id is not specified
           $contribution_id = $line_item_wrapper->civicrm_commerce_contribution_id->value();
           $contribution = civicrm_api('contribution', 'getsingle', array('id' => $contribution_id, 'version' => 3));
@@ -216,7 +231,7 @@ function civicrm_commerce_update_contribution($commerce_payment_transaction) {
 
           $result = civicrm_api('contribution', 'create', $params);
           if ($result['is_error'] != 0) {
-            watchdog('civicrm_commerce', 'Error updating civicrm contribution %1: %2', array( '%1' => $params['id'], '%2' => $result['error_message']), WATCHDOG_ERROR);
+            watchdog('civicrm_commerce', 'Error updating civicrm contribution %1: %2 \r\n %3', array( '%1' => $params['id'], '%2' => $result['error_message'], '%3' => print_r($params, TRUE),), WATCHDOG_ERROR);
           }
         }
 

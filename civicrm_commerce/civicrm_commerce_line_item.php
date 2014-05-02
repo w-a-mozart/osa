@@ -188,6 +188,11 @@ function civicrm_commerce_line_item_add_new($paymentObj, &$params, $component) {
   else {
     $contact['display_name'] = '';
   }
+
+  // get the name of the contribution type if it is not passed
+  if (empty($params['contributionType_name']) && !empty($params['contributionTypeID'])) {
+    $params['contributionType_name'] = CRM_Core_DAO::getFieldValue('CRM_Financial_DAO_FinancialType', $params['contributionTypeID']);
+  }
   
   // determine the line item type to create
   if ($component == "contribute") {
