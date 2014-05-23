@@ -108,9 +108,9 @@ function _osa_quickbooks_queue_order($commerce_order, $element_type) {
         if ($line_element['type'] == 'civi_event') {
           $component['line_item_label'] = $component['title']. ' for ' . $participant;
         }
-        if ($line_element['title'] == 'Camp Fees') {
-          $component['title'] = 'Camp ' . $component['title'];
-        }
+        
+        // map to the Item name
+        $component['title'] = trim(substr("{$line_element['title']} - {$component['title']}", 0, 31));
         
         $element["{$element_type}Line"][] = $component;
       }
