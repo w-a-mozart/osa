@@ -141,7 +141,7 @@
 {crmRegion name="contribution-thankyou-recur-membership"}
                     <br />
                     <strong>{ts 1=$frequency_interval 2=$frequency_unit}This membership will be renewed automatically every %1 %2(s).{/ts}</strong>
-                    <div class="description crm-auto-renew-cancel-info">({ts}You will receive an email receipt which includes information about how to cancel the auto-renwal option.{/ts})</div>
+                    <div class="description crm-auto-renew-cancel-info">({ts}You will receive an email receipt which includes information about how to cancel the auto-renewal option.{/ts})</div>
 {/crmRegion}
                 {else}
 {crmRegion name="contribution-thankyou-recur"}
@@ -225,7 +225,8 @@
 
     <div class="action-link">
     {if $membershipBlock}
-        <a title='You can now Register for Group Class' class='button'  href='{$config->userFrameworkBaseURL}form/group-class-selection?cid={$cid}'><span><div class='icon next-icon'></div> Register for Group Class </span></a>
+        <a title='You can now Register for Group Class' class='button'  href='{$config->userFrameworkBaseURL}/group_class_selection/{$cid}'><span><div class='icon next-icon'></div> Register for Group Class </span></a>
+        <a title='Family Profile' class='button' href='{crmURL p='civicrm/user' q='reset=1'}'><span><div class='icon dashboard-icon'></div> Return to Family Profile </span></a>
     {/if}
     {if $paymentProcessor.payment_processor_type eq 'drupalcommerce'} 
         <a title='Check Out' class='button'  href='{$config->userFrameworkBaseURL}checkout/'><span><div class='icon cart-icon'></div> Check Out </span></a>

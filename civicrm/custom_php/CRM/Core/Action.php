@@ -295,9 +295,9 @@ class CRM_Core_Action {
     }
     else {
       $extra = '';
-      $extraLinks = array_splice($url, 4);
+      $extraLinks = array_splice($url, 3);
       if (count($extraLinks) > 1) {
-        $mainLinks = array_slice($url, 0, 4);
+        $mainLinks = array_slice($url, 0, 3);
         CRM_Utils_String::append($extra, '</li><li>', $extraLinks);
         $extra = "{$extraULName}<ul class='panel'><li>{$extra}</li></ul>";
       }
