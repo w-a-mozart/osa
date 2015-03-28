@@ -1,0 +1,9 @@
+name = Commerce Virtual Merchant
+description = Integration with Converge Virtual Merchant Payment Form.
+core = 7.x
+version = 7.x-dev
+
+package = Commerce Payments
+dependencies[] = commerce_payment
+
+configure = admin/commerce/config/commerce-virtualmerchant

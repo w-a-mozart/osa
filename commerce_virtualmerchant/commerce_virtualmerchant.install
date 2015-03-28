@@ -1,0 +1,20 @@
+<?php 
+/**
+ * @file
+ * Performs install/uninstall used for Commerce Converge Virtual Merchant Payment Form.
+ */
+
+/**
+ * Implements hook_uninstall().
+ */
+function commerce_virtualmerchant_uninstall() {
+  variable_del('commerce_virtualmerchant_title');  
+  variable_del('commerce_virtualmerchant_server');
+  variable_del('commerce_virtualmerchant_merchant_id');
+  variable_del('commerce_virtualmerchant_user_id');
+  variable_del('commerce_virtualmerchant_pin');
+  variable_del('commerce_virtualmerchant_form_height');
+  variable_del('commerce_virtualmerchant_form_width');
+  variable_del('commerce_virtualmerchant_verify_peer');
+  variable_del('commerce_virtualmerchant_cert_path');
+}
