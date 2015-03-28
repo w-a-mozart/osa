@@ -232,12 +232,6 @@ function civicrm_commerce_line_item_add_new($paymentObj, &$params, $component) {
   $line_item_params['quantity'] = 1;
   CRM_Utils_Hook::alterPaymentProcessorParams($paymentObj, $params, $line_item_params);
 
-  // @TODO move this into hook_alterPaymentProcessorParams
-  if ($line_item_params['eventID'] == 1019) {
-    $line_item_params['quantity'] = ($line_item_params['amount'] / 12);
-    $line_item_params['amount'] = 12;
-  }
-
   // load the "dummy" civicrm product
   $product = commerce_product_load_by_sku(CIVICRM_COMMERCE_PRODUCT_SKU);
   // change the products price to ensure a base price is added to the line item

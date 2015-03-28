@@ -7,3 +7,26 @@
 require_once 'civicrm_commerce.inc';
 require_once 'civicrm_commerce_line_item.php';
 
+/**
+ * Implements hook_civicrm_merge to update commerce entities when contacts are merged.
+ */
+function civicrm_commerce_civicrm_merge($type, &$data, $mainId = NULL, $otherId = NULL, $tables = NULL) {
+  if (!empty($mainId) && !empty($otherId)) {
+    $query = new EntityFieldQuery();
+    $query->entityCondition('entity_type', 'commerce_line_item')
+      ->fieldCondition('civicrm_commerce_contact_id', 'value', $otherId, '=');
+    $result = $query->execute();
+
+    if (isset($result['commerce_line_item'])) {
+      $line_item_ids = array_keys($result['commerce_line_item']);
+      $line_items = entity_load('commerce_line_item', $line_item_ids);
+    }
+
+    if (!empty($line_items)) {
+      foreach($line_items as $line_item) {
+        $line_item->civicrm_commerce_contact_id['und'][0]['value'] = $mainId;
+        entity_save('commerce_line_item', $line_item);
+      }
+    }
+  }
+}
