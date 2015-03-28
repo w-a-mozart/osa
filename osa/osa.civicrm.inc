@@ -108,7 +108,7 @@ function osa_civicrm_pageRun_CRM_Contact_Page_View_UserDashBoard(&$page) {
     }
 
     // append family member elements to lists in the page
-    $teachers += _osa_getTeachers($person['contact']);
+//    $teachers += _osa_getTeachers($person['contact']);
     $event_rows += _osa_get_participant_events($id);
     $contribute_rows += _osa_get_contributions($id);
   }
@@ -123,7 +123,7 @@ function osa_civicrm_pageRun_CRM_Contact_Page_View_UserDashBoard(&$page) {
   // (re)assign Smarty variables
   $page->assign('parents', $parents);
   $page->assign('students', $students);
-  $page->assign('teachers', $teachers);
+//  $page->assign('teachers', $teachers);
   $page->assign('others', $others);
   $page->assign('members', $members);
   $page->assign('event_rows', $event_rows);
@@ -175,11 +175,13 @@ function osa_civicrm_pageRun_CRM_Contact_Page_View_UserDashBoard(&$page) {
     'sectionTitle' => 'Student Member(s)',
     'sectionState' => empty($members) ? 'collapsed' : '',
   );
+/*
   $dashboard_elements[] = array(
     'templatePath' => 'CRM/Contact/Page/View/UserDashBoard/Teacher.tpl',
     'sectionTitle' => 'Private Teacher Registration(s)',
     'sectionState' => empty($teachers) ? 'collapsed' : '',
   );
+*/
   $dashboard_elements[] = array(
     'templatePath' => 'CRM/Contact/Page/View/UserDashBoard/Event.tpl',
     'sectionTitle' => 'Event Registration(s)',
@@ -259,6 +261,7 @@ function osa_civicrm_buildForm_CRM_Profile_Form_Edit(&$form) {
   }
 
   // customize profile forms displayed in a colorbox
+  // also see custom_php/CRM/Profile/Form/Edit.php
   $context = CRM_Utils_Request::retrieve('context', 'String');
   if ($context == 'boxload') {
     // add required css and js
@@ -279,17 +282,12 @@ function osa_civicrm_buildForm_CRM_Profile_Form_Edit(&$form) {
       drupal_add_js($js_file);
     }
     
-    // make sure colorbox forms return to the current page
-    $form->removeElement('postURL');
-    $form->removeElement('cancelURL');
-    $rtn_url = empty($_SERVER['HTTP_REFERER']) ? CRM_Utils_System::url('civicrm/user', 'reset=1') : $_SERVER['HTTP_REFERER'];
-    $form->addElement('hidden', 'postURL', $rtn_url);
-    $form->addElement('hidden', 'cancelURL', $rtn_url);
+    // override the Cancel button
     $button_group = $form->getElement('buttons');
     $buttons = $button_group->getElements();
     $cancelButton = $buttons[1];
     $cancelButton->setType('button');
-    $cancelButton->_attributes['onclick'] = 'jQuery.colorbox.close();';
+    $cancelButton->_attributes['onclick'] = 'jQuery(window).colorbox.close();';
   }
   
   // make sure we don't loose the profile id
@@ -426,31 +424,8 @@ function osa_civicrm_buildForm_CRM_Contribute_Form_Contribution_Main(&$form) {
   
   $form->setDefaults(array('payment_processor' => $form->_paymentProcessor['id'] ));
 
-  // check if this is the membership form (we only use one for memberships)
-  if ($form->_id == OSA_CONTRIB_MEMBER) {
-    // make sure that the family profile is updated during this school year
-    $update_required = TRUE;
-    $school_start_date = NULL;
-    $school_end_date = NULL;
-    $yr = _osa_school_year($school_start_date, $school_end_date);
-    $cid = $_REQUEST['cid'];
-    $hid = _osa_getHousehold($cid);
-    $family = _osa_get_contact($hid);
-    
-    if (isset($family['Last_Registration_Date'])) {
-      $last_registration = new DateTimeEx($family['Last_Registration_Date']);
-      if ($last_registration >= $school_start_date->modify('-6 weeks')) {
-        $update_required = FALSE;
-      }
-    }
-    
-    if ($update_required) {
-      // use javascript to ensure HTTP_REFERER is set
-      CRM_Utils_System::jsRedirect(CRM_Utils_System::url('civicrm/profile/edit', 'reset=1&gid=' . OSA_PROFILE_FAMILY . "&id=$hid"));
-      return;
-    }
-  }
-  else {
+  // check if this is not the membership form (we only use one for memberships)
+  if ($form->_id != OSA_CONTRIB_MEMBER) {
     // all other contributions can be made on behalf of a family member
     // so add a drop down of family members
     _osa_addFamilyField($form, ($form->_id == OSA_CONTRIB_TEACHER));
@@ -459,7 +434,7 @@ function osa_civicrm_buildForm_CRM_Contribute_Form_Contribution_Main(&$form) {
     if ($form->_id == OSA_CONTRIB_TEACHER) {
       osa_civicrm_buildForm_teacher_registration($form);
     }
-    // custom processing for the misc payment forms
+    // custom processing for the donation forms
     elseif (($form->_id == OSA_CONTRIB_DONATE) || ($form->_id == OSA_CONTRIB_ADJUST)) {
       drupal_add_css('.discount-info { display: none; }', array('type' => 'inline'));
     }
@@ -510,25 +485,11 @@ function osa_civicrm_validate_CRM_Contribute_Form_Contribution_Main(&$fields, &$
  *
  * @param $form
  *   The CRM_Contribute_Form_Contribution_Main object being processed.
- */
+ *
+ * no longer needed as civicrm now has option to disable the confirmation page
 function osa_civicrm_postProcess_CRM_Contribute_Form_Contribution_Main(&$form) {
-
-  // check if we are using the Drupal Commerce Cart
-  if ($form->_paymentProcessor['payment_processor_type'] == 'drupalcommerce') {
-    // since we use a Cart, we can disable the confirmation forms
-    $confirm_form =& $form->controller->_pages['Confirm'];
-    $confirm_form->preProcess();
-
-    // Hack to tell form validator that confirmation page is valid
-    $data =& $form->controller->container();
-    $data['valid']['Confirm'] = 1;
-
-    // Redirect to thank you page
-    $confirm_form->postProcess();
-    $qfKey = $form->controller->_key;
-    CRM_Utils_System::redirect(CRM_Utils_System::url('civicrm/contribute/transact', "_qf_ThankYou_display=1&qfKey=$qfKey", TRUE, NULL, FALSE));
-  }
 }
+ */
 
 /**
  * Add custom processing when generating Contribution Confirmation form
@@ -659,12 +620,6 @@ function osa_civicrm_pageRun_CRM_Event_Page_EventInfo(&$page) {
       $page->assign('allowRegistration', FALSE);
     }
   }
-
-  // customize for group classes
-  $event = $template->get_template_vars('event');
-  if ($event['event_type_id'] == OSA_EVENT_GROUP_CLASS_MASTER) {
-    osa_civicrm_pageRun_group_class_info($page);
-  }
 }
 
 /**
@@ -763,11 +718,6 @@ function osa_civicrm_buildForm_CRM_Event_Form_Registration_Register(&$form) {
       unset($form->_paymentFields[$name]);
     }
   }
-
-  // special processing for group classes
-  if ($form->_values['event']['event_type_id'] == OSA_EVENT_GROUP_CLASS_MASTER) {
-    osa_civicrm_buildForm_group_class_registration($form);
-  }
 }
 
 /**
@@ -834,11 +784,6 @@ function osa_civicrm_postProcess_CRM_Event_Form_Registration_Register(&$form) {
     $data['valid']['Confirm'] = 1;
     $confirm_form->postProcess();
 
-    // special processing for group classes
-    if ($confirm_form->_values['event']['event_type_id'] == OSA_EVENT_GROUP_CLASS_MASTER) {
-      osa_civicrm_postProcess_group_class_registration($confirm_form);
-    }
-    
     // Redirect to thank you page
     $qfKey = $form->controller->_key;
     CRM_Utils_System::redirect(CRM_Utils_System::url('civicrm/event/register', "_qf_ThankYou_display=true&qfKey=$qfKey", TRUE, NULL, FALSE));
@@ -869,11 +814,6 @@ function osa_civicrm_buildForm_CRM_Event_Form_Registration_Confirm(&$form) {
  *   The CRM_Event_Form_Registration_ThankYou object being rendered.
  */
 function osa_civicrm_buildForm_CRM_Event_Form_Registration_ThankYou(&$form) {
-  // special processing for group classes
-  if ($form->_values['event']['event_type_id'] == OSA_EVENT_GROUP_CLASS_MASTER) {
-    osa_civicrm_buildForm_group_class_thankyou($form);
-  }
-
   // add processing for Volunteers
   if (class_exists('CRM_Volunteer_BAO_Project')) {
     $projects = CRM_Volunteer_BAO_Project::retrieve(array('entity_id' => $form->_eventId, 'entity_table' => 'civicrm_event', 'is_active' => 1,));
@@ -936,10 +876,6 @@ function _osa_civicrm_participant_theme($pid, $style) {
     $profiles[$group_id] = civicrm_api('UFGroup', 'getsingle', array('id' => $group_id,'version' => 3,));
     $custom_display = CRM_Event_BAO_Event::buildCustomDisplay($group_id, 'custom', $participant['contact_id'], $template, $pid, FALSE, TRUE);
     $profiles[$group_id]['fields'] = isset($custom_display[0][0]) ? $custom_display[0][0] : array();
-  }
-  // special processing for group class
-  if (($event['event_type_id'] == OSA_EVENT_GROUP_CLASS_MASTER) && !empty($participant[_osa_field('additional_data')]) && isset($profiles[31]['fields'])) {
-    $profiles[31]['fields']['Additional Data'] = $participant[_osa_field('additional_data')];
   }
 
   // Event/Participant Info Section

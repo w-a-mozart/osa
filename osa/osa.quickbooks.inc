@@ -80,7 +80,7 @@ function _osa_quickbooks_queue_order($commerce_order, $element_type) {
         }
         else {
           $participant = $line_element['line_item_label'];
-          $line_element['line_item_label'] = "Camp fee adjustment for {$participant}\r\n{$line_element['data']['custom_34']}";
+          $line_element['line_item_label'] = check_plain("Camp fee adjustment for {$participant}\r\n{$line_element['data']['custom_34']}");
         }
       }
       // other events 
@@ -89,9 +89,9 @@ function _osa_quickbooks_queue_order($commerce_order, $element_type) {
         $participant = $table[2][1];
         $tmp_table = array();
         foreach ($table as $row) {
-          $tmp_table[] = rtrim(implode(' : ', $row), ' :');
+          $tmp_table[] = preg_replace('/[^[:print:]]/', '', rtrim(implode(' : ', $row), ' :'));
         }
-        $line_element['line_item_label'] = implode("\r\n", $tmp_table);
+        $line_element['line_item_label'] = check_plain(implode("\r\n", $tmp_table));
       }
       
       $element["{$element_type}Line"][] = $line_element;
@@ -102,11 +102,11 @@ function _osa_quickbooks_queue_order($commerce_order, $element_type) {
     uasort($components, 'drupal_sort_weight');
     foreach ($components as $name => $component) {
       if (abs($component['amount']) > 0.009) {
-        $component['line_item_label'] = $component['title']. ' for ' . $line_element['line_item_label'];
+        $component['line_item_label'] = check_plain($component['title']. ' for ' . $line_element['line_item_label']);
 
         // special code for events & Camp
         if ($line_element['type'] == 'civi_event') {
-          $component['line_item_label'] = $component['title']. ' for ' . $participant;
+          $component['line_item_label'] = check_plain($component['title']. ' for ' . $participant);
         }
         
         // map to the Item name
@@ -398,7 +398,7 @@ function osa_quickbooks_webconnect_element_alter(&$element, $element_type, &$ope
   // modify some of the payment info
   // note that we can't set the CreditCardTxnInfo because it is reserved for QB Merchant Services
   if (isset($element['PaymentMethodRef FullName'])) {
-    if ($element['PaymentMethodRef FullName'] == 'commerce_elavon') {
+    if (($element['PaymentMethodRef FullName'] == 'commerce_virtualmerchant') || ($element['PaymentMethodRef FullName'] == 'commerce_elavon')) {
       // the card number is buried in the payment message
       $txn_msgs = preg_split('/\R/', $element['message']);
       $tmp = explode(': ', $txn_msgs[0]);
@@ -473,7 +473,7 @@ function osa_virtualmerchant_import_submit($form, &$form_state) {
       $element['CheckNumber'] = substr($data[9], 1);
       $element['PaymentMethodRef FullName'] = strncmp($data[34], ' V', 2) === 0 ? 'Visa' : 'MasterCard';
       $element['TxnDate'] = substr($data[5], -4) . '-' . substr($data[5], 1, 2) . '-' . substr($data[5], 4, 2);
-      $element['Amount'] = 100 * substr($data[13], 2);
+      $element['Amount'] = 100 * str_replace(array('$', ' '), '', $data[13]);
       $qb_name = trim($data[62]);
       
       // try and find the owner of the transaction, if it is not in VM

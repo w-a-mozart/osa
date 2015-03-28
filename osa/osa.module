@@ -123,29 +123,55 @@ function osa_civicrm_alterPaymentProcessorParams($paymentObj, &$rawParams, &$coo
       $cookedParams['label'] = trim($html);
     }   
   }
+
+  // @TODO fix this
+  if (($rawParams['eventID'] == 1019) || ($rawParams['eventID'] == 2191)) {
+    $cookedParams['quantity'] = ($cookedParams['amount'] / 12);
+    $cookedParams['amount'] = 12;
+  }  
 }
 
 /**
- * Implements hook_civicrm_alterMailParams to customize emails sent from CiviCRM
+ * Implementation of hook_civicrm_alterMailer
  *
+ * Replace the civicrm mailer with the drupal mailer
  */
-function osa_civicrm_alterMailParams(&$params) {
+function osa_civicrm_alterMailer(&$mailer, $driver, $params) {
+  $mailer = new DrupalMailDriver($params);
+}
 
-  // Log the email to the maillog
-  if (variable_get('maillog_log', TRUE)) {
-    $record = new stdClass;
+class DrupalMailDriver {
+  var $_params;
 
-    $record->header_all = serialize(array());
-    $record->header_message_id = NULL;
-    $record->header_from = isset($params['from']) ? $params['from'] : NULL;
-    $record->header_to = isset($params['toName']) ? "{$params['toName']} " : '';
-    $record->header_to .= isset($params['toEmail']) ? "<{$params['toEmail']}>" : '';
-    $record->header_reply_to = isset($params['returnPath']) ? $params['returnPath'] : '';
-    $record->subject = isset($params['subject']) ? $params['subject'] : '';
-    $record->body = isset($params['html']) ? $params['html'] : '';
-    $record->sent_date = REQUEST_TIME;
+  function DrupalMailDriver($params)
+  {
+    $_params = $params;
+  }
 
-    drupal_write_record('maillog', $record);
+  function send($recipients, $headers, $body) {
+    $mail_system = drupal_mail_system('osa', 'osa_civicrm');
+    
+    $message['id'] = 'osa_civicrm';
+    $message['to'] = implode(", ", (array)$recipients);
+    $message['subject'] = $headers['Subject'];
+    
+    // only send the html content
+    if (strpos($headers['Content-Type'], 'multipart/alternative') !== false) {
+      $b = strpos($headers['Content-Type'], 'boundary=') + strlen('boundary=');
+      $boundary = str_replace('"', '', substr($headers['Content-Type'], $b));
+    
+      $start = strpos($body, 'Content-Type: text/html; charset=utf-8') + strlen('Content-Type: text/html; charset=utf-8') + 2;
+      $length = strpos($body, "--{$boundary}--", $start) - $start - 2;
+      $body = substr($body, $start, $length);
+
+      $headers['Content-Type'] = 'text/html; charset=utf-8';
+      $headers['Content-Transfer-Encoding'] = '8bit';
+    }
+    
+    $message['body'] = $body;
+    $message['headers'] = $headers;
+    
+    $result = $mail_system->mail($message);
   }
 }
 
@@ -212,6 +238,32 @@ function osa_menu() {
   );
 
   return $items;
+}
+
+/**
+ * Implements hook_html_head_alter() to modify the header elements
+ */
+function osa_html_head_alter(&$head_elements) {
+  // add script to monitor page response time using pingdom.com
+  if ($_SERVER['SERVER_NAME'] !== 'localhost') {
+    $pingdom_script = <<<EOL
+<script>
+var _prum = [['id', '548f14e0abe53d455fd4de22'],
+             ['mark', 'firstbyte', (new Date()).getTime()]];
+(function() {
+    var s = document.getElementsByTagName('script')[0]
+      , p = document.createElement('script');
+    p.async = 'async';
+    p.src = '//rum-static.pingdom.net/prum.min.js';
+    s.parentNode.insertBefore(p, s);
+})();
+</script>
+EOL;
+    $head_elements['pingdom'] = array(
+      '#type' => 'markup',
+      '#markup' => $pingdom_script,
+    );
+  }
 }
 
 /**

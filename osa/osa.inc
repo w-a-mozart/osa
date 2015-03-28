@@ -577,8 +577,8 @@ function _osa_related_links($contact_type, $cid, $rid) {
     );
     $links['group'] = array(
       'name'  => ts('Group'),
-      'url'   => 'form/group-class-selection',
-      'qs'    => "cid=$cid",
+      'url'   => CRM_Utils_System::absoluteURL("group_class_selection/$cid"),
+      'qs'    => '',
       'title' => ts("Register for Group Class")
     );
     $links['event'] = array(
@@ -587,12 +587,14 @@ function _osa_related_links($contact_type, $cid, $rid) {
       'qs'    => '',
       'title' => ts("Register for an Event")
     );
+/*
     $links['teacher'] = array(
       'name'  => ts('Teacher'),
       'url'   => 'civicrm/contribute/transact',
       'qs'    => 'reset=1&id=' . OSA_CONTRIB_TEACHER . "&cid=$cid",
       'title' => ts("Register with a Private Teacher")
     );
+*/
   }
 
   $links += array(
@@ -759,7 +761,7 @@ function _osa_addFamilyField(&$form, $members_only = FALSE) {
     }
     if (empty($family)) {
       if (isset($form->_values['event']['title'])) {
-        $msg = ts('Registration for <b>%1</b> is only open to <b>OSA Members</b>.', array(1 => $form->_values['event']['title']));
+        $msg = ts('Registration for <b>%1</b> is only open to <b>OSA Members</b>. Please register for membership prior to registering for this program.', array(1 => $form->_values['event']['title']));
       }
       elseif ($form->_id == OSA_CONTRIB_TEACHER) {
         $msg = ts('You must be an <b>OSA Member</b> to register with an <b>OSA Teacher</b>.');
@@ -1406,7 +1408,7 @@ function _osa_create_ticket($event_id, $line_item_id, $number) {
   $address = $location['address'][1];
   $address_html = $address['supplemental_address_1'] . '<br />';
   $address_html .= str_replace($address['supplemental_address_1'] . PHP_EOL, '', $address['display_text']);
-  $description = str_replace('"/', '"http://oakvillesuzuki.org/', $event['description']);
+//  $description = str_replace('"/', '"http://oakvillesuzuki.org/', $event['description']);
 
   $ticket_html = <<<EOD
 <br />
@@ -1417,9 +1419,8 @@ function _osa_create_ticket($event_id, $line_item_id, $number) {
       <td rowspan="4">
         <img alt="The Oakville Suzuki Association" src="http://oakvillesuzuki.org/osa/sites/default/files/logo.jpg" style="margin-left: 10px; margin-right: 10px;" /></td>
       <td>
-        <span style="font-size: 125%;"><strong>{$event['title']}</strong></span><br />
-        <br />
-        {$description}
+        <span style="font-size: 125%; color:#0000ff;"><strong>{$event['title']}</strong></span><br />
+        <br /><span style="color:#0000ff;">{$event['summary']}</span>
       </td>
     </tr>
     <tr>

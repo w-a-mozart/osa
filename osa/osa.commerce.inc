@@ -78,6 +78,13 @@ function osa_commerce_price_formatted_components_alter(&$components, &$item, &$e
  */
 
 /**
+ * Implements hook_commerce_virtualmerchant_transaction_alter() to add custom variables to the transaction
+ */
+function osa_commerce_virtualmerchant_transaction_alter(&$post_values, $order) {
+  $post_values['osa_qb_name'] = htmlspecialchars(_osa_qb_name(_osa_get_contact_id($order->uid)));
+}
+
+/**
  * Implements hook_commerce_elavon_transaction_alter() to add custom variables to the transaction
  */
 function osa_commerce_elavon_transaction_alter( &$txn_array, $values, $order ) {
