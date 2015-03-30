@@ -1,9 +1,9 @@
 {*
  +--------------------------------------------------------------------+
- | CiviCRM version 4.4                                                |
+ | CiviCRM version 4.5                                                |
  | Custom OSA User Dashboard (Family Profile)                         |
  +--------------------------------------------------------------------+
- | Copyright CiviCRM LLC (c) 2004-2013                                |
+ | Copyright CiviCRM LLC (c) 2004-2014                                |
  +--------------------------------------------------------------------+
  | This file is a part of CiviCRM.                                    |
  |                                                                    |
@@ -38,7 +38,6 @@
 {foreach from=$dashboardElements item=element}
 <div class="crm-accordion-wrapper crm-accordion_title-accordion {$element.sectionState}">
     <div class="crm-accordion-header">
-        <div class="icon crm-accordion-pointer"></div>
         {$element.sectionTitle}
     </div>
     <div class="crm-accordion-body">
@@ -50,9 +49,6 @@
 
 {literal}
 <script>
-    jQuery('a.box-load').colorbox({width:"50%", opacity:0.6, overlayClose:false});
-    cj(function() {
-        cj().crmAccordions();
-    });
+  jQuery('a.box-load').colorbox({width:"50%", opacity:0.6, overlayClose:false});
 </script>
 {/literal}

@@ -261,34 +261,8 @@ function osa_civicrm_buildForm_CRM_Profile_Form_Edit(&$form) {
   }
 
   // customize profile forms displayed in a colorbox
-  // also see custom_php/CRM/Profile/Form/Edit.php
-  $context = CRM_Utils_Request::retrieve('context', 'String');
-  if ($context == 'boxload') {
-    // add required css and js
-    $pkg_path = 'sites/all/modules/civicrm/packages/jquery/';
-    $css_files = array(
-      $pkg_path . 'jquery-ui-1.9.0/css/smoothness/jquery-ui-1.9.0.custom.min.css',
-    );
-    $js_files = array(
-      $pkg_path . 'jquery-ui-1.9.0/js/jquery-ui-1.9.0.custom.min.js',
-      $pkg_path . 'plugins/jquery.timeentry.pack.js',
-      $pkg_path . 'plugins/jquery.chainedSelects.js',
-    );
-
-    foreach ($css_files as $css_file) {
-      drupal_add_css($css_file);
-    }
-    foreach ($js_files as $js_file) {
-      drupal_add_js($js_file);
-    }
-    
-    // override the Cancel button
-    $button_group = $form->getElement('buttons');
-    $buttons = $button_group->getElements();
-    $cancelButton = $buttons[1];
-    $cancelButton->setType('button');
-    $cancelButton->_attributes['onclick'] = 'jQuery(window).colorbox.close();';
-  }
+  // is done in custom_php/CRM/Profile/Form/Edit.php
+  // because we need to set the _postURL and it is protected
   
   // make sure we don't loose the profile id
   if ($gid) {
@@ -417,8 +391,8 @@ function osa_civicrm_buildForm_CRM_Contribute_Form_Contribution_Main(&$form) {
     return;
   }
 
-  // all of our contributions are from authenticated users,
-  // so remove the email for anonymous users
+  // most of our contributions are from authenticated users,
+  // so remove the email field - must include it in a Profile
   $bltID = $form->_bltID;
   $form->removeElement("email-$bltID");
   
@@ -479,17 +453,6 @@ function osa_civicrm_validate_CRM_Contribute_Form_Contribution_Main(&$fields, &$
 
   return empty($errors) ? TRUE : $errors;
 }
-
-/**
- * Add custom post processing to CiviCRM Contribution based forms
- *
- * @param $form
- *   The CRM_Contribute_Form_Contribution_Main object being processed.
- *
- * no longer needed as civicrm now has option to disable the confirmation page
-function osa_civicrm_postProcess_CRM_Contribute_Form_Contribution_Main(&$form) {
-}
- */
 
 /**
  * Add custom processing when generating Contribution Confirmation form

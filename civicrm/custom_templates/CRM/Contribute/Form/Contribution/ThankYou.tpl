@@ -1,8 +1,8 @@
 {*
  +--------------------------------------------------------------------+
- | CiviCRM version 4.4                                                |
+ | CiviCRM version 4.5                                                |
  +--------------------------------------------------------------------+
- | Copyright CiviCRM LLC (c) 2004-2013                                |
+ | Copyright CiviCRM LLC (c) 2004-2014                                |
  +--------------------------------------------------------------------+
  | This file is a part of CiviCRM.                                    |
  |                                                                    |
@@ -180,7 +180,19 @@
     </div>
     {/if}
 
-    {include file="CRM/Contribute/Form/Contribution/Honor.tpl"}
+    {if $honor_block_is_active}
+        <div class="crm-group honor_block-group">
+            <div class="header-dark">
+                {$soft_credit_type}
+            </div>
+            <div class="display-block">
+                <div class="label-left crm-section honoree_profile-section">
+                    <strong>{$honorName}</strong></br>
+                    {include file="CRM/UF/Form/Block.tpl" fields=$honoreeProfileFields prefix='honor'}
+                </div>
+            </div>
+         </div>
+    {/if}
 
     {* Remove Profile block *}
 
@@ -212,7 +224,7 @@
 
     {if $onbehalfProfile}
       <div class="crm-group onBehalf_display-group label-left crm-profile-view">
-         {include file="CRM/UF/Form/Block.tpl" fields=$onbehalfProfile}
+         {include file="CRM/UF/Form/Block.tpl" fields=$onbehalfProfile prefix='onbehalf'}
          <div class="crm-section organization_email-section">
             <div class="label">{ts}Organization Email{/ts}</div>
             <div class="content">{$onBehalfEmail}</div>
@@ -225,7 +237,9 @@
 
     <div class="action-link">
     {if $membershipBlock}
-        <a title='You can now Register for Group Class' class='button'  href='{$config->userFrameworkBaseURL}/group_class_selection/{$cid}'><span><div class='icon next-icon'></div> Register for Group Class </span></a>
+        <a title='You can now Register for Group Class' class='button'  href='{$config->userFrameworkBaseURL}group_class_selection/{$cid}'><span><div class='icon next-icon'></div> Register for Group Class </span></a>
+    {/if}
+    {if $session->get('ufID') > 0}
         <a title='Family Profile' class='button' href='{crmURL p='civicrm/user' q='reset=1'}'><span><div class='icon dashboard-icon'></div> Return to Family Profile </span></a>
     {/if}
     {if $paymentProcessor.payment_processor_type eq 'drupalcommerce'} 

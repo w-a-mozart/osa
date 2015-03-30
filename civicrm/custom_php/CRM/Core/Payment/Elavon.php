@@ -1,7 +1,7 @@
 <?php
 /*
  +----------------------------------------------------------------------------+
- | Elavon (Nova) Virtual Merchant Core Payment Module for CiviCRM version 4.4 |
+ | Elavon (Nova) Virtual Merchant Core Payment Module for CiviCRM version 4.5 |
  +----------------------------------------------------------------------------+
  | Licensed to CiviCRM under the Academic Free License version 3.0            |
  |                                                                            |
@@ -39,8 +39,10 @@ class CRM_Core_Payment_Elavon extends CRM_Core_Payment {
    *
    * @param string $mode the mode of operation: live or test
    *
-   * @return void
-   **********************************************************/
+   * @param $paymentProcessor
+   *
+   * @return CRM_Core_Payment_Elavon
+   ********************************************************/
   function __construct($mode, &$paymentProcessor) {
     // live or test
     $this->_mode = $mode;
@@ -53,9 +55,10 @@ class CRM_Core_Payment_Elavon extends CRM_Core_Payment {
    *
    * @param string $mode the mode of operation: live or test
    *
+   * @param object $paymentProcessor
+   *
    * @return object
    * @static
-   *
    */
   static function &singleton($mode, &$paymentProcessor) {
     $processorName = $paymentProcessor['name'];
@@ -356,11 +359,13 @@ EOD;
    * NOTE: Called by Events and Contribute to check config params are set prior to trying
    *  register any credit card details
    *
-   * @param string $mode the mode we are operating in (live or test) - not used
+   * @return null|string
+   * @internal param string $mode the mode we are operating in (live or test) - not used
    *
    * returns string $errorMsg if any errors found - null if OK
    *
-   ********************************************************************************************/
+   ******************************************************************************************
+   */
   //  function checkConfig( $mode )          // CiviCRM V1.9 Declaration
   // CiviCRM V2.0 Declaration
   function checkConfig() {
@@ -383,6 +388,11 @@ EOD;
   }
   //end check config
 
+  /**
+   * @param $requestFields
+   *
+   * @return string
+   */
   function buildXML($requestFields) {
 
     $xml = '<txn>';
@@ -467,6 +477,11 @@ EOD;
     return ($return);
   }
 
+  /**
+   * @param $Xml
+   *
+   * @return mixed
+   */
   function decodeXMLresponse($Xml) {
     /**
      * $xtr = simplexml_load_string($Xml) or die ("Unable to load XML string!");

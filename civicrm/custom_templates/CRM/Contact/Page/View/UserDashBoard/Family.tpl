@@ -43,7 +43,7 @@
     {/foreach}
             </table>
     {/strip}
-        </div>
+        </div><br/>
 {else}
         <div class="messages status">
             <div class="icon inform-icon"></div> {ts}There are no Parents/Guardians related to this profile.{/ts}

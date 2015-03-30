@@ -1,8 +1,8 @@
 {*
  +--------------------------------------------------------------------+
- | CiviCRM version 4.4                                                |
+ | CiviCRM version 4.5                                                |
  +--------------------------------------------------------------------+
- | Copyright CiviCRM LLC (c) 2004-2013                                |
+ | Copyright CiviCRM LLC (c) 2004-2014                                |
  +--------------------------------------------------------------------+
  | This file is a part of CiviCRM.                                    |
  |                                                                    |
@@ -204,13 +204,13 @@
       </div><br /><br />
     {/if}
     
-    {if $paymentProcessor.payment_processor_type eq 'drupalcommerce'} 
-        <a title='Family Profile' class='button' href='{crmURL p='civicrm/user' q='reset=1'}'><span><div class='icon dashboard-icon'></div> Return to Family Profile </span></a>
-    {/if}
     {if $event.event_type_id eq '10'} {* Camp *}
         <a title='Register for Camp' class='button' href="{$config->userFrameworkBaseURL}form/summer-camp"><span><div class='icon back-icon'></div> Register Another Participant for Camp </span></a>
     {elseif $event.event_type_id neq '8'} {* Group Class (Master) *}
         <a title='Register for Event' class='button' href="{crmURL p='civicrm/event/register' q="reset=1&cid=0&id=`$event.id`"}"><span><div class='icon back-icon'></div> Register Another Participant </span></a>
+    {/if}
+    {if $session->get('ufID') > 0}
+        <a title='Family Profile' class='button' href='{crmURL p='civicrm/user' q='reset=1'}'><span><div class='icon dashboard-icon'></div> Return to Family Profile </span></a>
     {/if}
     {if $paymentProcessor.payment_processor_type eq 'drupalcommerce'} 
         <a title='Check Out' class='button'  href='{$config->userFrameworkBaseURL}checkout/'><span><div class='icon cart-icon'></div> Check Out </span></a>

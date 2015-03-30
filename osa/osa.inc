@@ -941,9 +941,8 @@ function _osa_get_relationships($cid = NULL) {
  */
 function _osa_create_relationship($relationship_type_id, $contact_id_a, $contact_id_b, $permission = OSA_PERM_OWNER) {
 
-  if ($contact_id_a == 1 || $contact_id_b == 1) {
-    watchdog('ahh', "relationship with admin?? relationship_type_id=$relationship_type_id, contact_id_a=$contact_id_a, contact_id_b=$contact_id_b");
-    watchdog('ahh', '<pre>' . print_r(debug_backtrace(), TRUE) . '</pre>');
+  // make sure we have valid ids
+  if ($contact_id_a <= 1 || $contact_id_b <= 1) {
     return;
   }
 

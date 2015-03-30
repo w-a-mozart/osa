@@ -42,6 +42,13 @@ function osa_form_alter_views_form_commerce_cart_form_default(&$form, &$form_sta
  */
 function osa_form_alter_commerce_checkout_form_checkout(&$form, &$form_state) {
 
+  // add help to the email prompt for anonymous users
+  global $user;
+  if (!$user->uid && !empty($form['account']['login']['mail'])) {
+    $form['account']['login']['mail']['#description'] = t('Enter a valid e-mail address to receive your receipt.');
+    $form['account']['#title'] = t('User information');
+  }
+  
   // remove spaces from the card number
   if (isset($form['commerce_payment']['payment_details']['credit_card']['number'])) {
     $js = <<<EOD
