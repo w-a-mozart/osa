@@ -321,29 +321,6 @@ function osa_webform_options_session_list($component, $flat, $arguments) {
 }
 
 /**
- * Rewrite group class participant info
- */
-function osa_overwrite_class_participants(&$participants) {
-  $session_names = osa_options_class_sessions();
-
-  foreach ($participants as $participant_id => $participant) {
-    if ($participant['event_type'] != 'Group Class (Master)') {
-      continue;
-    }
-    
-    $nid = $participant[_osa_field('group_class_nid')];
-    $group_class = node_load($nid);
-    $class_type = $group_class->field_class_type['und'][0]['value'];
-    
-    if ($class_type == 'violin' || $class_type == 'koday') {
-      $session = $group_class->field_session_id['und'][0]['value'];
-      $participants[$participant_id]['event_title'] .= ' [' . $session_names[$session] . ']';
-      _osa_get_next_date($group_class->field_session_dates['und'], $participants[$participant_id]['event_start_date'], $participants[$participant_id]['event_end_date']);
-    }
-  }
-}
- 
-/**
  * Return a list of Group Class nodes
  */
 function &_osa_get_class_nodes($cid = NULL, $class_type = NULL, $event_master = NULL, $session_id = NULL) {

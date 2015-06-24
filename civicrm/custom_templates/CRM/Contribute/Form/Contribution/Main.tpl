@@ -604,7 +604,113 @@ cj(document).ready(function() {
 }
 </style>
 {/literal}
-{/if}
-{* End of Teacher Registration customizations *}
-{/if} {* End Main Form *}  
+{/if} {* End of Teacher Registration customizations *}
+{if $contributionPageID eq 11} {* Camp Food Order *}
+{literal}
+<script type="text/javascript">
+function resetWeekMeals(week, plans) {
+  if (week == 1) {
+    cj('#custom_137').val(plans);
+    cj('#custom_138').val(0);
+    cj('#custom_139').val(0);
+    cj('#custom_140').val(plans);
+    cj('#custom_141').val(0);
+    cj('#custom_142').val(0);
+    cj('#custom_143').val(plans);
+    cj('#custom_144').val(0);
+    cj('#custom_145').val(0);
+    cj('#custom_146').val(plans);
+    cj('#custom_147').val(0);
+    cj('#custom_148').val(0);
+    cj('#custom_148').val(plans);
+    cj('#custom_150').val(0);
+    cj('#custom_151').val(0);
+    if (plans > 0) {
+      cj("[id^=editrow-custom]:lt(15)").show();
+      cj("[id^=helprow-custom]:lt(5)").show();
+    }
+    else {
+      cj("[id^=editrow-custom]:lt(15)").hide();
+      cj("[id^=helprow-custom]:lt(5)").hide();
+    }
+  }
+  else {
+    cj('#custom_152').val(plans);
+    cj('#custom_153').val(0);
+    cj('#custom_154').val(0);
+    cj('#custom_155').val(plans);
+    cj('#custom_156').val(0);
+    cj('#custom_157').val(0);
+    cj('#custom_158').val(plans);
+    cj('#custom_159').val(0);
+    cj('#custom_160').val(0);
+    cj('#custom_161').val(plans);
+    cj('#custom_162').val(0);
+    cj('#custom_163').val(0);
+    cj('#custom_164').val(plans);
+    cj('#custom_165').val(0);
+    cj('#custom_166').val(0);
+    if (plans > 0) {
+      cj("[id^=editrow-custom]:gt(14)").show();
+      cj("[id^=helprow-custom]:gt(4)").show();
+    }
+    else {
+      cj("[id^=editrow-custom]:gt(14)").hide();
+      cj("[id^=helprow-custom]:gt(4)").hide();
+    }
+  }
+}
 
+function setDayMeals(changed, other, fixed, plans) {
+  if (changed.val() > plans) {
+    changed.val(plans);
+    other.val(0);
+    fixed.val(0);
+  }
+  else if ((changed.val() + other.val()) > plans) {
+    other.val(plans - changed.val());
+    fixed.val(0);
+  }
+  else {
+    fixed.val(plans - changed.val() - other.val());
+  }
+}
+
+cj(document).ready(function() {
+  resetWeekMeals(1, cj('#price_152').val());
+  resetWeekMeals(2, cj('#price_153').val());
+
+  cj("[id^=custom]").change(function(){
+    var c_id, o_id, f_id, p_id;
+    c_id = cj(this).attr('id');
+    if (c_id == 'custom_137') {o_id = '#custom_138'; f_id = '#custom_139'; p_id = '#price_152';}
+    if (c_id == 'custom_138') {o_id = '#custom_137'; f_id = '#custom_139'; p_id = '#price_152';}
+    if (c_id == 'custom_140') {o_id = '#custom_141'; f_id = '#custom_142'; p_id = '#price_152';}
+    if (c_id == 'custom_141') {o_id = '#custom_140'; f_id = '#custom_142'; p_id = '#price_152';}
+    if (c_id == 'custom_143') {o_id = '#custom_144'; f_id = '#custom_145'; p_id = '#price_152';}
+    if (c_id == 'custom_144') {o_id = '#custom_143'; f_id = '#custom_145'; p_id = '#price_152';}
+    if (c_id == 'custom_146') {o_id = '#custom_147'; f_id = '#custom_148'; p_id = '#price_152';}
+    if (c_id == 'custom_147') {o_id = '#custom_146'; f_id = '#custom_148'; p_id = '#price_152';}
+    if (c_id == 'custom_149') {o_id = '#custom_150'; f_id = '#custom_151'; p_id = '#price_152';}
+    if (c_id == 'custom_150') {o_id = '#custom_149'; f_id = '#custom_151'; p_id = '#price_152';}
+
+    if (c_id == 'custom_152') {o_id = '#custom_153'; f_id = '#custom_154'; p_id = '#price_153';}
+    if (c_id == 'custom_153') {o_id = '#custom_152'; f_id = '#custom_154'; p_id = '#price_153';}
+    if (c_id == 'custom_155') {o_id = '#custom_156'; f_id = '#custom_157'; p_id = '#price_153';}
+    if (c_id == 'custom_156') {o_id = '#custom_155'; f_id = '#custom_157'; p_id = '#price_153';}
+    if (c_id == 'custom_158') {o_id = '#custom_159'; f_id = '#custom_160'; p_id = '#price_153';}
+    if (c_id == 'custom_159') {o_id = '#custom_158'; f_id = '#custom_160'; p_id = '#price_153';}
+    if (c_id == 'custom_161') {o_id = '#custom_162'; f_id = '#custom_163'; p_id = '#price_153';}
+    if (c_id == 'custom_162') {o_id = '#custom_161'; f_id = '#custom_163'; p_id = '#price_153';}
+    if (c_id == 'custom_164') {o_id = '#custom_165'; f_id = '#custom_166'; p_id = '#price_153';}
+    if (c_id == 'custom_165') {o_id = '#custom_164'; f_id = '#custom_166'; p_id = '#price_153';}
+
+    setDayMeals(cj(this), cj(o_id), cj(f_id), cj(p_id).val());
+  });
+});
+</script>
+<style type="text/css">
+</style>
+{/literal}
+{/if} {* End of Camp Food Order *}
+{/if} {* End Main Form *}  

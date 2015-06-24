@@ -113,9 +113,9 @@ function osa_civicrm_pageRun_CRM_Contact_Page_View_UserDashBoard(&$page) {
     $contribute_rows += _osa_get_contributions($id);
   }
 
-  // special processing for group classes
-  osa_overwrite_class_participants($event_rows);
-  
+  // sort participant rows by start date
+  uasort($event_rows, 'osa_event_start_date_sort');
+
   // sort and trim $contribute_rows to a max of 20
   krsort($contribute_rows);
   $contribute_rows = array_slice($contribute_rows, 0, 20, TRUE);
@@ -261,9 +261,12 @@ function osa_civicrm_buildForm_CRM_Profile_Form_Edit(&$form) {
   }
 
   // customize profile forms displayed in a colorbox
-  // is done in custom_php/CRM/Profile/Form/Edit.php
+  // also see custom_php/CRM/Profile/Form/Edit.php
   // because we need to set the _postURL and it is protected
-  
+  $context = CRM_Utils_Request::retrieve('context', 'String');
+  if ($context == 'boxload') {
+  }
+
   // make sure we don't loose the profile id
   if ($gid) {
     $form->addElement('hidden', 'gid', $gid);
@@ -800,7 +803,7 @@ function osa_civicrm_participant_view() {
 
   // make sure this user can view this record
   civicrm_initialize();
-  $participant = civicrm_api('Participant', 'getsingle', array('id' => $pid, 'version' => 3));
+  $participant = _osa_get_participant($pid);
   if ((_osa_get_contact_id() != $participant['contact_id']) && !CRM_Contact_BAO_Contact_Permission::allow($participant['contact_id'])) {
     CRM_Core_Error::fatal(ts('You do not have permission to view this participant'));
   }
@@ -827,7 +830,7 @@ function _osa_civicrm_participant_theme($pid, $style) {
   civicrm_initialize();
   $template = CRM_Core_Smarty::singleton();
 
-  $participant = civicrm_api('Participant', 'getsingle', array('id' => $pid, 'version' => 3,));
+  $participant = _osa_get_participant($pid);
   $event = civicrm_api('Event', 'getsingle', array('id' => $participant['event_id'], 'version' => 3,));
   $line_items = CRM_Price_BAO_LineItem::getLineItems($pid);
 
@@ -877,7 +880,7 @@ function _osa_civicrm_participant_theme($pid, $style) {
 
    // custom processing for Summer Camp
   if ($event['event_type_id'] == OSA_EVENT_SUMMER_CAMP) {
-    $sid = $participant['custom_78'];
+    $sid = $participant['submission_id'];
     module_load_include('inc', 'webform', 'includes/webform.submissions');
     $submissions = webform_get_submissions(array('sid' => $sid));
     $node = node_load($submissions[$sid]->nid);

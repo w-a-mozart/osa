@@ -28,6 +28,10 @@ function osa_calc_camp_price($name, $value, $other_values) {
       'One Week' => 285.00,
       'Both Weeks' => 520.00,
     ),
+    'All Day for Juniors' => array(
+      'One Week' => 335.00,
+      'Both Weeks' => 610.00,
+    ),
     'Senior Camp' => array(
       'One Week' => 335.00,
       'Both Weeks' => 610.00,
@@ -59,12 +63,11 @@ function osa_calc_camp_price($name, $value, $other_values) {
       'Chamber Group' => 30.00,
     ),
     'masterclass_terry_durbin' => array(
-      'Terry Durbin Violin Masterclass' => 45.00,
+      'Terry Durbin Violin Masterclass' => 50.00,
     ),
-    'daycare_option' => array(
-      'AM and PM Care' => 130.00,
-      'AM Care' => 55.00,
-      'PM Care' => 90.00,
+    'daycare_options' => array(
+      'AM Care' => 15.00,
+      'PM Care' => 20.00,
     ),
     'lunch_option' => array(
       'Student Lunch' => 37.00,
@@ -73,10 +76,10 @@ function osa_calc_camp_price($name, $value, $other_values) {
       'Parent Lunch Both Weeks' => 70.00,
     ),
     'teacher' => array(
-      'Terry Durbin: 15min lessons' => 60.00,
-      'Terry Durbin: 30min lessons' => 120.00,
-      'TJ McAvaney: 15min lessons' => 60.00,
-      'TJ McAvaney: 30min lessons' => 120.00,
+      'Terry Durbin: 15min lessons' => 75.00,
+      'Terry Durbin: 30min lessons' => 150.00,
+      'TJ McAvaney: 15min lessons' => 75.00,
+      'TJ McAvaney: 30min lessons' => 150.00,
     ),
   );
 
@@ -119,8 +122,6 @@ function _osa_camp_teacher_premiums($components, $submitted, &$component, &$form
   $weeks   = is_array($submitted[12]) ? $submitted[12][0] : $submitted[12];
   $week[1] = (($weeks == 'Week 1') || ($weeks == 'Both Weeks')) ? 1 : 0;
   $week[2] = (($weeks == 'Week 2') || ($weeks == 'Both Weeks')) ? 1 : 0;
-  // special condition where TD is only available week 1
-  $week[2] = ($teacher == 'Terry Durbin') ? 0 : $week[2];
   
   list($instrument, $other) = explode('_', $form_key, 2);
   $instrument = ($instrument == 'secondary') ? 'second' : $instrument; // why didn't I name them the same???
@@ -280,23 +281,25 @@ function osa_webform_submission_presave_summer_camp(&$node, &$submission) {
 
   $component = &_osa_get_webform_component($node, 'programs');
   $programs = $submission->data[$component['cid']][0];
+  $options_grid = array();
+  
   if ($programs == 'Senior Camp') {
     $component = &_osa_get_webform_component($node, 'options_senior_program');
-    $options_senior_program = $submission->data[$component['cid']];
-    
-    if ((isset($options_senior_program['Recorder'])) && ($options_senior_program['Recorder'] != 'NT')) {
-      $is_set['recorder_level'] = TRUE;
-    }
-    if ((isset($options_senior_program['RCM Theory'])) && ($options_senior_program['RCM Theory'] != 'NT')) {
-      $is_set['theory_level'] = TRUE;
-    }
+    $options_grid = $submission->data[$component['cid']];
   }
   elseif ($programs == 'Intermediate Camp') {
     $component = &_osa_get_webform_component($node, 'options_intermediate_program');
-    $options_intermediate_program = $submission->data[$component['cid']];
-    if ((isset($options_intermediate_program['Ukulele'])) && ($options_intermediate_program['Ukulele'] != 'NT')) {
-      $is_set['ukulele_level'] = TRUE;
-    }
+    $options_grid = $submission->data[$component['cid']];
+  }
+  
+  if ((isset($options_grid['Recorder'])) && ($options_grid['Recorder'] != 'NT')) {
+    $is_set['recorder_level'] = TRUE;
+  }
+  if ((isset($options_grid['RCM Theory'])) && ($options_grid['RCM Theory'] != 'NT')) {
+    $is_set['theory_level'] = TRUE;
+  }
+  if ((isset($options_grid['Ukulele'])) && ($options_grid['Ukulele'] != 'NT')) {
+    $is_set['ukulele_level'] = TRUE;
   }
 
   foreach ($is_set as $name => $set) {
@@ -321,29 +324,9 @@ function osa_webform_submission_insert_summer_camp($node, $submission) {
   $amount = 0.00;
   _osa_camp_parse_submission($node->webform['components'], $submission->data, $values, $amount, $desc, 'short');
 
-  // need this year's event ids
-  $params = array(
-    'event_type_id' => OSA_EVENT_SUMMER_CAMP,
-    'filter.start_date_low' => date('Y0101000000'),
-    'version' => 3,
-  );
-  $result = civicrm_api('event', 'get', $params);
-  $events = array();
-  foreach ($result['values'] as $event_id => $event) {
-    if (strpos($event['title'], 'Week 1') !== FALSE) {
-      $events['Week 1'] = $event_id;
-    }
-    elseif (strpos($event['title'], 'Week 2') !== FALSE) {
-      $events['Week 2'] = $event_id;
-    }
-    else {
-      $events['Both Weeks'] = $event_id;
-    }
-  }
-
   // create a pending participant record
   $contact_id = $values['camp_participant']['value'];
-  $event_id   = $events[$values['weeks']['value']];
+  $event_id   = $values['event_id']['value'];
   
   $params = array(
     'contact_id' => $contact_id,
@@ -444,7 +427,7 @@ function _osa_camp_parse_submission($components, $submitted, &$values, &$total, 
 
   $total = 0.00;
   $ignore_types = array('pagebreak', 'markup', 'fieldset', 'textarea', 'grid', 'textfield',);
-  $ignore_elements = array('caregiver_present', 'primary_instrument_level', 'add_a_second_instrument', 'second_instrument_level', 'ukulele_level', 'recorder_level', 'theory_level',);
+  $ignore_elements = array('caregiver_present', 'primary_instrument_level', 'add_a_second_instrument', 'second_instrument_level', 'ukulele_level', 'recorder_level', 'theory_level', 'image_release_consent', 'referral',);
   $rows = array();
 
   // loop through each component we care about and get it's value and price
@@ -475,7 +458,9 @@ function _osa_camp_parse_submission($components, $submitted, &$values, &$total, 
           'price' => osa_calc_camp_price($form_key, $value, $values),
         );
         $total += $values[$form_key]['price'];
-        $rows = array_merge($rows, _osa_camp_display_component($component, $values[$form_key], $style, $values));
+        if ($form_key != 'event_id') {
+          $rows = array_merge($rows, _osa_camp_display_component($component, $values[$form_key], $style, $values));
+        }
       }       
     }
   }
@@ -506,8 +491,8 @@ function _osa_camp_display_component($component, $value, $style, $values, $forma
   if ($style == 'long') {
     // if both weeks are selected don't add the title again
     if (!((substr_compare($form_key, '_wk2', -4) == 0) && (array_key_exists(substr_replace($form_key, '_wk1', -4), $values)))) {
-      // remove the Week & St. Mildred's from the label
-      $remove = array(' for Week 1', ' for Week 2', ' - Week 1', ' - Week 2', ' - Offered by St. Mildred\'s-Lightbourn School');
+      // remove the Week from the label
+      $remove = array(' for Week 1', ' for Week 2', ' - Week 1', ' - Week 2',);
       $data = str_replace($remove, '', $component['name']);
       $rows[] = array(
         'data' => array(

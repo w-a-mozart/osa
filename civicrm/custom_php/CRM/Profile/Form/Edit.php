@@ -169,6 +169,8 @@ SELECT module,is_reserved
       // make sure osa colorbox forms return to the current page
       // have to do this here instead of in osa_civicrm_buildForm_CRM_Profile_Form_Edit
       // because we need to set the _postURL and it is protected
+      $rtn_url = empty($_REQUEST['osa_destination']) ? CRM_Utils_System::url('civicrm/user', 'reset=1') : CRM_Utils_System::url($_REQUEST['osa_destination']);
+      $this->_postURL = $rtn_url;
       if ($this->_context == 'boxload') {
         $rtn_url = empty($_SERVER['HTTP_REFERER']) ? CRM_Utils_System::url('civicrm/user', 'reset=1') : $_SERVER['HTTP_REFERER'];
         $this->_postURL = $rtn_url;

@@ -1105,6 +1105,64 @@ EOD;
 }
 
 /**
+ * Wrapper function to return a participant record
+ */
+function _osa_get_participant($pid, $custom = TRUE) {
+
+  if (empty($pid)) {
+    return NULL;
+  }
+
+  // use static caching
+  static $participant = array();
+  $cache_key = "pid=$pid&custom=$custom";
+  if (isset($participant[$cache_key])) {
+    return $participant[$cache_key];
+  }
+  elseif (!$custom && isset($participant["pid=$pid&custom=1"])) {
+    return $participant["pid=$pid&custom=1"];
+  }
+
+  // get the participant record
+  $result = civicrm_api('participant', 'get',  array('id' => $pid, 'version' => 3));
+  if (($result['is_error'] == 0) && ($result['count'] == 1)) {
+    $participant[$cache_key] = $result['values'][$pid];
+  }
+  else {
+    return NULL;
+  }
+
+  // fill in any custom fields
+  if ($custom) {
+    static $custom_fields = NULL;
+    if (!isset($custom_fields)) {
+      $result = civicrm_api('CustomField', 'get',  array('rowCount' => PHP_INT_MAX, 'version' => 3));
+      $custom_fields = $result['values'];
+    }
+
+    $result = civicrm_api('CustomValue', 'get',  array('entity_id' => $pid, 'entity_table' => 'Participant', 'version' => 3));
+    if ($result['is_error'] == 0) {
+      foreach ($result['values'] as $fid => $fattribs) {
+        $fname = $custom_fields[$fid]['name'];
+        $ignore = array('entity_id' => 0, 'latest' => 0, 'id' => 0);
+        $values = array_diff_key($fattribs, $ignore);
+        if (isset($values[0])) {
+          $participant[$cache_key][$fname] = $values[0];
+        }
+        else {
+          $participant[$cache_key][$fname] = array();
+          foreach ($values as $vid => $value) {
+            $participant[$cache_key][$fname][$vid] = $value;
+          }
+        }
+      }
+    }
+  }
+
+  return $participant[$cache_key];
+}
+
+/**
  * Wrapper of CiviCRM API to get participant events
  *
  * @param integer $contact_id
@@ -1315,6 +1373,18 @@ function _osa_format_event_date($start_date, $end_date = NULL) {
     $return .= ($end->format('Ymd') == $start->format('Ymd')) ? $end->format(' - g:i A') : $end->format(' - M j, Y g:i A');
   }
   return $return;
+}
+
+/**
+ * Callback for uasort()
+ */
+function osa_event_start_date_sort($a, $b) {
+  $a_start = (is_array($a) && isset($a['event_start_date'])) ? strtotime($a['event_start_date']) : 0;
+  $b_start = (is_array($b) && isset($b['event_start_date'])) ? strtotime($b['event_start_date']) : 0;
+  if ($a_start == $b_start) {
+    return 0;
+  }
+  return ($a_start < $b_start) ? -1 : 1;
 }
 
 /*

@@ -38,6 +38,32 @@ function osa_rules_condition_info() {
     'group' => t('OSA'),
     'module' => 'osa',
   );
+  $conditions['osa_household_participants'] = array(
+    'label' => t('Contact\'s household has other participants'),
+    'parameter' => array(
+      'commerce_line_item' => array(
+        'type' => 'commerce_line_item',
+        'label' => t('Line item'),
+        'description' => t('The line item that contains a civicrm_commerce_participant_id whose household to check for other participants of the same event.'),
+      ),
+      'operator' => array(
+        'type' => 'text',
+        'label' => t('Operator'),
+        'description' => t('The operator used with the quantity value below to compare with the number of household members.'),
+        'default value' => '>=',
+        'options list' => 'commerce_numeric_comparison_operator_options_list',
+        'restriction' => 'input',
+      ),
+      'value' => array(
+        'type' => 'text',
+        'label' => t('Quantity'),
+        'default value' => '1',
+        'description' => t('The value to compare against the number of household participants.'),
+      ),
+    ),
+    'group' => t('OSA'),
+    'module' => 'osa',
+  );
 
   return $conditions;
 }
@@ -130,6 +156,103 @@ function osa_household_members($commerce_line_item, $operator, $value) {
       return $number_members[$line_item_id] >= $value;
     case '>':
       return $number_members[$line_item_id] > $value;
+  }
+
+  return FALSE;
+}
+
+/**
+ * Rules condition: participant's household has other participants
+ */
+function osa_household_participants($commerce_line_item, $operator, $value) {
+  static $number_participants = array();
+  
+  $line_item_wrapper = entity_metadata_wrapper('commerce_line_item', $commerce_line_item);
+  $line_item_id = $line_item_wrapper->line_item_id->value();
+  
+  // this can be called multiple times for a single line item
+  if (!isset($number_participants[$line_item_id])) {
+    // must get a valid participant id in the line item
+    if (!isset($line_item_wrapper->civicrm_commerce_participant_id)) {
+      throw new RulesEvaluationException('The given commerce_line_item is incompatible with this condition.', array(), NULL, RulesLog::ERROR);
+      return FALSE;
+    }
+    $participant_id = $line_item_wrapper->civicrm_commerce_participant_id->value();
+
+    // should get a valid contact id in the line item
+    if (isset($line_item_wrapper->civicrm_commerce_contact_id)) {
+      $contact_id = $line_item_wrapper->civicrm_commerce_contact_id->value();
+    }
+    // should get a valid event id in the line item
+    if (isset($line_item_wrapper->civicrm_commerce_event_id)) {
+      $event_id = $line_item_wrapper->civicrm_commerce_event_id->value();
+    }
+    
+    if (!isset($contact_id) || !isset($event_id)) {
+      civicrm_initialize();
+      $result = civicrm_api('participant', 'getsingle', array('id' => $participant_id, 'version' => 3));
+      if (isset($result['event_id'])) {$event_id = $result['event_id'];}
+      if (isset($result['contact_id'])) {$contact_id = $result['contact_id'];}
+    }
+
+    if (!isset($contact_id) || !isset($event_id)) {
+      throw new RulesEvaluationException('The given commerce_line_item is incompatible with this condition.', array(), NULL, RulesLog::ERROR);
+      return FALSE;
+    }
+
+    
+    // get all the family members participating in this event, use static cacheing as this is called many times
+    civicrm_initialize();
+    static $family_participants = array();
+    $f_participants = array();
+    $hid = _osa_getHousehold($contact_id);
+
+    $key = "hid={$hid}event_id={$event_id}";
+    if (isset($family_participants[$key])) {
+      $f_participants = $family_participants[$key];
+    }
+    elseif (isset($hid)) {
+      $family = _osa_getHouseholdMembers($hid);
+      foreach ($family as $person) {
+        $result = civicrm_api('participant', 'get', array('event_id' => $event_id, 'contact_id' => $person['contact_id'], 'version' => 3));
+        if ($result['is_error'] == 0) {
+          $f_participants += $result['values'];
+        }
+      }
+      $family_participants[$key] = $f_participants;
+    }
+
+    // eliminate participants, depending on context of call
+    if (!empty($f_participants)) {
+      // we don't want to count participants that come after this one in the shopping cart
+      $order = commerce_order_load($commerce_line_item->order_id);
+      entity_get_controller('commerce_order')->resetCache(array($order->order_id)); // open the order record as read only: Issue 1514618
+      if ($order) {
+        $order_wrapper = entity_metadata_wrapper('commerce_order', $order);
+        foreach ($order_wrapper->commerce_line_items as $delta => $order_line_item_wrapper) {
+          if (($order_line_item_wrapper->line_item_id->value() > $line_item_id) && (isset($order_line_item_wrapper->civicrm_commerce_participant_id))) {
+            if (isset($f_participants[$order_line_item_wrapper->civicrm_commerce_participant_id->value()])) {
+              unset($f_participants[$order_line_item_wrapper->civicrm_commerce_participant_id->value()]);
+            }
+          }
+        }
+      }
+    }
+    $number_participants[$line_item_id] = count($f_participants);
+  }
+
+  // Make a quantity comparison based on the operator.
+  switch ($operator) {
+    case '<':
+      return $number_participants[$line_item_id] < $value;
+    case '<=':
+      return $number_participants[$line_item_id] <= $value;
+    case '=':
+      return $number_participants[$line_item_id] == $value;
+    case '>=':
+      return $number_participants[$line_item_id] >= $value;
+    case '>':
+      return $number_participants[$line_item_id] > $value;
   }
 
   return FALSE;
