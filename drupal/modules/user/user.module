@@ -1332,7 +1332,13 @@ function user_user_categories() {
 }
 
 function user_login_block($form) {
-  $form['#action'] = url(current_path(), array('query' => drupal_get_destination(), 'external' => FALSE));
+  $cp = current_path();
+  if (stripos($cp,  'civicrm') === FALSE) {
+    $form['#action'] = url(current_path());
+  }
+  else { 
+    $form['#action'] = request_uri();
+  }
   $form['#id'] = 'user-login-form';
   $form['#validate'] = user_login_default_validators();
   $form['#submit'][] = 'user_login_submit';

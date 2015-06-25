@@ -445,6 +445,10 @@ abstract class DatabaseConnection extends PDO {
    *   The properly-prefixed string.
    */
   public function prefixTables($sql) {
+    // don't prefix civicrm tables
+    if (strpos($sql, '{civi' ) !== FALSE) {
+      $sql = preg_replace('/{civi(.*?)}/', 'civi$1', $sql);
+    }
     return str_replace($this->prefixSearch, $this->prefixReplace, $sql);
   }
 

@@ -677,7 +677,7 @@ function drupal_environment_initialize() {
   $_GET['q'] = request_path();
 
   // Enforce E_ALL, but allow users to set levels not part of E_ALL.
-  error_reporting(E_ALL | error_reporting());
+  // error_reporting(E_ALL | error_reporting());
 
   // Override PHP settings required for Drupal to work properly.
   // sites/default/default.settings.php contains more runtime settings.

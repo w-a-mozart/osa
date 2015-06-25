@@ -2701,7 +2701,13 @@ function drupal_deliver_html_page($page_callback_result) {
         if (empty($return) || $return == MENU_NOT_FOUND || $return == MENU_ACCESS_DENIED) {
           // Standard 403 handler.
           drupal_set_title(t('Access denied'));
-          $return = t('You are not authorized to access this page.');
+          global $user;
+          if ($user->uid == 0) {
+            $return = t('You must be logged on to access this page.');
+          }
+          else {
+            $return = t('You are not authorized to access this page.');
+          }
         }
 
         print drupal_render_page($return);
