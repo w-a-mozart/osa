@@ -104,11 +104,11 @@
         endRangeYr = currentYear + parseInt($originalElement.attr('endOffset'));
 
       $dateElement.datepicker({
-        showMonthAfterYear : true,
         closeAtTop: true,
         dateFormat: date_format,
         changeMonth: (date_format.indexOf('m') > -1),
         changeYear: (date_format.indexOf('y') > -1),
+        showMonthAfterYear: true,
         altField: $originalElement,
         altFormat: altDateFormat,
         yearRange: yearRange,
@@ -131,4 +131,8 @@
 
     {/literal}
 </script>
-
+{literal}
+<style type="text/css">
+.ui-datepicker .ui-datepicker-title select.ui-datepicker-year { float: left; }
+</style>
+{/literal}

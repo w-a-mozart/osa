@@ -8,7 +8,7 @@
 /**
  * The current system version.
  */
-define('VERSION', '7.38');
+define('VERSION', '7.39');
 
 /**
  * Core API compatibility.
@@ -1564,6 +1564,9 @@ function format_string($string, array $args = array()) {
  * @ingroup sanitization
  */
 function check_plain($text) {
+  if (is_array($text)) {
+    $text = implode('. ', $text);
+  }
   return htmlspecialchars($text, ENT_QUOTES, 'UTF-8');
 }
 
