@@ -12,6 +12,7 @@ require_once 'quickbooks_webconnect.inc';
 function quickbooks_webconnect_serverVersion($request) {
   _quickbooks_webconnect_debug('[serverVersion] called with : @request', array('@request' => var_export($request, TRUE)));
   $info = system_get_info('module', 'quickbooks_webconnect');
+  $response = new stdClass();
   $response->serverVersionResult = $info['version'];
   return $response;
 }
@@ -21,6 +22,7 @@ function quickbooks_webconnect_serverVersion($request) {
  */
 function quickbooks_webconnect_clientVersion($request) {
   _quickbooks_webconnect_debug('[clientVersion] called with : @request', array('@request' => var_export($request, TRUE)));
+  $response = new stdClass();
   $response->clientVersionResult = '';
   return $response;
 }
@@ -67,6 +69,7 @@ function quickbooks_webconnect_authenticate($request) {
     $result = array(session_id(), 'nvu');
   }
 
+  $response = new stdClass();
   $response->authenticateResult = $result;
   return $response;
 }
@@ -115,6 +118,7 @@ function quickbooks_webconnect_sendRequestXML($request) {
   drupal_save_session(TRUE);
   drupal_session_commit();
       
+  $response = new stdClass();
   $response->sendRequestXMLResult = $result;
   return $response;
 }
@@ -209,6 +213,7 @@ function quickbooks_webconnect_receiveResponseXML($request) {
   drupal_save_session(TRUE);
   drupal_session_commit();
   
+  $response = new stdClass();
   $response->receiveResponseXMLResult = $return;
   return $response;
 }
@@ -225,9 +230,6 @@ function quickbooks_webconnect_closeConnection($request) {
 
   module_load_include('inc', 'services', 'resources/user_resource');
   try {
-//    $acct = $user;
-//    drupal_session_initialize();
-//    $user = $acct;
     drupal_save_session(TRUE);
     drupal_session_destroy_uid($user->uid);
     _user_resource_logout();
@@ -237,6 +239,7 @@ function quickbooks_webconnect_closeConnection($request) {
   }
 
   // allow connection to close
+  $response = new stdClass();
   $response->closeConnectionResult = 'OK';
   return $response;
 }
@@ -253,6 +256,7 @@ function quickbooks_webconnect_connectionError($request) {
   watchdog('quickbooks_webconnect', '[connectionError] called with : @request', array('@request' => var_export($request, TRUE)), WATCHDOG_ERROR);
 
   // allow connection to close
+  $response = new stdClass();
   $response->connectionErrorResult = 'DONE';
   return $response;
 }
@@ -266,6 +270,7 @@ function quickbooks_webconnect_getLastError($request) {
     return false;
   }
 
+  $response = new stdClass();
   $last_error = $_SESSION['quickbooks_webconnect_error'];
   if ($last_error) {
     $response->getLastErrorResult = $last_error;
@@ -293,8 +298,6 @@ function _quickbooks_webconnect_check_session($sid) {
   session_id($sid);
   drupal_session_start();
   _drupal_session_read($sid);
-//  drupal_save_session(TRUE);
-//  drupal_session_initialize();
     
   if (!user_access('access quickbooks webconnect server')) {
     drupal_add_http_header('Status', '403 Forbidden');
