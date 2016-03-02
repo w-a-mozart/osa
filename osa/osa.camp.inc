@@ -17,53 +17,53 @@ function osa_calc_camp_price($name, $value, $other_values) {
   // @todo put this in a database or as part of the webform
   static $prices = array(
     'Early Childhood Music' => array(
-      'One Week' => 60.00,
-      'Both Weeks' => 110.00,
+      'One Week' => 70.00,
+      'Both Weeks' => 120.00,
     ),
     'Junior Camp' => array(
-      'One Week' => 240.00,
-      'Both Weeks' => 450.00,
+      'One Week' => 250.00,
+      'Both Weeks' => 470.00,
     ),
     'Intermediate Camp' => array(
-      'One Week' => 285.00,
-      'Both Weeks' => 520.00,
+      'One Week' => 295.00,
+      'Both Weeks' => 560.00,
     ),
     'All Day for Juniors' => array(
-      'One Week' => 335.00,
-      'Both Weeks' => 610.00,
+      'One Week' => 345.00,
+      'Both Weeks' => 660.00,
     ),
     'Senior Camp' => array(
-      'One Week' => 335.00,
-      'Both Weeks' => 610.00,
+      'One Week' => 345.00,
+      'Both Weeks' => 660.00,
     ),
     'Leader In Training' => array(
-      'One Week' => 200.00,
-      'Both Weeks' => 350.00,
+      'One Week' => 210.00,
+      'Both Weeks' => 390.00,
     ),
     'Student Leader' => array(
-      'One Week' => 150.00,
-      'Both Weeks' => 280.00,
+      'One Week' => 160.00,
+      'Both Weeks' => 300.00,
     ),
     'Student Leader Guitar and Piano' => array(
-      'One Week' => 100.00,
-      'Both Weeks' => 180.00,
+      'One Week' => 110.00,
+      'Both Weeks' => 200.00,
     ),
     'primary_instrument_enhancements' => array(
-      'Additional 15min Private Lesson' => 60.00,
+      'Additional 15min Private Lesson' => 70.00,
     ),
     'primary_instrument_enhancements_leaders' => array(
-      '15min Private Lesson' => 60.00,
-      '30min Private Lesson' => 120.00,
+      '15min Private Lesson' => 70.00,
+      '30min Private Lesson' => 140.00,
     ),
     'second_instrument_enhancements' => array(
-      'Second Instrument 15min Private Lesson' => 60.00,
-      'Second Instrument 30min Private Lesson' => 120.00,
+      'Second Instrument 15min Private Lesson' => 70.00,
+      'Second Instrument 30min Private Lesson' => 140.00,
     ),
     'chamber_group' => array(
-      'Chamber Group' => 30.00,
+      'Chamber Group' => 40.00,
     ),
     'masterclass_terry_durbin' => array(
-      'Terry Durbin Violin Masterclass' => 50.00,
+      'Terry Durbin Violin Masterclass' => 60.00, // Intermediate & Advanced Violin Ensemble
     ),
     'daycare_options' => array(
       'AM Care' => 15.00,
@@ -76,8 +76,8 @@ function osa_calc_camp_price($name, $value, $other_values) {
       'Parent Lunch Both Weeks' => 70.00,
     ),
     'teacher' => array(
-      'Terry Durbin: 15min lessons' => 75.00,
-      'Terry Durbin: 30min lessons' => 150.00,
+      'Terry Durbin: 15min lessons' => 80.00,
+      'Terry Durbin: 30min lessons' => 160.00,
       'TJ McAvaney: 15min lessons' => 75.00,
       'TJ McAvaney: 30min lessons' => 150.00,
     ),
@@ -117,22 +117,28 @@ function _osa_camp_teacher_premiums($components, $submitted, &$component, &$form
     return FALSE;
   }
 
-  // get the some of the data we need
+  // get the program, and the week(s) the student is attending
   $program = is_array($submitted[4]) ? $submitted[4][0] : $submitted[4];
   $weeks   = is_array($submitted[12]) ? $submitted[12][0] : $submitted[12];
   $week[1] = (($weeks == 'Week 1') || ($weeks == 'Both Weeks')) ? 1 : 0;
   $week[2] = (($weeks == 'Week 2') || ($weeks == 'Both Weeks')) ? 1 : 0;
-  
+
+  // in 2016 Terry is only attending Week 1
+  if ($teacher == 'Terry Durbin') {
+    $week[2] = 0;
+  }
+
+  // figure out if this is for the primary or secondary instrument, and if the student is a Leader
   list($instrument, $other) = explode('_', $form_key, 2);
   $instrument = ($instrument == 'secondary') ? 'second' : $instrument; // why didn't I name them the same???
   $leader = (strpos($program, 'Leader') !== FALSE);
 
-  // need to figure out lesson length in each week
+  // initialize the lesson length for each week
   foreach ($week as $wknum => $attending) {
     $lesson_length[$wknum] = 0;
   }
 
-  // 15min is included in primary instrument (except for Leaders)
+  // a 15min is included in primary instrument (except for Leaders)
   if (($instrument == 'primary') && !$leader) {
     foreach ($week as $wknum => $attending) {
       $lesson_length[$wknum] += 15 * $attending;
@@ -209,7 +215,9 @@ function osa_form_alter_summer_camp(&$form, &$form_state) {
       );
 
       $form['#validate'] = array();
-
+      $form['#attached']['js'][] = array(
+        'data' => "jQuery(document).ready(function () {jQuery(\"[required='required']\").removeAttr('required');});",
+        'type' => 'inline');
       $first_time = FALSE;
     }
   }
@@ -427,7 +435,7 @@ function _osa_camp_parse_submission($components, $submitted, &$values, &$total, 
 
   $total = 0.00;
   $ignore_types = array('pagebreak', 'markup', 'fieldset', 'textarea', 'grid', 'textfield',);
-  $ignore_elements = array('caregiver_present', 'primary_instrument_level', 'add_a_second_instrument', 'second_instrument_level', 'ukulele_level', 'recorder_level', 'theory_level', 'image_release_consent', 'referral',);
+  $ignore_elements = array('caregiver_present', 'primary_instrument_level', 'add_a_second_instrument', 'second_instrument_level', 'ukulele_level', 'recorder_level', 'theory_level', 'musical_theatre', 'image_release_consent', 'referral', 'lunch');
   $rows = array();
 
   // loop through each component we care about and get it's value and price

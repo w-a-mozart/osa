@@ -1194,6 +1194,43 @@ function _osa_get_participant_events($contact_id, $current = TRUE) {
 }
 
 /**
+ *  Get the all participants of an event related to a Household contact
+ */
+function _osa_get_household_participants($hid, $event_id) {
+  // use static caching
+  static $household_participants = array();
+  $cache_key = "hid=$hid&event_id=$event_id";
+  if (isset($household_participants[$cache_key])) {
+    return $household_participants[$cache_key];
+  }
+  $household_participants[$cache_key] = array();
+
+  // get all family members
+  $family = _osa_getHouseholdMembers($hid);
+
+  // get the participant records, for this event
+  $params = array(
+    'event_id' => $event_id,
+    'version'  => '3',
+  );
+  $registered_status = array(1, 2, 5, 6, 14, 15);
+
+  foreach ($family as $contact) {
+    $params['contact_id'] = $contact['contact_id'];
+    $result = civicrm_api('participant', 'get', $params);
+    if ($result['is_error'] == 0) {
+      foreach ($result['values'] as $pid => $participant) {
+        if (in_array($participant['participant_status_id'], $registered_status)) {
+          $household_participants[$cache_key][$pid] = $participant;
+        }
+      }
+    }
+  }
+  
+  return $household_participants[$cache_key];
+}
+
+/**
  * Returns the form_type field from the node associated with a form (i.e. a webform)
  */
 function _osa_get_form_type(&$form) {

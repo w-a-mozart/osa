@@ -1,14 +1,7 @@
 /****************************/
 /* Summer Camp Admin        */
 /****************************/
-#webform-component-early-childhood-music-description,
-#webform-component-intermediate-description,
-#webform-component-junior-summer-camp-description,
-#webform-component-senior-summer-camp-description,
-#webform-component-leaders-in-training-description,
-#webform-component-student-leaders-description,
-#webform-component-student-leaders-piano-and-guitar-description,
-#webform-component-new-link,
-#webform-component-custom-code-option-levels {
+.webform-component-markup,
+.webform-component--options---no-instruments {
   display: none;
 }
