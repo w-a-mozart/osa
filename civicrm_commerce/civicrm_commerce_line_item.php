@@ -181,7 +181,11 @@ function civicrm_commerce_line_item_add_new($paymentObj, &$params, $component) {
   $line_item_params = $params;
   
   // load the contact record to get the display name
-  if (isset($params['contactID'])) {
+  if (isset($params['contact_id'])) {
+    $result = civicrm_api('contact', 'get', array('id' => $params['contact_id'], 'version' => 3));
+    $contact = $result['values'][$params['contact_id']];
+  }
+  elseif (isset($params['contactID'])) {
     $result = civicrm_api('contact', 'get', array('id' => $params['contactID'], 'version' => 3));
     $contact = $result['values'][$params['contactID']];
   }
@@ -208,13 +212,14 @@ function civicrm_commerce_line_item_add_new($paymentObj, &$params, $component) {
   }
   elseif ($component == "event") {
     $line_item_params['type'] = 'civi_event';
+
     if (isset($params['participantID'])) {
       $result = civicrm_api('participant', 'get', array('id' => $params['participantID'], 'version' => 3));
       $line_item_params['label'] = $result['values'][$params['participantID']]['event_title'];
       $line_item_params['label'] .= ' (' . $result['values'][$params['participantID']]['display_name']; 
 
       if ((isset($result['values'][$params['participantID']]['participant_fee_level'])) &&
-          (!is_array($result['values'][$params['participantID']]['participant_fee_level']))){
+          (!is_array($result['values'][$params['participantID']]['participant_fee_level']))) {
         $line_item_params['label'] .= ' : ' . $result['values'][$params['participantID']]['participant_fee_level'];
       }
       $line_item_params['label'] .= ')';
@@ -260,6 +265,7 @@ function civicrm_commerce_line_item_add_new($paymentObj, &$params, $component) {
   }
   if ($line_item_params['eventID']) {
     $line_item_wrapper->civicrm_commerce_event_id = $line_item_params['eventID'];
+    $line_item_wrapper->commerce_display_path = "civicrm/event/info?reset=1&id={$line_item_params['eventID']}";
   }
   if ($line_item_params['participantID']) {
     $line_item_wrapper->civicrm_commerce_participant_id = $line_item_params['participantID'];
