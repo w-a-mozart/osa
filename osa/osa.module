@@ -121,7 +121,24 @@ function osa_civicrm_alterPaymentProcessorParams($paymentObj, &$rawParams, &$coo
     if ($event['event_type_id'] != OSA_EVENT_SUMMER_CAMP) {
       $html = _osa_civicrm_participant_theme($participantID, 'short');
       $cookedParams['label'] = trim($html);
-    }   
+    }
+  }
+  // modify the line item description for Memberships
+  elseif (isset($paymentObj) && ($paymentObj->_processorName == 'Drupal Commerce Cart') && ($cookedParams['type'] == 'civi_membership')) {
+    // add next year's school year to the title
+    $contactID = $rawParams['contactID'];
+    $membership = _osa_get_membership($contactID);
+    if (isset($membership['end_date']) && $membership['is_current_member']) {
+      $end_date = new DateTimeEx($membership['end_date']);
+    }
+    else {
+      $membershipDates = _osa_get_membership_dates();
+      $end_date = new DateTimeEx($membershipDates['end_date']);
+      // need a date in the middle of the school year as the membership end date (August) is after the school end date (June)
+      $end_date->modify('-6 months');
+    }
+    $school_year = _osa_school_year($school_start_date, $school_end_date, $end_date->format('Y-m-d'));
+    $cookedParams['label'] = trim("$school_year {$cookedParams['label']}");
   }
 
   // @TODO fix this
@@ -153,6 +170,7 @@ class DrupalMailDriver {
     
     $message['id'] = 'osa_civicrm';
     $message['to'] = implode(", ", (array)$recipients);
+    $message['from'] = $headers['From'];
     $message['subject'] = $headers['Subject'];
     
     // only send the html content
@@ -185,9 +203,10 @@ function osa_civicrm_post($op, $objectName, $objectId, &$objectRef) {
 }
 
 /**
- *  Change the permissions checked when doing civicrm API calls.
- */
+ * Change the permissions checked when doing civicrm API calls.
+ */
 function osa_civicrm_alterAPIPermissions($entity, $action, &$params, &$permissions) {
+
   $permissions['relationship'] = array(
     'get' => array(
       'edit my contact',
@@ -199,6 +218,10 @@ function osa_civicrm_alterAPIPermissions($entity, $action, &$params, &$permissio
       'edit my contact',
     ),
   );
+  
+  // need this because CiviCase is not enabled, so there are no permissions to set, but need the to access the Option Groups
+  if ($entity == 'case')
+    $params['check_permissions'] = FALSE;
 }
 
 // Drupal hooks
@@ -244,26 +267,39 @@ function osa_menu() {
  * Implements hook_html_head_alter() to modify the header elements
  */
 function osa_html_head_alter(&$head_elements) {
-  // add script to monitor page response time using pingdom.com
-  if ($_SERVER['SERVER_NAME'] !== 'localhost') {
-    $pingdom_script = <<<EOL
-<script>
-var _prum = [['id', '548f14e0abe53d455fd4de22'],
-             ['mark', 'firstbyte', (new Date()).getTime()]];
-(function() {
-    var s = document.getElementsByTagName('script')[0]
-      , p = document.createElement('script');
-    p.async = 'async';
-    p.src = '//rum-static.pingdom.net/prum.min.js';
-    s.parentNode.insertBefore(p, s);
-})();
-</script>
-EOL;
-    $head_elements['pingdom'] = array(
-      '#type' => 'markup',
-      '#markup' => $pingdom_script,
-    );
-  }
+  // SEO meta tags
+  $head_elements['osa_description'] = array(
+    '#type' => 'html_tag',
+    '#tag' => 'meta',
+    '#attributes' => array(
+      'name' => 'description',
+      'content' => 'The OSA provides comprehensive musical training consisting of private lessons, group lessons, and performance opportunities that promote the philosophy that all children can develop musical ability.',
+    ),
+  );
+  $head_elements['osa_keywords'] = array(
+    '#type' => 'html_tag',
+    '#tag' => 'meta',
+    '#attributes' => array(
+      'name' => 'keywords',
+      'content' => 'music, lessons, violin, cello, piano, flute, guitar, bass, viola, kids, summer, camp, suzuki, method',
+    ),
+  );
+  $head_elements['osa_robots'] = array(
+    '#type' => 'html_tag',
+    '#tag' => 'meta',
+    '#attributes' => array(
+      'name' => 'robots',
+      'content' => 'index, follow',
+    ),
+  );
+    $head_elements['osa_revisit'] = array(
+    '#type' => 'html_tag',
+    '#tag' => 'meta',
+    '#attributes' => array(
+      'name' => 'revisit-after',
+      'content' => '7 days',
+    ),
+  );
 }
 
 /**

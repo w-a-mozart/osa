@@ -41,31 +41,71 @@ function osa_form_alter_views_form_commerce_cart_form_default(&$form, &$form_sta
  * Modify the checkout form
  */
 function osa_form_alter_commerce_checkout_form_checkout(&$form, &$form_state) {
+  global $user;
 
   // add help to the email prompt for anonymous users
-  global $user;
   if (!$user->uid && !empty($form['account']['login']['mail'])) {
+    $form['account']['login']['mail']['#required'] = FALSE;
     $form['account']['login']['mail']['#description'] = t('Enter a valid e-mail address to receive your receipt.');
     $form['account']['#title'] = t('User information');
   }
   
-  // remove spaces from the card number
-  if (isset($form['commerce_payment']['payment_details']['credit_card']['number'])) {
-    $js = <<<EOD
-jQuery(document).ready(function () {
-  jQuery('#edit-commerce-payment-payment-details-credit-card-number').change(function() {
-    var cc = jQuery('#edit-commerce-payment-payment-details-credit-card-number').val()
-      .replace(/ /g, '')
-      .replace(/-/g, '');
-    jQuery('#edit-commerce-payment-payment-details-credit-card-number').val(cc);
-  });
-});
-EOD;
-    drupal_add_js($js, 'inline');
-  }
-
   // re label the submit button
   $form['buttons']['continue']['#value'] = t('Pay Now');
+  
+  // override validation
+  $form['buttons']['continue']['#validate'] = array('osa_commerce_checkout_form_validate');
+}
+
+/*
+ * Override ananoymous email validation
+ */
+function osa_commerce_checkout_form_validate($form, &$form_state) {
+
+  if (!empty($form_state['values']['account']['login']['mail'])) {
+    if (!valid_email_address($form_state['values']['account']['login']['mail'])) {
+      $form_state['values']['account']['login']['mail'] = '';
+    }
+  }
+
+  commerce_checkout_form_validate($form, $form_state);
+}
+
+/**
+ * Modify the completetion message for annoyomus orders with no email
+ */
+function osa_form_alter_commerce_checkout_form_complete(&$form, &$form_state) {
+  $form['checkout_completion_message']['message']['#markup'] = str_replace('An email has been sent to  with a confirmation of your order.', '', $form['checkout_completion_message']['message']['#markup']);
+}
+
+/**
+ * Implements hook_commerce_checkout_pane_info_alter() to not display the Checkout Login pane to logged-in users
+ */
+function osa_commerce_checkout_pane_info_alter(&$checkout_panes) {
+  global $user;
+
+  if ($user->uid && isset($checkout_panes['account_form'])) {
+    unset($checkout_panes['account_form']);
+  }
+}
+
+/**
+ * Modify the checkout login form
+ */
+function osa_form_alter_commerce_checkout_form_account(&$form, &$form_state) {
+  global $user;
+
+  // replace help message without the register option
+  $replacements = array(
+    '%login' => t('Login & checkout'),
+    '%guest' => t('Checkout as guest')
+  );
+  $form['account_form']['help']['#markup'] = t('If you have an existing account you can login by entering your login information in the form on the left and clicking the %login button or you can checkout as a guest by clicking the %guest button below.', $replacements);
+
+  // remove the registration parts of the form
+  if (isset($form['account_form']['select']['register'])) {
+    unset($form['account_form']['select']['register']);
+  }
 }
 
 /**
@@ -74,15 +114,6 @@ EOD;
 function osa_commerce_currency_info_alter(&$currencies, $langcode) {
   $currencies['CAD']['code_placement'] = 'hidden';
 }
-
-/**
- * Implements hook_commerce_price_formatted_components_alter()
-
-function osa_commerce_price_formatted_components_alter(&$components, &$item, &$entity) {
-  foreach ($components as $component) {
-  }
-}
- */
 
 /**
  * Implements hook_commerce_virtualmerchant_transaction_alter() to add custom variables to the transaction

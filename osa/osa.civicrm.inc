@@ -416,6 +416,23 @@ function osa_civicrm_buildForm_CRM_Contribute_Form_Contribution_Main(&$form) {
       drupal_add_css('.discount-info { display: none; }', array('type' => 'inline'));
     }
   }
+  // membership form
+  else {
+    // add next year's school year to the title
+    $membership = _osa_get_membership($form->_membershipContactID);
+    if (isset($membership['end_date']) && $membership['is_current_member']) {
+      $end_date = new DateTimeEx($membership['end_date']);
+    }
+    else {
+      $membershipDates = _osa_get_membership_dates();
+      $end_date = new DateTimeEx($membershipDates['end_date']);
+      // need a date in the middle of the school year as the membership end date (August) is after the school end date (June)
+      $end_date->modify('-6 months');
+    }
+    $school_year = _osa_school_year($school_start_date, $school_end_date, $end_date->format('Y-m-d'));
+    $form->_values['title'] = trim("$school_year {$form->_values['title']}");
+    drupal_set_title($form->_values['title']);
+  }
 
   // fix the button label
   $group = $form->getElement('buttons');
@@ -501,13 +518,19 @@ function osa_civicrm_postProcess_CRM_Contribute_Form_Contribution_Confirm(&$form
  *   The CRM_Contribute_Form_Contribution_Confirm object being rendered.
  */
 function osa_civicrm_buildForm_CRM_Contribute_Form_Contribution_ThankYou(&$form) {
+  global $base_url;
 
   // except for membership, we need the logged in user to be the contact
   if ($form->_id == OSA_CONTRIB_MEMBER) {
     $contact = _osa_get_contact($form->_membershipContactID);
+    drupal_set_message("<br /><span style=\"font-size:120%; color:#B22222;\"><em>It is <strong>highly recommened</strong> that all registered OSA students <strong>participate in group classes</strong>.</em></span><br /><br />
+                        Click one of the links below to sign-up.<br />
+                        You can also return to your <a href=\"{$base_url}/civicrm/user?reset=1\">Family Profile</a> to register another child, or click <a href=\"{$base_url}/checkout\">here</a> to complete your payment.");
+
+    drupal_goto("{$base_url}/group_class_selection/{$form->_membershipContactID}");
   }
   else {
-    $contact = _osa_get_contact();
+    $contact = _osa_get_contact($form->_contactID);
   }
   $form->assign('contact', $contact);
   $form->assign('cid', $contact['id']);
@@ -556,7 +579,7 @@ function osa_civicrm_pageRun_CRM_Event_Page_EventInfo(&$page) {
       foreach ($fld_keys as $fld_key) {
         // show/hide 'Members Only' flag and 'Open to Public' flag
         if ($custom_data['fields'][$fld_key]['field_title'] == 'Members Only') {
-          if ($custom_data['fields'][$fld_key]['field_value'] == "No\n") {
+          if (substr($custom_data['fields'][$fld_key]['field_value'], 0, 2) == 'No') {
             unset($event_custom_data[$cd_key]);
           }
           else {
@@ -565,7 +588,7 @@ function osa_civicrm_pageRun_CRM_Event_Page_EventInfo(&$page) {
           }
         }
         if ($custom_data['fields'][$fld_key]['field_title'] == 'Open to General Public') {
-          if ($custom_data['fields'][$fld_key]['field_value'] == "Yes\n") {
+          if (substr($custom_data['fields'][$fld_key]['field_value'], 0, 3) == 'Yes') {
             $open_to_public = TRUE;
             $page->assign('open_to_public', TRUE);
           }
@@ -1029,9 +1052,8 @@ function osa_civicrm_customFieldOptions($fieldID, &$options, $detailedFormat = F
       $cache[87] = $cache[$fieldID];
       $cache[88] = $cache[$fieldID];
     }
-
     // Group Node selection
-    if ($fieldID == 25) {
+    elseif ($fieldID == 25) {
       // find all of the group class nodes
       $nodes = &_osa_get_class_nodes();
       foreach ($nodes as $class) {
@@ -1045,9 +1067,8 @@ function osa_civicrm_customFieldOptions($fieldID, &$options, $detailedFormat = F
       uasort($cache[$fieldID]['detail'], function ($a, $b) {return strcmp($a['label'], $b['label']);});
       asort($cache[$fieldID]['std']);
     }
-
     // Lesson Fee Level
-    if ($fieldID == 32) {
+    elseif ($fieldID == 32) {
       // populate the teacher list
       _osa_get_teacher_lists($contacts, $select_options, $pricelevel, $prices30min, $prices45min, $prices60min);
       foreach ($pricelevel as $teacher_id => $levels) {
@@ -1065,6 +1086,10 @@ function osa_civicrm_customFieldOptions($fieldID, &$options, $detailedFormat = F
       uasort($cache[$fieldID]['detail'], function ($a, $b) {return strcmp($a['label'], $b['label']);});
       asort($cache[$fieldID]['std']);
     }
+  }
+
+  if (empty($options)) {
+    $options = array();
   }
 
   if ($detailedFormat) {

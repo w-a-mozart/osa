@@ -5,9 +5,10 @@ version = 7.x-dev
 
 package = OSA
 dependencies[] = civicrm
+dependencies[] = civicrm_commerce
+dependencies[] = commerce
+dependencies[] = commerce_virtualmerchant
 dependencies[] = rules
 dependencies[] = webform
-dependencies[] = commerce
-dependencies[] = commerce_elavon
 
 configure = admin/config/osa

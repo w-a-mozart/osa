@@ -1015,8 +1015,14 @@ function _osa_get_membership($contact_id, $membership_type_id = OSA_MEMBER_STUDE
   }
 
   // get the school yr of this membership
+  if (empty($membership['end_date'])) {
+    $membershipDates = _osa_get_membership_dates($membership['membership_type_id']);
+    $membership['start_date'] = $membershipDates['start_date'];
+    $membership['end_date'] = $membershipDates['end_date'];
+  }
   $end_date = new DateTimeEx($membership['end_date']);
-  $end_date->modify('-1 year');
+  // need a date in the middle of the school year as the membership end date (August) is after the school end date (June)
+  $end_date->modify('-6 months');
   $membership['school_year'] = _osa_school_year($school_start_date, $school_end_date, $end_date->format('Y-m-d'));
   
   $memberships[$contact_id] = $membership;
@@ -1346,24 +1352,39 @@ function _osa_next_payment_date($rel_start_date, &$num_installments, $base = 'to
  *  Calculate the school year
  */
 function _osa_school_year(&$school_start_date, &$school_end_date, $base = 'today') {
+  // cache, as it gets called a lot with the same date (i.e. end of membership date)
+  static $school_year_cache = array();
 
-  // adjust to the given base date
-  $school_start_date = new DateTimeEx(variable_get('osa_start_date', 'first day of September'));
   $today = new DateTimeEx($base);
-  $school_start_date->setDate($today->get('year'), $school_start_date->get('month'), $school_start_date->get('day'));
-  $school_end_date = new DateTimeEx($school_start_date);
-  $school_end_date->modify("last day of +9 months");
-
-  // adjust year to account for non-calendar school year
-  if ($school_start_date->get('month') > 1) {
-    if ($today->get('month') <= $school_end_date->get('month')) {
-      $school_start_date->modify('-1 year');
-      $school_end_date->modify('-1 year');
-    }
-  }
+  $key = $today->format('Y-m-d');
   
-  $school_year = "{$school_start_date->get('year')} / {$school_end_date->get('year')}";
-  return $school_year;
+  if (!isset($school_year_cache[$key])) {
+    // adjust to the given base date
+    $school_start_date = new DateTimeEx(variable_get('osa_start_date', 'first day of September'));
+    $school_start_date->setDate($today->get('year'), $school_start_date->get('month'), $school_start_date->get('day'));
+    $school_end_date = new DateTimeEx($school_start_date);
+    $school_end_date->modify("last day of +9 months");
+
+    // adjust year to account for non-calendar school year
+    if ($school_start_date->get('month') > 1) {
+      if ($today->get('month') <= $school_end_date->get('month')) {
+        $school_start_date->modify('-1 year');
+        $school_end_date->modify('-1 year');
+      }
+    }
+
+    $school_year_cache[$key] = array(
+      'school_start_date' => $school_start_date,
+      'school_end_date' => $school_end_date,
+      'school_year' => "{$school_start_date->get('year')} / {$school_end_date->get('year')}",
+    );
+  }
+  else {
+    $school_start_date = $school_year_cache[$key]['school_start_date'];
+    $school_end_date = $school_year_cache[$key]['school_end_date'];
+  }
+
+  return $school_year_cache[$key]['school_year'];
 }
 
 
