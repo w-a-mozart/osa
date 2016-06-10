@@ -71,6 +71,7 @@ class CRM_Core_Payment_DrupalCommerce extends CRM_Core_Payment {
     // create a new shopping cart line item
     module_load_include('php', 'civicrm_commerce', 'civicrm_commerce_line_item');
     $result = civicrm_commerce_line_item_add_new($this, $params, strtolower($component));
+    return array('payment_status_id' => 0);
   }
 
   /** 

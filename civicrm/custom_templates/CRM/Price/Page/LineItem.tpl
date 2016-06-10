@@ -1,8 +1,8 @@
 {*
  +--------------------------------------------------------------------+
- | CiviCRM version 4.5                                                |
+ | CiviCRM version 4.7                                                |
  +--------------------------------------------------------------------+
- | Copyright CiviCRM LLC (c) 2004-2014                                |
+ | Copyright CiviCRM LLC (c) 2004-2016                                |
  +--------------------------------------------------------------------+
  | This file is a part of CiviCRM.                                    |
  |                                                                    |
@@ -39,9 +39,18 @@
         {if $context EQ "Membership"}
           <th class="right">{ts}Fee{/ts}</th>
         {else}
-          <th class="right">{if $title eq "Teacher Registration"}{ts}Installments{/ts}{else}{ts}Qty{/ts}{/if}</th>
+          <th class="right">{ts}Qty{/ts}</th>
           <th class="right">{ts}Unit Price{/ts}</th>
-          <th class="right">{ts}Total Price{/ts}</th>
+          {if !$getTaxDetails}
+            <th class="right">{ts}Total Price{/ts}</th>
+          {/if}
+        {/if}
+
+        {if $getTaxDetails}
+          <th class="right">{ts}Subtotal{/ts}</th>
+          <th class="right">{ts}Tax Rate{/ts}</th>
+          <th class="right">{ts}Tax Amount{/ts}</th>
+          <th class="right">{ts}Total Amount{/ts}</th>
         {/if}
 
         {if $pricesetFieldsCount}
@@ -55,8 +64,23 @@
           {if $context NEQ "Membership"}
           <td class="right">{if $line.qty neq 1 or $line.unit_price neq 0}{$line.qty}{/if}</td>
           <td class="right">{if $line.qty neq 1 or $line.unit_price neq 0}{$line.unit_price|crmMoney}{/if}</td>
+    {else}
+            <td class="right">{$line.line_total|crmMoney}</td>
           {/if}
-          <td class="right">{if $line.line_total neq 0}{$line.line_total|crmMoney}{/if}</td>
+    {if !$getTaxDetails && $context NEQ "Membership"}
+      <td class="right">{$line.line_total|crmMoney}</td>
+    {/if}
+    {if $getTaxDetails}
+      <td class="right">{$line.line_total|crmMoney}</td>
+      {if $line.tax_rate != "" || $line.tax_amount != ""}
+        <td class="right">{$taxTerm} ({$line.tax_rate|string_format:"%.2f"}%)</td>
+        <td class="right">{$line.tax_amount|crmMoney}</td>
+      {else}
+        <td></td>
+        <td></td>
+      {/if}
+      <td class="right">{$line.line_total+$line.tax_amount|crmMoney}</td>
+    {/if}
           {if $pricesetFieldsCount}
             <td class="right">{$line.participant_count}</td>
           {/if}
@@ -68,9 +92,15 @@
 
 <div class="crm-section no-label total_amount-section">
   <div class="content bold">
+    {if $getTaxDetails && $totalTaxAmount}
+      {ts}Total Tax Amount{/ts}: {$totalTaxAmount|crmMoney}<br />
+    {/if}
     {if $context EQ "Contribution"}
       {ts}Contribution Total{/ts}:
     {elseif $context EQ "Event"}
+      {if $totalTaxAmount}
+        {ts}Event SubTotal: {$totalAmount-$totalTaxAmount|crmMoney}{/ts}<br />
+      {/if}
       {ts}Event Total{/ts}:
     {elseif $context EQ "Membership"}
       {ts}Membership Fee Total{/ts}:

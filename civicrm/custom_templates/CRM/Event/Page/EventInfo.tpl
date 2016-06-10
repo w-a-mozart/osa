@@ -1,8 +1,8 @@
 {*
  +--------------------------------------------------------------------+
- | CiviCRM version 4.5                                                |
+ | CiviCRM version 4.7                                                |
  +--------------------------------------------------------------------+
- | Copyright CiviCRM LLC (c) 2004-2014                                |
+ | Copyright CiviCRM LLC (c) 2004-2016                                |
  +--------------------------------------------------------------------+
  | This file is a part of CiviCRM.                                    |
  |                                                                    |
@@ -28,7 +28,7 @@
 {if $registerClosed }
 <div class="spacer"></div>
 <div class="messages status no-popup">
-  <div class="icon inform-icon"></div>
+  <i class="crm-i fa-info-circle"></i>
      &nbsp;{ts}Registration is closed for this event{/ts}
   </div>
 {/if}
@@ -39,14 +39,19 @@
   <li>
     <div id="crm-event-links-wrapper">
       <span id="crm-event-configure-link" class="crm-hover-button">
-        <span title="{ts}Configure this event.{/ts}" class="icon settings-icon"></span>
+        <span title="{ts}Configure this event.{/ts}" class="crm-i fa-wrench"></span>
       </span>
       <div class="ac_results" id="crm-event-links-list" style="margin-left: -25px;">
         <div class="crm-event-links-list-inner">
           <ul>
             {foreach from=$manageEventLinks item='link'}
               <li>
-                <a href="{crmURL p=$link.url q="reset=1&action=update&id=`$event.id`" fb=1}">{$link.title}</a>
+                {* Schedule Reminders requires a different query string. *}
+                {if $link.url EQ 'civicrm/event/manage/reminder'}
+                  <a href="{crmURL p=$link.url q="reset=1&action=browse&setTab=1&id=`$event.id`" fb=1}">{$link.title}</a>
+                {else}
+                  <a href="{crmURL p=$link.url q="reset=1&action=update&id=`$event.id`" fb=1}">{$link.title}</a>
+                {/if}
               </li>
             {/foreach}
           </ul>
@@ -58,7 +63,7 @@
   <li>
     <div id="crm-participant-wrapper">
       <span id="crm-participant-links" class="crm-hover-button">
-        <span title="{ts}Participant listing links.{/ts}" class="icon search-icon"></span>
+        <span title="{ts}Participant listing links.{/ts}" class="crm-i fa-search"></span>
       </span>
       <div class="ac_results" id="crm-participant-list" style="margin-left: -25px;">
         <div class="crm-participant-list-inner">
@@ -141,7 +146,7 @@
 
       {if ( $event.is_map && $config->mapProvider &&
           ( is_numeric($location.address.1.geo_code_1)  ||
-          ( $config->mapGeoCoding && $location.address.1.city AND $location.address.1.state_province ) ) ) }
+          ( $location.address.1.city AND $location.address.1.state_province ) ) ) }
           <div class="crm-section event_map-section">
               <div class="content">
                     {assign var=showDirectly value="1"}
@@ -196,7 +201,13 @@
                       <tr>
                           <td class="{$lClass} crm-event-label">{$feeBlock.label.$idx}</td>
                           {if $isPriceSet & $feeBlock.isDisplayAmount.$idx}
-                          <td class="fee_amount-value right">{$feeBlock.value.$idx|crmMoney}</td>
+            <td class="fee_amount-value right">
+                              {if isset($feeBlock.tax_amount.$idx)}
+          {$feeBlock.value.$idx}
+                              {else}
+                {$feeBlock.value.$idx|crmMoney}
+                              {/if}
+            </td>
                           {/if}
                       </tr>
                       {/if}

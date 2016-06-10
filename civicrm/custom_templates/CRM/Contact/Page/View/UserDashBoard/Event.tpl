@@ -38,7 +38,7 @@
       {/if}
     {/if}
           </td>
-          <td class="crm-participant-participant_status"><a class='box-load' href="{$config->civiRelativeURL}osa/participant/view?id={$event.id}&cid={$event.contact_id}&snippet=1&context=boxload&width=50%">{$event.participant_status} </a></td>
+          <td class="crm-participant-participant_status"><a class='box-load' href="/osa/osa/participant/view?id={$event.id}&cid={$event.contact_id}&snippet=1&context=boxload&width=50%">{$event.participant_status} </a></td>
           <td class="crm-participant-showConfirmUrl">
     {if $event.showConfirmUrl}
             <a href="{crmURL p='civicrm/event/confirm' q="reset=1&participantId=`$event.participant_id`"}">{ts}Confirm{/ts}</a>

@@ -1,8 +1,8 @@
 {*
  +--------------------------------------------------------------------+
- | CiviCRM version 4.5                                                |
+ | CiviCRM version 4.7                                                |
  +--------------------------------------------------------------------+
- | Copyright CiviCRM LLC (c) 2004-2014                                |
+ | Copyright CiviCRM LLC (c) 2004-2016                                |
  +--------------------------------------------------------------------+
  | This file is a part of CiviCRM.                                    |
  |                                                                    |
@@ -54,21 +54,21 @@
     {/if}
 
         {if $isOnWaitlist}
-          <div id="help">}}
+          <div class="help">}}
             <p>
                 <span class="bold">{ts}You have been added to the WAIT LIST for this event.{/ts}</span>
                 {ts}If space becomes available you will receive an email with a link to a web page where you can complete your registration.{/ts}
              </p>
           </div>
         {elseif $isRequireApproval}
-          <div id="help">
+          <div class="help">
             <p>
                 <span class="bold">{ts}Your registration has been submitted.{/ts}
                 {ts}Once your registration has been reviewed, you will receive an email with a link to a web page where you can complete the registration process.{/ts}</span>
             </p>
           </div>
         {elseif $is_pay_later and $paidEvent and !$isAmountzero}
-          <div id="help">
+          <div class="help">
             <div class="bold">{$pay_later_receipt}</div>
             {if $is_email_confirm}
                 <p>{ts 1=$email}An email with event details has been sent to %1.{/ts}</p>
@@ -78,12 +78,12 @@
         {elseif $contributeMode EQ 'notify' and $paidEvent}
             {* Remove message *}
             {if $is_email_confirm}
-          <div id="help">
+          <div class="help">
                 <p>{ts 1=$email}A registration confirmation email will be sent to %1 once the transaction is processed successfully.{/ts}</p>
           </div>
             {/if}
         {else}
-          <div id="help">
+          <div class="help">
             <p>{ts}Your registration has been processed successfully. Please print this page for your records.{/ts}</p>
             {if $is_email_confirm}
                 <p>{ts 1=$email}A registration confirmation email has also been sent to %1{/ts}</p>
@@ -101,7 +101,7 @@
         </div>
     </div>
 
-    {if $paidEvent}
+    {if $paidEvent && !$isRequireApproval && !$isOnWaitlist}
         <div class="crm-group event_fees-group">
             <div class="header-dark">
                 {$event.fee_label}
@@ -117,6 +117,10 @@
                   <div class="clear"></div>
                     {/foreach}
                 </div>
+                {if $totalTaxAmount}
+                  <div class="content bold">{ts}Tax Total{/ts}:&nbsp;&nbsp;{$totalTaxAmount|crmMoney}</div>
+                  <div class="clear"></div>
+                {/if}
                 {if $totalAmount}
                  <div class="crm-section no-label total-amount-section">
                     <div class="content bold">{ts}Event Total{/ts}:&nbsp;&nbsp;{$totalAmount|crmMoney}</div>

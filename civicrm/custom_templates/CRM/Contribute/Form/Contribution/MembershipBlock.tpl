@@ -1,8 +1,8 @@
 {*
  +--------------------------------------------------------------------+
- | CiviCRM version 4.5                                                |
+ | CiviCRM version 4.7                                                |
  +--------------------------------------------------------------------+
- | Copyright CiviCRM LLC (c) 2004-2014                                |
+ | Copyright CiviCRM LLC (c) 2004-2016                                |
  +--------------------------------------------------------------------+
  | This file is a part of CiviCRM.                                    |
  |                                                                    |
@@ -54,16 +54,6 @@
         {if $paymentProcessor.payment_processor_type eq 'drupalcommerce'} 
           <div class="discount-info">Applicable discounts will be applied in the shopping cart.</div>
         {/if}
-        <div id="allow_auto_renew">
-            <div class='crm-section auto-renew'>
-                <div class='label'></div>
-                <div class ='content'>
-                    {if isset($form.auto_renew) }
-                        {$form.auto_renew.html}&nbsp;{$form.auto_renew.label}
-                    {/if}
-                </div>
-            </div>
-         </div>
         </fieldset>
     </div>
 {elseif $lineItem and $priceSetID AND !$is_quick_config}
@@ -253,7 +243,7 @@ function showHideAutoRenew( memTypeId )
      //to load auto_renew checked.
      //isChecked = true;
 
-  } else if ( currentOption == 2 ) {
+  } else if ( currentOption == 2 || currentOption == 4) {
      funName = 'show();';
      isChecked = readOnly = true;
   }
