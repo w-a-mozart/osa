@@ -167,6 +167,7 @@ class CRM_Contribute_BAO_ContributionPage extends CRM_Contribute_DAO_Contributio
       'membership_assign',
       'amount',
       'receipt_date',
+      'is_pay_later',
     );
 
     foreach ($valuesRequiredForTemplate as $valueRequiredForTemplate) {
@@ -380,6 +381,9 @@ class CRM_Contribute_BAO_ContributionPage extends CRM_Contribute_DAO_Contributio
         'useForMember' => $values['useForMember'],
         'membership_assign' => $values['membership_assign'],
         'amount' => $values['amount'],
+        'is_pay_later' => $values['is_pay_later'],
+        'receipt_date' => !$values['receipt_date'] ? NULL : date('YmdHis', strtotime($values['receipt_date'])),
+        'pay_later_receipt' => CRM_Utils_Array::value('pay_later_receipt', $values),
       );
 
       if ($contributionTypeId = CRM_Utils_Array::value('financial_type_id', $values)) {
@@ -442,6 +446,10 @@ class CRM_Contribute_BAO_ContributionPage extends CRM_Contribute_DAO_Contributio
           'to' => $displayName,
           'html' => $html,
         );
+      }
+
+      if (empty($values['receipt_from_name']) && empty($values['receipt_from_name'])) {
+        list($values['receipt_from_name'], $values['receipt_from_email']) = CRM_Core_BAO_Domain::getNameAndEmail();
       }
 
       if ($values['is_email_receipt']) {
