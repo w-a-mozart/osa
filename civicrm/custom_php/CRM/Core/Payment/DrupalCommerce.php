@@ -25,7 +25,7 @@ class CRM_Core_Payment_DrupalCommerce extends CRM_Core_Payment {
    * @var object
    * @static
    */
-  static protected $_mode = NULL;
+  // static protected $_mode = NULL;
 
   /** 
    * Constructor 
