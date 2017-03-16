@@ -2,7 +2,7 @@
  +--------------------------------------------------------------------+
  | CiviCRM version 4.7                                                |
  +--------------------------------------------------------------------+
- | Copyright CiviCRM LLC (c) 2004-2016                                |
+ | Copyright CiviCRM LLC (c) 2004-2017                                |
  +--------------------------------------------------------------------+
  | This file is a part of CiviCRM.                                    |
  |                                                                    |
@@ -36,6 +36,9 @@
     <table>
       <tr class="columnheader">
         <th>{ts}Item{/ts}</th>
+        {if $displayLineItemFinancialType}
+          <th>{ts}Financial Type{/ts}</th>
+        {/if}
         {if $context EQ "Membership"}
           <th class="right">{ts}Fee{/ts}</th>
         {else}
@@ -60,8 +63,11 @@
       {foreach from=$value item=line}
         <tr{if $line.qty EQ 0} class="cancelled"{/if}>
           <td>{if $line.html_type eq 'Text'}{$line.label}{else}{$line.field_title} - {$line.label}{/if} {if $line.description}<div class="description">{$line.description}</div>{/if}</td>
-{* Dont show qty and price for no-cost items *}
+          {if $displayLineItemFinancialType}
+            <td>{$line.financial_type}</td>
+          {/if}
           {if $context NEQ "Membership"}
+{* Dont show qty and price for no-cost items *}
           <td class="right">{if $line.qty neq 1 or $line.unit_price neq 0}{$line.qty}{/if}</td>
           <td class="right">{if $line.qty neq 1 or $line.unit_price neq 0}{$line.unit_price|crmMoney}{/if}</td>
     {else}
@@ -73,7 +79,7 @@
     {if $getTaxDetails}
       <td class="right">{$line.line_total|crmMoney}</td>
       {if $line.tax_rate != "" || $line.tax_amount != ""}
-        <td class="right">{$taxTerm} ({$line.tax_rate|string_format:"%.2f"}%)</td>
+        <td class="right">{$taxTerm} ({$line.tax_rate|string_format:"%.3f"}%)</td>
         <td class="right">{$line.tax_amount|crmMoney}</td>
       {else}
         <td></td>

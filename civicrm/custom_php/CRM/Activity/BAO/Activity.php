@@ -3,7 +3,7 @@
  +--------------------------------------------------------------------+
  | CiviCRM version 4.7                                                |
  +--------------------------------------------------------------------+
- | Copyright CiviCRM LLC (c) 2004-2016                                |
+ | Copyright CiviCRM LLC (c) 2004-2017                                |
  +--------------------------------------------------------------------+
  | This file is a part of CiviCRM.                                    |
  |                                                                    |
@@ -28,7 +28,7 @@
 /**
  *
  * @package CRM
- * @copyright CiviCRM LLC (c) 2004-2016
+ * @copyright CiviCRM LLC (c) 2004-2017
  */
 
 /**
@@ -627,8 +627,7 @@ class CRM_Activity_BAO_Activity extends CRM_Activity_DAO_Activity {
    * @return bool
    */
   public static function logActivityAction($activity, $logMessage = NULL) {
-    $session = CRM_Core_Session::singleton();
-    $id = $session->get('userID');
+    $id = CRM_Core_Session::getLoggedInContactID();
     if (!$id) {
       $activityContacts = CRM_Core_OptionGroup::values('activity_contacts', FALSE, FALSE, FALSE, NULL, 'name');
       $sourceID = CRM_Utils_Array::key('Activity Source', $activityContacts);
@@ -770,7 +769,7 @@ LEFT JOIN  civicrm_case_activity ON ( civicrm_case_activity.activity_id = tbl.ac
     $query = "CREATE TEMPORARY TABLE {$activityContactTempTable} (
                 activity_id int unsigned, contact_id int unsigned, record_type_id varchar(16),
                  contact_name varchar(255), is_deleted int unsigned, counter int unsigned, INDEX index_activity_id( activity_id ) )
-                ENGINE=MYISAM DEFAULT CHARACTER SET utf8 COLLATE utf8_unicode_ci";
+                ENGINE=InnoDB DEFAULT CHARACTER SET utf8 COLLATE utf8_unicode_ci";
 
     CRM_Core_DAO::executeQuery($query);
 
@@ -1196,8 +1195,7 @@ LEFT JOIN civicrm_activity_contact src ON (src.activity_id = ac.activity_id AND 
   ) {
     // get the contact details of logged in contact, which we set as from email
     if ($userID == NULL) {
-      $session = CRM_Core_Session::singleton();
-      $userID = $session->get('userID');
+      $userID = CRM_Core_Session::getLoggedInContactID();
     }
 
     list($fromDisplayName, $fromEmail, $fromDoNotEmail) = CRM_Contact_BAO_Contact::getContactDetails($userID);
@@ -1383,8 +1381,7 @@ LEFT JOIN civicrm_activity_contact src ON (src.activity_id = ac.activity_id AND 
     $userID = NULL
   ) {
     if ($userID == NULL) {
-      $session = CRM_Core_Session::singleton();
-      $userID = $session->get('userID');
+      $userID = CRM_Core_Session::getLoggedInContactID();
     }
 
     $text = &$activityParams['sms_text_message'];
@@ -1883,8 +1880,7 @@ SELECT  display_name
       $activityParams['id'] = $activity->activity_id;
     }
     // create activity with target contacts
-    $session = CRM_Core_Session::singleton();
-    $id = $session->get('userID');
+    $id = CRM_Core_Session::getLoggedInContactID();
     if ($id) {
       $activityParams['source_contact_id'] = $id;
       $activityParams['target_contact_id'][] = $activity->contact_id;
@@ -2071,11 +2067,9 @@ AND cl.modified_id  = c.id
       return NULL;
     }
 
-    $session = CRM_Core_Session::singleton();
-
     $followupParams = array();
     $followupParams['parent_id'] = $activityId;
-    $followupParams['source_contact_id'] = $session->get('userID');
+    $followupParams['source_contact_id'] = CRM_Core_Session::getLoggedInContactID();
     $followupParams['status_id'] = CRM_Core_OptionGroup::getValue('activity_status', 'Scheduled', 'name');
 
     $followupParams['activity_type_id'] = $params['followup_activity_type_id'];
@@ -2180,6 +2174,12 @@ AND cl.modified_id  = c.id
           'activity_status' => array(
             'title' => ts('Activity Status'),
             'name' => 'activity_status',
+            'type' => CRM_Utils_Type::T_STRING,
+            'searchByLabel' => TRUE,
+          ),
+          'activity_priority' => array(
+            'title' => ts('Activity Priority'),
+            'name' => 'activity_priority',
             'type' => CRM_Utils_Type::T_STRING,
             'searchByLabel' => TRUE,
           ),
@@ -2469,6 +2469,16 @@ INNER JOIN  civicrm_option_group grp ON ( grp.id = val.option_group_id AND grp.n
     $params['caseId'] = NULL;
     $context = CRM_Utils_Array::value('context', $params);
     $showContactOverlay = !CRM_Utils_String::startsWith($context, "dashlet");
+    $activityTypeInfo = civicrm_api3('OptionValue', 'get', array(
+      'option_group_id' => "activity_type",
+      'options' => array('limit' => 0),
+    ));
+    $activityIcons = array();
+    foreach ($activityTypeInfo['values'] as $type) {
+      if (!empty($type['icon'])) {
+        $activityIcons[$type['value']] = $type['icon'];
+      }
+    }
 
     // Get contact activities.
     $activities = CRM_Activity_BAO_Activity::getActivities($params);
@@ -2496,7 +2506,7 @@ INNER JOIN  civicrm_option_group grp ON ( grp.id = val.option_group_id AND grp.n
         $activity = array();
         $activity['DT_RowId'] = $activityId;
         // Add class to this row if overdue.
-        $activity['DT_RowClass'] = 'crm-entity';
+        $activity['DT_RowClass'] = "crm-entity status-id-{$values['status_id']}";
         if (CRM_Utils_Date::overdue(CRM_Utils_Array::value('activity_date_time', $values))
           && CRM_Utils_Array::value('status_id', $values) == 1
         ) {
@@ -2510,7 +2520,7 @@ INNER JOIN  civicrm_option_group grp ON ( grp.id = val.option_group_id AND grp.n
         $activity['DT_RowAttr']['data-entity'] = 'activity';
         $activity['DT_RowAttr']['data-id'] = $activityId;
 
-        $activity['activity_type'] = $values['activity_type'];
+        $activity['activity_type'] = (!empty($activityIcons[$values['activity_type_id']]) ? '<span class="crm-i ' . $activityIcons[$values['activity_type_id']] . '"></span> ' : '') . $values['activity_type'];
         $activity['subject'] = $values['subject'];
 
         $activity['source_contact_name'] = '';

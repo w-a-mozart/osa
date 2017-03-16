@@ -48,6 +48,10 @@ function osa_calc_camp_price($name, $value, $other_values) {
       'One Week' => 110.00,
       'Both Weeks' => 200.00,
     ),
+    'Chamber Only' => array(
+      'One Week' => 180.00,
+      'Both Weeks' => 320.00,
+    ),
     'primary_instrument_enhancements' => array(
       'Additional 15min Private Lesson' => 70.00,
     ),
@@ -60,13 +64,14 @@ function osa_calc_camp_price($name, $value, $other_values) {
       'Second Instrument 30min Private Lesson' => 140.00,
     ),
     'chamber_group' => array(
-      'Chamber Group' => 40.00,
+      'Junior Chamber Group' => 40.00,
+      'Senior Chamber Group' => 50.00,
     ),
     'masterclass_terry_durbin' => array(
       'Terry Durbin Violin Masterclass' => 60.00, // Intermediate & Advanced Violin Ensemble
     ),
     'daycare_options' => array(
-      'AM Care' => 15.00,
+      'AM Care' => 20.00,
       'PM Care' => 20.00,
     ),
     'lunch_option' => array(
@@ -124,14 +129,14 @@ function _osa_camp_teacher_premiums($components, $submitted, &$component, &$form
   $week[2] = (($weeks == 'Week 2') || ($weeks == 'Both Weeks')) ? 1 : 0;
 
   // in 2016 Terry is only attending Week 1
-  if ($teacher == 'Terry Durbin') {
-    $week[2] = 0;
-  }
+  // if ($teacher == 'Terry Durbin') {
+  //  $week[2] = 0;
+  // }
 
   // figure out if this is for the primary or secondary instrument, and if the student is a Leader
   list($instrument, $other) = explode('_', $form_key, 2);
   $instrument = ($instrument == 'secondary') ? 'second' : $instrument; // why didn't I name them the same???
-  $leader = (strpos($program, 'Leader') !== FALSE);
+  $leader = (strpos($program, 'Leader') !== FALSE) || ($program == 'Chamber Only');
 
   // initialize the lesson length for each week
   foreach ($week as $wknum => $attending) {
@@ -435,7 +440,7 @@ function _osa_camp_parse_submission($components, $submitted, &$values, &$total, 
 
   $total = 0.00;
   $ignore_types = array('pagebreak', 'markup', 'fieldset', 'textarea', 'grid', 'textfield',);
-  $ignore_elements = array('caregiver_present', 'primary_instrument_level', 'add_a_second_instrument', 'second_instrument_level', 'ukulele_level', 'recorder_level', 'theory_level', 'musical_theatre', 'image_release_consent', 'referral', 'lunch');
+  $ignore_elements = array('caregiver_present', 'primary_instrument_level', 'add_a_second_instrument', 'second_instrument_level', 'ukulele_level', 'recorder_level', 'theory_level', 'musical_theatre', 'image_release_consent', 'first', 'referral');
   $rows = array();
 
   // loop through each component we care about and get it's value and price

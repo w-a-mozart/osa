@@ -2,7 +2,7 @@
  +--------------------------------------------------------------------+
  | CiviCRM version 4.7                                                |
  +--------------------------------------------------------------------+
- | Copyright CiviCRM LLC (c) 2004-2016                                |
+ | Copyright CiviCRM LLC (c) 2004-2017                                |
  +--------------------------------------------------------------------+
  | This file is a part of CiviCRM.                                    |
  |                                                                    |
@@ -102,7 +102,7 @@
 {* End of Move Custom fields *}
 
   {if !empty($useForMember) && !$ccid}
-   <div class="crm-public-form-item crm-section">
+    <div class="crm-public-form-item crm-section">
       {include file="CRM/Contribute/Form/Contribution/MembershipBlock.tpl" context="makeContribution"}
     </div>
   {elseif !empty($ccid)}
@@ -366,16 +366,17 @@
   function toggleRecur( ) {
     var isRecur = cj('input[id="is_recur"]:checked');
     var allowAutoRenew = {/literal}'{$allowAutoRenewMembership}'{literal};
-    if ( allowAutoRenew && cj("#auto_renew") ) {
+    var quickConfig = {/literal}{$quickConfig}{literal};
+    if ( allowAutoRenew && cj("#auto_renew") && quickConfig) {
       showHideAutoRenew( null );
     }
     if (isRecur.val() > 0) {
       cj('#recurHelp').show();
-      cj('#amount_sum_label').text(ts('Regular amount'));
+      cj('#amount_sum_label').text('{/literal}{ts escape='js'}Regular amount{/ts}{literal}');
     }
     else {
       cj('#recurHelp').hide();
-      cj('#amount_sum_label').text(ts('Total amount'));
+      cj('#amount_sum_label').text('{/literal}{ts escape='js'}Total amount{/ts}{literal}');
     }
   }
 

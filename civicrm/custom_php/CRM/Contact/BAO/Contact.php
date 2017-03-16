@@ -3,7 +3,7 @@
  +--------------------------------------------------------------------+
  | CiviCRM version 4.7                                                |
  +--------------------------------------------------------------------+
- | Copyright CiviCRM LLC (c) 2004-2016                                |
+ | Copyright CiviCRM LLC (c) 2004-2017                                |
  +--------------------------------------------------------------------+
  | This file is a part of CiviCRM.                                    |
  |                                                                    |
@@ -28,7 +28,7 @@
 /**
  *
  * @package CRM
- * @copyright CiviCRM LLC (c) 2004-2016
+ * @copyright CiviCRM LLC (c) 2004-2017
  */
 class CRM_Contact_BAO_Contact extends CRM_Contact_DAO_Contact {
 
@@ -785,11 +785,12 @@ WHERE     civicrm_contact.id = " . CRM_Utils_Type::escape($id, 'Integer');
    *   Whether to actually restore, not delete.
    * @param bool $skipUndelete
    *   Whether to force contact delete or not.
+   * @param bool $checkPermissions
    *
    * @return bool
    *   Was contact deleted?
    */
-  public static function deleteContact($id, $restore = FALSE, $skipUndelete = FALSE) {
+  public static function deleteContact($id, $restore = FALSE, $skipUndelete = FALSE, $checkPermissions = TRUE) {
 
     if (!$id) {
       return FALSE;
@@ -801,8 +802,8 @@ WHERE     civicrm_contact.id = " . CRM_Utils_Type::escape($id, 'Integer');
 
     // make sure we have edit permission for this contact
     // before we delete
-    if (($skipUndelete && !CRM_Core_Permission::check('delete contacts')) ||
-      ($restore && !CRM_Core_Permission::check('access deleted contacts'))
+    if ($checkPermissions && (($skipUndelete && !CRM_Core_Permission::check('delete contacts')) ||
+      ($restore && !CRM_Core_Permission::check('access deleted contacts')))
     ) {
       return FALSE;
     }
@@ -2330,10 +2331,10 @@ ORDER BY civicrm_email.is_primary DESC";
    * @param string $ctype
    *   Contact type.
    *
-   * @return object
+   * @return object|null
    *   $dao contact details
    */
-  public static function &matchContactOnEmail($mail, $ctype = NULL) {
+  public static function matchContactOnEmail($mail, $ctype = NULL) {
     $strtolower = function_exists('mb_strtolower') ? 'mb_strtolower' : 'strtolower';
     $mail = $strtolower(trim($mail));
     $query = "
@@ -2370,7 +2371,7 @@ WHERE      civicrm_email.email = %1 AND civicrm_contact.is_deleted=0";
     if ($dao->fetch()) {
       return $dao;
     }
-    return CRM_Core_DAO::$_nullObject;
+    return NULL;
   }
 
   /**
@@ -2381,10 +2382,10 @@ WHERE      civicrm_email.email = %1 AND civicrm_contact.is_deleted=0";
    * @param string $ctype
    *   Contact type.
    *
-   * @return object
+   * @return object|null
    *   $dao contact details
    */
-  public static function &matchContactOnOpenId($openId, $ctype = NULL) {
+  public static function matchContactOnOpenId($openId, $ctype = NULL) {
     $strtolower = function_exists('mb_strtolower') ? 'mb_strtolower' : 'strtolower';
     $openId = $strtolower(trim($openId));
     $query = "
@@ -2409,7 +2410,7 @@ WHERE      civicrm_openid.openid = %1";
     if ($dao->fetch()) {
       return $dao;
     }
-    return CRM_Core_DAO::$_nullObject;
+    return NULL;
   }
 
   /**

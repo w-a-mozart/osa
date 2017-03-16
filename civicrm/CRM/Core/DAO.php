@@ -3,7 +3,7 @@
   +--------------------------------------------------------------------+
   | CiviCRM version 4.7                                                |
   +--------------------------------------------------------------------+
-  | Copyright CiviCRM LLC (c) 2004-2016                                |
+  | Copyright CiviCRM LLC (c) 2004-2017                                |
   +--------------------------------------------------------------------+
   | This file is a part of CiviCRM.                                    |
   |                                                                    |
@@ -29,7 +29,7 @@
  * Our base DAO class. All DAO classes should inherit from this class.
  *
  * @package CRM
- * @copyright CiviCRM LLC (c) 2004-2016
+ * @copyright CiviCRM LLC (c) 2004-2017
  */
 
 if (!defined('DB_DSN_MODE')) {
@@ -47,9 +47,14 @@ require_once 'CRM/Core/I18n.php';
 class CRM_Core_DAO extends DB_DataObject {
 
   /**
-   * A null object so we can pass it as reference if / when needed
+   * @var null
+   * @deprecated
    */
   static $_nullObject = NULL;
+  /**
+   * @var array
+   * @deprecated
+   */
   static $_nullArray = array();
 
   static $_dbColumnValueCache = NULL;
@@ -729,14 +734,18 @@ class CRM_Core_DAO extends DB_DataObject {
    * @param string $fieldName
    *   The name of the field in the DAO.
    *
+   * @param string $domainID
+   *   The id of the domain.  Object exists only for the given domain.
+   *
    * @return bool
    *   true if object exists
    */
-  public static function objectExists($value, $daoName, $daoID, $fieldName = 'name') {
+  public static function objectExists($value, $daoName, $daoID, $fieldName = 'name', $domainID = NULL) {
     $object = new $daoName();
     $object->$fieldName = $value;
-
-    $config = CRM_Core_Config::singleton();
+    if ($domainID) {
+      $object->domain_id = $domainID;
+    }
 
     if ($object->find(TRUE)) {
       return ($daoID && $object->id == $daoID) ? TRUE : FALSE;
@@ -1191,14 +1200,21 @@ FROM   civicrm_domain
   }
 
   /**
-   * execute an unbuffered query.  This is a wrapper around new functionality
-   * exposed with CRM-17748.
+   * Execute an unbuffered query.
+   *
+   * This is a wrapper around new functionality exposed with CRM-17748.
    *
    * @param string $query query to be executed
    *
-   * @return Object CRM_Core_DAO object that points to an unbuffered result set
-   * @static
-   * @access public
+   * @param array $params
+   * @param bool $abort
+   * @param null $daoName
+   * @param bool $freeDAO
+   * @param bool $i18nRewrite
+   * @param bool $trapException
+   *
+   * @return CRM_Core_DAO
+   *   Object that points to an unbuffered result set
    */
   static public function executeUnbufferedQuery(
     $query,
@@ -1528,7 +1544,7 @@ FROM   civicrm_domain
    * @param $toId
    * @param array $newData
    *
-   * @return null
+   * @return CRM_Core_DAO|null
    */
   public static function cascadeUpdate($daoName, $fromId, $toId, $newData = array()) {
     $object = new $daoName();
@@ -1562,7 +1578,7 @@ FROM   civicrm_domain
         return $newObject;
       }
     }
-    return CRM_Core_DAO::$_nullObject;
+    return NULL;
   }
 
   /**
@@ -2436,11 +2452,32 @@ SELECT contact_id
    * @return array
    */
   public function addSelectWhereClause() {
-    // This is the default fallback, and works for contact-related entities like Email, Relationship, etc.
     $clauses = array();
-    foreach ($this->fields() as $fieldName => $field) {
+    $fields = $this->fields();
+    foreach ($fields as $fieldName => $field) {
+      // Clause for contact-related entities like Email, Relationship, etc.
       if (strpos($fieldName, 'contact_id') === 0 && CRM_Utils_Array::value('FKClassName', $field) == 'CRM_Contact_DAO_Contact') {
         $clauses[$fieldName] = CRM_Utils_SQL::mergeSubquery('Contact');
+      }
+      // Clause for an entity_table/entity_id combo
+      if ($fieldName == 'entity_id' && isset($fields['entity_table'])) {
+        $relatedClauses = array();
+        $relatedEntities = $this->buildOptions('entity_table', 'get');
+        foreach ((array) $relatedEntities as $table => $ent) {
+          if (!empty($ent)) {
+            $ent = CRM_Core_DAO_AllCoreTables::getBriefName(CRM_Core_DAO_AllCoreTables::getClassForTable($table));
+            $subquery = CRM_Utils_SQL::mergeSubquery($ent);
+            if ($subquery) {
+              $relatedClauses[] = "(entity_table = '$table' AND entity_id " . implode(' AND entity_id ', $subquery) . ")";
+            }
+            else {
+              $relatedClauses[] = "(entity_table = '$table')";
+            }
+          }
+        }
+        if ($relatedClauses) {
+          $clauses['id'] = 'IN (SELECT id FROM `' . $this->tableName() . '` WHERE (' . implode(') OR (', $relatedClauses) . '))';
+        }
       }
     }
     CRM_Utils_Hook::selectWhereClause($this, $clauses);
@@ -2471,16 +2508,17 @@ SELECT contact_id
   }
 
   /**
-   * function to check valid db name containing only characters in [0-9,a-z,A-Z_]
+   * ensure database name is 'safe', i.e. only contains word characters (includes underscores)
+   * and dashes, and contains at least one [a-z] case insenstive.
    *
    * @param $database
    *
    * @return bool
    */
-  public static function requireValidDBName($database) {
+  public static function requireSafeDBName($database) {
     $matches = array();
     preg_match(
-      "/^[0-9]*[a-zA-Z_]+[a-zA-Z0-9_]*$/",
+      "/^[\w\-]*[a-z]+[\w\-]*$/i",
       $database,
       $matches
     );
