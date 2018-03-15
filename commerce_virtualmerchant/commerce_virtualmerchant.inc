@@ -5,8 +5,8 @@
  * Helper functions for the Converge Virtual Merchant Payment Form interface.
  */
 
-define('COMMERCE_VIRTUALMERCHANT_URL', 'https://www.myvirtualmerchant.com/VirtualMerchant/process.do');
-define('COMMERCE_VIRTUALMERCHANT_TEST_URL', 'https://demo.myvirtualmerchant.com/VirtualMerchantDemo/process.do');
+define('COMMERCE_VIRTUALMERCHANT_URL', 'https://api.convergepay.com/VirtualMerchant/process.do');
+define('COMMERCE_VIRTUALMERCHANT_TEST_URL', 'https://api.demo.convergepay.com/VirtualMerchantDemo/process.do');
 define('COMMERCE_VIRTUALMERCHANT_TIMEOUT', '5');
 
 /**

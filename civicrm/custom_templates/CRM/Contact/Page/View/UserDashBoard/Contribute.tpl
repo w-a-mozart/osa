@@ -43,7 +43,7 @@
   {/strip}
     </div>
 {else}
-    <div class="messages status">
+    <div class="status">
       <div class="icon inform-icon"></div>{ts}There are no recent payments on record for you.{/ts}
     </div>
 {/if}

@@ -39,7 +39,7 @@
 {/if}
 
 {if NOT ($members)}
-    <div class="messages status">
+    <div class="status">
       <div class="icon inform-icon"></div> {ts}There are no memberships on record for this profile.{/ts}
     </div>
 {/if}

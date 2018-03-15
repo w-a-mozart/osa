@@ -39,13 +39,13 @@
   {* Show link to Tell a Friend (CRM-2153) *}
   {if $friendText}
     <div id="tell-a-friend" class="crm-section friend_link-section">
-      <a href="{$friendURL}" title="{$friendText}" class="button"><span>&raquo; {$friendText}</span></a>
+      <a href="{$friendURL}" title="{$friendText|escape:'html'}" class="button"><span>&raquo; {$friendText}</span></a>
     </div>{if !$linkText}<br /><br />{/if}
   {/if}
   {* Add button for donor to create their own Personal Campaign page *}
   {if $linkText}
     <div class="crm-section create_pcp_link-section">
-      <a href="{$linkTextUrl}" title="{$linkText}" class="button"><span>&raquo; {$linkText}</span></a>
+      <a href="{$linkTextUrl}" title="{$linkText|escape:'html'}" class="button"><span>&raquo; {$linkText}</span></a>
     </div><br /><br />
   {/if}
 
@@ -64,22 +64,22 @@
         </div>
       {/if}
     </div>
-    {elseif $contributeMode EQ 'notify' OR ($contributeMode EQ 'direct' && $is_recur) }
+    {elseif $isPendingOutcome}
       {* Remove message *}
       {if $is_email_receipt}
     <div class="help">
-        <div>
-          {if $onBehalfEmail AND ($onBehalfEmail neq $email)}
-            {ts 1=$email 2=$onBehalfEmail}An email receipt will be sent to %1 and to %2 once the transaction is processed successfully.{/ts}
-          {else}
-            {ts 1=$email}An email receipt will be sent to %1 once the transaction is processed successfully.{/ts}
-          {/if}
-        </div>
+      <div>
+        {if $onBehalfEmail AND ($onBehalfEmail neq $email)}
+          {ts 1=$email 2=$onBehalfEmail}An email receipt will be sent to %1 and to %2 once the transaction is processed successfully.{/ts}
+        {else}
+          {ts 1=$email}An email receipt will be sent to %1 once the transaction is processed successfully.{/ts}
+        {/if}
+      </div>
     </div>
-      {/if}
-    {else}
+    {/if}
+  {else}
     <div class="help">
-      <div>{ts}Your transaction has been processed successfully. Please print this page for your records.{/ts}</div>
+    <div>{ts}Your transaction has been processed successfully. Please print this page for your records.{/ts}</div>
       {if $is_email_receipt}
         <div>
           {if $onBehalfEmail AND ($onBehalfEmail neq $email)}
@@ -89,7 +89,7 @@
           {/if}
         </div>
       {/if}
-    </div>
+  </div>
     {/if}
   <div class="spacer"></div>
 
@@ -102,7 +102,7 @@
         <div class="header-dark">
           {if !$membershipBlock AND $amount OR ( $priceSetID and $lineItem )}{ts}Contribution Information{/ts}{else}{ts}Membership Fee{/ts}{/if}
         </div>
-        {/if}
+      {/if}
       {/if}
       <div class="display-block">
         {if !$useForMember}
@@ -110,7 +110,7 @@
             {if !$amount}{assign var="amount" value=0}{/if}
             {assign var="totalAmount" value=$amount}
             {if $amount > 0}
-              {include file="CRM/Price/Page/LineItem.tpl" context="Contribution"}
+            {include file="CRM/Price/Page/LineItem.tpl" context="Contribution"}
             {/if}
           {elseif $membership_amount}
             {$membership_name} {ts}Membership{/ts}: <strong>{$membership_amount|crmMoney}</strong><br />
@@ -127,13 +127,13 @@
             {if $totalTaxAmount}
               {ts}Tax Amount{/ts}: <strong>{$totalTaxAmount|crmMoney}</strong><br />
             {/if}
-            {if $installments}{ts}Installment Amount{/ts}{else}{ts}Amount{/ts}{/if} : <strong>{$amount|crmMoney} {if $amount_level } - {$amount_level} {/if}</strong>
+            {if $installments}{ts}Installment Amount{/ts}{else}{ts}Amount{/ts}{/if}: <strong>{$amount|crmMoney}{if $amount_level } &ndash; {$amount_level}{/if}</strong>
           {/if}
         {/if}
         {if $receive_date}
           {if $amount > 0}
-            {ts}Date{/ts}: <strong>{$receive_date|crmDate}</strong><br />
-          {/if}
+          {ts}Date{/ts}: <strong>{$receive_date|crmDate}</strong><br />
+        {/if}
         {/if}
         {if $contributeMode ne 'notify' and $is_monetary and ! $is_pay_later and $trxn_id}
           {ts}Transaction #{/ts}: {$trxn_id}<br />
@@ -269,7 +269,7 @@
   </div>
 
   <div class="spacer"></div>
-        
+
   <div id="thankyou_footer" class="contribution_thankyou_footer-section">
     <p>
       {$thankyou_footer}

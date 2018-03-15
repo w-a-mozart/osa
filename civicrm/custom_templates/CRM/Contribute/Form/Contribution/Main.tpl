@@ -115,7 +115,7 @@
     {else}
       <div class="display-block">
         <td class="label">{$form.total_amount.label}</td>
-        <td><span>{$form.total_amount.html|crmMoney}</span></td>
+        <td><span>{$form.total_amount.html|crmMoney}&nbsp;&nbsp;{if $taxAmount}(includes {$taxTerm} of {$taxAmount|crmMoney}){/if}</span></td>
       </div>
     {/if}
   {else}
@@ -185,13 +185,7 @@
           </span>
         {/if}
         <div id="recurHelp" class="description">
-          {ts}Your recurring contribution will be processed automatically.{/ts}
-          {if $is_recur_installments}
-            {ts}You can specify the number of installments, or you can leave the number of installments blank if you want to make an open-ended commitment. In either case, you can choose to cancel at any time.{/ts}
-          {/if}
-          {if $is_email_receipt}
-            {ts}You will receive an email receipt for each recurring contribution.{/ts}
-          {/if}
+          {$recurringHelpText}
         </div>
       </div>
       <div class="clear"></div>
@@ -204,10 +198,18 @@
       <div class="clear"></div>
     </div>
     {/if}
+    {if $showMainEmail}
+      {assign var=n value=email-$bltID}
+      <div class="crm-public-form-item crm-section {$form.$n.name}-section">
+        <div class="label">{$form.$n.label}</div>
+        <div class="content">
+          {$form.$n.html}
+        </div>
+        <div class="clear"></div>
+      </div>
+    {/if}
 
-{* Remove billing email field *}
-
-    <div class="crm-public-form-item crm-section">
+    <div id='onBehalfOfOrg' class="crm-public-form-item crm-section">
       {include file="CRM/Contribute/Form/Contribution/OnBehalfOf.tpl"}
     </div>
 
@@ -376,7 +378,7 @@
     }
     else {
       cj('#recurHelp').hide();
-      cj('#amount_sum_label').text('{/literal}{ts escape='js'}Total amount{/ts}{literal}');
+      cj('#amount_sum_label').text('{/literal}{ts escape='js'}Total Amount{/ts}{literal}');
     }
   }
 

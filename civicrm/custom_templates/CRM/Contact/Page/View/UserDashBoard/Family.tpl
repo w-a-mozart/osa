@@ -45,7 +45,7 @@
     {/strip}
         </div><br/>
 {else}
-        <div class="messages status">
+        <div class="status">
             <div class="icon inform-icon"></div> {ts}There are no Parents/Guardians related to this profile.{/ts}
         </div>
 {/if}
@@ -83,7 +83,7 @@
     {/strip}
         </div>
 {else}
-        <div class="messages status">
+        <div class="status">
             <div class="icon inform-icon"></div> {ts}There are no Students related to this profile.{/ts}
         </div>
 {/if}

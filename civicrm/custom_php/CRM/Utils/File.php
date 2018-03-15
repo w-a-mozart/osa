@@ -140,7 +140,7 @@ class CRM_Utils_File {
    */
   public static function cleanDir($target, $rmdir = TRUE, $verbose = TRUE) {
     static $exceptions = array('.', '..');
-    if ($target == '' || $target == '/') {
+    if ($target == '' || $target == '/' || !$target) {
       throw new Exception("Overly broad deletion");
     }
 
@@ -293,16 +293,19 @@ class CRM_Utils_File {
    *   The directory where the file should be saved.
    * @param string $contents
    *   Optional: the contents of the file.
+   * @param string $fileName
    *
    * @return string
    *   The filename saved, or FALSE on failure.
    */
-  public static function createFakeFile($dir, $contents = 'delete me') {
+  public static function createFakeFile($dir, $contents = 'delete me', $fileName = NULL) {
     $dir = self::addTrailingSlash($dir);
-    $file = 'delete-this-' . CRM_Utils_String::createRandom(10, CRM_Utils_String::ALPHANUMERIC);
-    $success = file_put_contents($dir . $file, $contents);
+    if (!$fileName) {
+      $fileName = 'delete-this-' . CRM_Utils_String::createRandom(10, CRM_Utils_String::ALPHANUMERIC);
+    }
+    $success = @file_put_contents($dir . $fileName, $contents);
 
-    return ($success === FALSE) ? FALSE : $file;
+    return ($success === FALSE) ? FALSE : $fileName;
   }
 
   /**
@@ -310,11 +313,29 @@ class CRM_Utils_File {
    *   Use NULL to load the default/active connection from CRM_Core_DAO.
    *   Otherwise, give a full DSN string.
    * @param string $fileName
-   * @param null $prefix
-   * @param bool $isQueryString
+   * @param string $prefix
    * @param bool $dieOnErrors
    */
-  public static function sourceSQLFile($dsn, $fileName, $prefix = NULL, $isQueryString = FALSE, $dieOnErrors = TRUE) {
+  public static function sourceSQLFile($dsn, $fileName, $prefix = NULL, $dieOnErrors = TRUE) {
+    if (FALSE === file_get_contents($fileName)) {
+      // Our file cannot be found.
+      // Using 'die' here breaks this on extension upgrade.
+      throw new CRM_Exception('Could not find the SQL file.');
+    }
+
+    self::runSqlQuery($dsn, file_get_contents($fileName), $prefix, $dieOnErrors);
+  }
+
+  /**
+   *
+   * @param string|NULL $dsn
+   * @param string $queryString
+   * @param string $prefix
+   * @param bool $dieOnErrors
+   */
+  public static function runSqlQuery($dsn, $queryString, $prefix = NULL, $dieOnErrors = TRUE) {
+    $string = $prefix . $queryString;
+
     if ($dsn === NULL) {
       $db = CRM_Core_DAO::getConnection();
     }
@@ -332,14 +353,6 @@ class CRM_Utils_File {
     $db->query('SET NAMES utf8');
     $transactionId = CRM_Utils_Type::escape(CRM_Utils_Request::id(), 'String');
     $db->query('SET @uniqueID = ' . "'$transactionId'");
-
-    if (!$isQueryString) {
-      $string = $prefix . file_get_contents($fileName);
-    }
-    else {
-      // use filename as query string
-      $string = $prefix . $fileName;
-    }
 
     // get rid of comments starting with # and --
 
@@ -362,6 +375,7 @@ class CRM_Utils_File {
       }
     }
   }
+
   /**
    *
    * Strips comment from a possibly multiline SQL string
@@ -459,6 +473,21 @@ class CRM_Utils_File {
     else {
       return CRM_Utils_String::munge("{$basename}_{$uniqID}", '_', 240) . "." . CRM_Utils_Array::value('extension', $info);
     }
+  }
+
+  /**
+   * Copies a file
+   *
+   * @param $filePath
+   * @return mixed
+   */
+  public static function duplicate($filePath) {
+    $oldName = pathinfo($filePath, PATHINFO_FILENAME);
+    $uniqID = md5(uniqid(rand(), TRUE));
+    $newName = preg_replace('/(_[\w]{32})$/', '', $oldName) . '_' . $uniqID;
+    $newPath = str_replace($oldName, $newName, $filePath);
+    copy($filePath, $newPath);
+    return $newPath;
   }
 
   /**
@@ -861,7 +890,7 @@ HTACCESS;
         break;
 
       default:
-        $url = sprintf('<a href="%s">%s</a>', $url, basename($path));
+        $url = sprintf('<a href="%s">%s</a>', $url, self::cleanFileName(basename($path)));
         break;
     }
 
@@ -887,6 +916,98 @@ HTACCESS;
     return self::getFileURL($path, $mimeType);
   }
 
+  /**
+   * Resize an image.
+   *
+   * @param string $sourceFile
+   *   Filesystem path to existing image on server
+   * @param int $targetWidth
+   *   New width desired, in pixels
+   * @param int $targetHeight
+   *   New height desired, in pixels
+   * @param string $suffix = ""
+   *   If supplied, the image will be renamed to include this suffix. For
+   *   example if the original file name is "foo.png" and $suffix = "_bar",
+   *   then the final file name will be "foo_bar.png".
+   * @param bool $preserveAspect = TRUE
+   *   When TRUE $width and $height will be used as a bounding box, outside of
+   *   which the resized image will not extend.
+   *   When FALSE, the image will be resized exactly to $width and $height, even
+   *   if it means stretching it.
+   *
+   * @return string
+   *   Path to image
+   * @throws \CRM_Core_Exception
+   *   Under the following conditions
+   *   - When GD is not available.
+   *   - When the source file is not an image.
+   */
+  public static function resizeImage($sourceFile, $targetWidth, $targetHeight, $suffix = "", $preserveAspect = TRUE) {
+
+    // Check if GD is installed
+    $gdSupport = CRM_Utils_System::getModuleSetting('gd', 'GD Support');
+    if (!$gdSupport) {
+      throw new CRM_Core_Exception(ts('Unable to resize image because the GD image library is not currently compiled in your PHP installation.'));
+    }
+
+    $sourceMime = mime_content_type($sourceFile);
+    if ($sourceMime == 'image/gif') {
+      $sourceData = imagecreatefromgif($sourceFile);
+    }
+    elseif ($sourceMime == 'image/png') {
+      $sourceData = imagecreatefrompng($sourceFile);
+    }
+    elseif ($sourceMime == 'image/jpeg') {
+      $sourceData = imagecreatefromjpeg($sourceFile);
+    }
+    else {
+      throw new CRM_Core_Exception(ts('Unable to resize image because the file supplied was not an image.'));
+    }
+
+    // get image about original image
+    $sourceInfo = getimagesize($sourceFile);
+    $sourceWidth = $sourceInfo[0];
+    $sourceHeight = $sourceInfo[1];
+
+    // Adjust target width/height if preserving aspect ratio
+    if ($preserveAspect) {
+      $sourceAspect = $sourceWidth / $sourceHeight;
+      $targetAspect = $targetWidth / $targetHeight;
+      if ($sourceAspect > $targetAspect) {
+        $targetHeight = $targetWidth / $sourceAspect;
+      }
+      if ($sourceAspect < $targetAspect) {
+        $targetWidth = $targetHeight * $sourceAspect;
+      }
+    }
+
+    // figure out the new filename
+    $pathParts = pathinfo($sourceFile);
+    $targetFile = $pathParts['dirname'] . DIRECTORY_SEPARATOR
+      . $pathParts['filename'] . $suffix . "." . $pathParts['extension'];
+
+    $targetData = imagecreatetruecolor($targetWidth, $targetHeight);
+
+    // resize
+    imagecopyresized($targetData, $sourceData,
+      0, 0, 0, 0,
+      $targetWidth, $targetHeight, $sourceWidth, $sourceHeight);
+
+    // save the resized image
+    $fp = fopen($targetFile, 'w+');
+    ob_start();
+    imagejpeg($targetData);
+    $image_buffer = ob_get_contents();
+    ob_end_clean();
+    imagedestroy($targetData);
+    fwrite($fp, $image_buffer);
+    rewind($fp);
+    fclose($fp);
+
+    // return the URL to link to
+    $config = CRM_Core_Config::singleton();
+    return $config->imageUploadURL . basename($targetFile);
+  }
 
   /**
    * Get file icon class for specific MIME Type

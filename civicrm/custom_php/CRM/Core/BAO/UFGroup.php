@@ -519,9 +519,6 @@ class CRM_Core_BAO_UFGroup extends CRM_Core_DAO_UFGroup {
     );
 
     $formattedField = CRM_Utils_Date::addDateMetadataToField($fieldMetaData, $formattedField);
-    if (in_array($name, array_keys(self::getNonUpgradedDateFields()))) {
-      $formattedField['is_legacy_date'] = 1;
-    }
 
     //adding custom field property
     if (substr($field->field_name, 0, 6) == 'custom' ||
@@ -538,11 +535,8 @@ class CRM_Core_BAO_UFGroup extends CRM_Core_DAO_UFGroup {
         if (CRM_Utils_Array::value('html_type', $formattedField) == 'Select Date') {
           $formattedField['date_format'] = $customFields[$field->field_name]['date_format'];
           $formattedField['time_format'] = $customFields[$field->field_name]['time_format'];
-          $formattedField['php_datetime_format'] = CRM_Utils_Date::getPhpDateFormatFromInputStyleDateFormat($customFields[$field->field_name]['date_format']);
-          if ($formattedField['time_format']) {
-            $formattedField['php_datetime_format'] .= ' H-i-s';
-          }
           $formattedField['is_datetime_field'] = TRUE;
+          $formattedField['smarty_view_format'] = CRM_Utils_Date::getDateFieldViewFormat($formattedField['date_format']);
         }
 
         $formattedField['is_multi_summary'] = $field->is_multi_summary;
@@ -715,6 +709,7 @@ class CRM_Core_BAO_UFGroup extends CRM_Core_DAO_UFGroup {
       'street_address',
       'supplemental_address_1',
       'supplemental_address_2',
+      'supplemental_address_3',
       'city',
       'postal_code',
       'postal_code_suffix',
@@ -958,30 +953,6 @@ class CRM_Core_BAO_UFGroup extends CRM_Core_DAO_UFGroup {
   }
 
   /**
-   * Searches for a contact in the db with similar attributes.
-   *
-   * @param array $params
-   *   The list of values to be used in the where clause.
-   * @param int $id
-   *   The current contact id (hence excluded from matching).
-   * @param string $contactType
-   *
-   * @return int|null
-   *   contact_id if found, null otherwise
-   */
-  public static function findContact(&$params, $id = NULL, $contactType = 'Individual') {
-    $dedupeParams = CRM_Dedupe_Finder::formatParams($params, $contactType);
-    $dedupeParams['check_permission'] = CRM_Utils_Array::value('check_permission', $params, TRUE);
-    $ids = CRM_Dedupe_Finder::dupesByParams($dedupeParams, $contactType, 'Supervised', array($id));
-    if (!empty($ids)) {
-      return implode(',', $ids);
-    }
-    else {
-      return NULL;
-    }
-  }
-
-  /**
    * Given a contact id and a field set, return the values from the db.
    *
    * @param int $cid
@@ -1222,9 +1193,6 @@ class CRM_Core_BAO_UFGroup extends CRM_Core_DAO_UFGroup {
             elseif (in_array($name, array(
               'birth_date',
               'deceased_date',
-              'membership_start_date',
-              'membership_end_date',
-              'join_date',
             ))) {
               // @todo this set should be determined from metadata, not hard-coded.
               $values[$index] = CRM_Utils_Date::customFormat($details->$name);
@@ -1899,7 +1867,6 @@ AND    ( entity_id IS NULL OR entity_id <= 0 )
     $addressOptions = CRM_Core_BAO_Setting::valueOptions(CRM_Core_BAO_Setting::SYSTEM_PREFERENCES_NAME,
       'address_options', TRUE, NULL, TRUE
     );
-    $legacyHandledDateFields = self::getNonUpgradedDateFields();
 
     if (substr($fieldName, 0, 14) === 'state_province') {
       $form->addChainSelect($name, array('label' => $title, 'required' => $required));
@@ -1961,9 +1928,6 @@ AND    ( entity_id IS NULL OR entity_id <= 0 )
           $form->freeze($name . '-provider_id');
         }
       }
-    }
-    elseif (isset($legacyHandledDateFields[$fieldName])) {
-      $form->addDate($name, $title, $required, array('formatType' => $legacyHandledDateFields[$fieldName]));
     }
     elseif (CRM_Utils_Array::value('name', $field) == 'membership_type') {
       list($orgInfo, $types) = CRM_Member_BAO_MembershipType::getMembershipTypeInfo();
@@ -2201,7 +2165,7 @@ AND    ( entity_id IS NULL OR entity_id <= 0 )
       CRM_Contribute_Form_SoftCredit::addPCPFields($form, "[$rowNumber]");
     }
     elseif ($fieldName == 'currency') {
-      $form->addCurrency($name, $title, $required);
+      $form->addCurrency($name, $title, $required, NULL, FALSE, FALSE);
     }
     elseif ($fieldName == 'contribution_page_id') {
       $form->add('select', $name, $title,
@@ -2279,6 +2243,11 @@ AND    ( entity_id IS NULL OR entity_id <= 0 )
       if (substr($fieldName, 0, 3) === 'is_' or substr($fieldName, 0, 7) === 'do_not_') {
         $form->add('advcheckbox', $name, $title, $attributes, $required);
       }
+      elseif (CRM_Utils_Array::value('html_type', $field) === 'Select Date') {
+        $extra = isset($field['datepicker']) ? $field['datepicker']['extra'] : CRM_Utils_Date::getDatePickerExtra($field);
+        $attributes = isset($field['datepicker']) ? $field['datepicker']['attributes'] : CRM_Utils_Date::getDatePickerAttributes($field);
+        $form->add('datepicker', $name, $title, $attributes, $required, $extra);
+      }
       else {
         $form->add('text', $name, $title, $attributes, $required);
       }
@@ -2319,30 +2288,6 @@ AND    ( entity_id IS NULL OR entity_id <= 0 )
         $form->addRule($name, ts('Please enter a valid %1', array(1 => $title)), $rule);
       }
     }
-  }
-
-  /**
-   * Get fields that have not been upgraded to use datepicker.
-   *
-   * Fields that use the old code have jcalendar in the tpl and
-   * the form uses a customised format. We are moving towards datepicker
-   * which among other things passes dates back and forth using a standardised
-   * format. Remove fields from here as they are tested and converted.
-   */
-  static public function getNonUpgradedDateFields() {
-    return array(
-      'birth_date' => 'birth',
-      'deceased_date' => 'birth',
-      'membership_start_date' => 'activityDate',
-      'membership_end_date' => 'activityDate',
-      'join_date' => 'activityDate',
-      'receive_date' => 'activityDateTime',
-      'receipt_date' => 'activityDateTime',
-      'thankyou_date' => 'activityDateTime',
-      'cancel_date' => 'activityDateTime',
-      'participant_register_date' => 'activityDateTime',
-      'activity_date_time' => 'activityDateTime',
-    );
   }
 
   /**
@@ -2395,10 +2340,7 @@ AND    ( entity_id IS NULL OR entity_id <= 0 )
         if (!empty($details[$name]) || isset($details[$name])) {
           //to handle custom data (checkbox) to be written
           // to handle birth/deceased date, greeting_type and few other fields
-          if (($name == 'birth_date') || ($name == 'deceased_date')) {
-            list($defaults[$fldName]) = CRM_Utils_Date::setDateDefaults($details[$name], 'birth');
-          }
-          elseif (in_array($name, CRM_Contact_BAO_Contact::$_greetingTypes)) {
+          if (in_array($name, CRM_Contact_BAO_Contact::$_greetingTypes)) {
             $defaults[$fldName] = $details[$name . '_id'];
             $defaults[$name . '_custom'] = $details[$name . '_custom'];
           }
@@ -2450,28 +2392,6 @@ AND    ( entity_id IS NULL OR entity_id <= 0 )
                     // CRM-2969
                     $defaults["{$fldName}[{$item}]"] = 1;
                   }
-                }
-                break;
-
-              case 'Select Date':
-                // CRM-6681, set defult values according to date and time format (if any).
-                $dateFormat = NULL;
-                if (!empty($customFields[$customFieldId]['date_format'])) {
-                  $dateFormat = $customFields[$customFieldId]['date_format'];
-                }
-
-                if (empty($customFields[$customFieldId]['time_format'])) {
-                  list($defaults[$fldName]) = CRM_Utils_Date::setDateDefaults($details[$name], NULL,
-                    $dateFormat
-                  );
-                }
-                else {
-                  $timeElement = $fldName . '_time';
-                  if (substr($fldName, -1) == ']') {
-                    $timeElement = substr($fldName, 0, -1) . '_time]';
-                  }
-                  list($defaults[$fldName], $defaults[$timeElement]) = CRM_Utils_Date::setDateDefaults($details[$name],
-                    NULL, $dateFormat, $customFields[$customFieldId]['time_format']);
                 }
                 break;
 
@@ -3288,27 +3208,10 @@ AND    ( entity_id IS NULL OR entity_id <= 0 )
     }
 
     $formattedGroupTree = array();
-    // @todo - as we put these on datepicker they need to be removed from here.
-    $dateTimeFields = array(
-      'participant_register_date',
-      'activity_date_time',
-      'receive_date',
-      'receipt_date',
-      'cancel_date',
-      'thankyou_date',
-      'membership_start_date',
-      'membership_end_date',
-      'join_date',
-    );
+
     foreach ($fields as $name => $field) {
       $fldName = $isStandalone ? $name : "field[$componentId][$name]";
-      if (in_array($name, $dateTimeFields)) {
-        $timefldName = $isStandalone ? "{$name}_time" : "field[$componentId][{$name}_time]";
-        if (!empty($values[$name])) {
-          list($defaults[$fldName], $defaults[$timefldName]) = CRM_Utils_Date::setDateDefaults($values[$name]);
-        }
-      }
-      elseif (array_key_exists($name, $values)) {
+      if (array_key_exists($name, $values)) {
         $defaults[$fldName] = $values[$name];
       }
       elseif ($name == 'participant_note') {
@@ -3332,12 +3235,12 @@ AND    ( entity_id IS NULL OR entity_id <= 0 )
       elseif ($name == 'membership_status') {
         $defaults[$fldName] = $values['status_id'];
       }
-      elseif ($customFieldInfo = CRM_Core_BAO_CustomField::getKeyID($name, TRUE)) {
+      elseif (CRM_Core_BAO_CustomField::getKeyID($name, TRUE) !== array(NULL, NULL)) {
         if (empty($formattedGroupTree)) {
           //get the groupTree as per subTypes.
           $groupTree = array();
           foreach ($componentSubType as $subType) {
-            $subTree = CRM_Core_BAO_CustomGroup::getTree($componentBAOName, CRM_Core_DAO::$_nullObject,
+            $subTree = CRM_Core_BAO_CustomGroup::getTree($componentBAOName, NULL,
               $componentId, 0, $values[$subType]
             );
             $groupTree = CRM_Utils_Array::crmArrayMerge($groupTree, $subTree);
@@ -3383,6 +3286,9 @@ AND    ( entity_id IS NULL OR entity_id <= 0 )
             }
           }
         }
+      }
+      elseif (isset($values[$fldName])) {
+        $defaults[$fldName] = $values[$fldName];
       }
     }
   }

@@ -14,10 +14,12 @@ drupal to QuickBooks integration
 - a drupal module that uses the Drupal 7 Queue, the PHP DevKit from ConsoliBYTE and the Intuit QuickBooks Web Connector utility. This allows us to post a combination of Drupal Commerce orders and CiviCRM contribution records into a desktop version of QuickBooks.
 
 paid civicrm relationships
-- extend civicrm to enable end users to create and pay for a time limited relationship with another contact. Our use-case is to allow students to register and pay for private lesson fees with a specific teacher.
+x extend civicrm to enable end users to create and pay for a time limited relationship with another contact. Our use-case is to allow students to register and pay for private lesson fees with a specific teacher.
+- removed : students pay teacher directly of private lessons
 
 drupal commerce payment processor for Elavon
-- Elavon (https://www.myvirtualmerchant.com/) payment processor for drupal commerce using some of the code from the CiviCRM Elavon payment processor.
+x Elavon (https://www.myvirtualmerchant.com/) payment processor for drupal commerce using some of the code from the CiviCRM Elavon payment processor.
+- redone, so that it uses the Converge (formally Elavon) Payment Form at https://classic.convergepay.com/virtualmerchant/ within an html frame to reduce PCI compliance requirements
 
 Search by Page for CiviCRM Events
 - standard Drupal search doesn't search the CiviCRM Events descriptions. This module enables the full text indexing of CiviCRM Events by the drupal Search by Page module.

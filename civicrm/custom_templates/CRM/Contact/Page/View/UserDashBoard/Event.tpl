@@ -52,7 +52,7 @@
 {/if}
 
 {if NOT ($event_rows)}
-    <div class="messages status">
+    <div class="status">
       <div class="icon inform-icon"></div>&nbsp;{ts}There are no current or upcoming events on record.{/ts}            
     </div>
 {/if}

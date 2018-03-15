@@ -70,7 +70,6 @@
     {/if}
 
     {if $amount GTE 0 OR $minimum_fee GTE 0 OR ( $priceSetID and $lineItem ) }
-
     <div class="crm-group amount_display-group">
        {if !$useForMember}
         <div class="header-dark">
@@ -90,16 +89,16 @@
                     <strong> -------------------------------------------</strong><br />
                     {ts}Total{/ts}: <strong>{$amount+$minimum_fee|crmMoney}</strong><br />
                 {elseif $amount }
-                    {ts}Amount{/ts}: <strong>{$amount|crmMoney} {if $amount_level } - {$amount_level} {/if}</strong>
+                    {ts}Amount{/ts}: <strong>{$amount|crmMoney} {if $amount_level } &ndash; {$amount_level} {/if}</strong>
                 {else}
                     {$membership_name} {ts}Membership{/ts}: <strong>{$minimum_fee|crmMoney}</strong>
                 {/if}
               {else}
                 {if $totalTaxAmount }
-                     {ts}Total Tax Amount{/ts}: <strong>{$totalTaxAmount|crmMoney} </strong><br />
+                  {ts 1=$taxTerm}Total %1 Amount{/ts}: <strong>{$totalTaxAmount|crmMoney} </strong><br />
                 {/if}
 		{if $amount}
-                    {if $installments}{ts}Installment Amount{/ts}{else}{ts}Total Amount{/ts}{/if} : <strong>{$amount|crmMoney} {if $amount_level } - {$amount_level} {/if}</strong>
+                    {if $installments}{ts}Installment Amount{/ts}{else}{ts}Total Amount{/ts}{/if}: <strong>{$amount|crmMoney}{if $amount_level } &ndash; {$amount_level}{/if}</strong>
                 {else}
                     {$membership_name} {ts}Membership{/ts}: <strong>{$minimum_fee|crmMoney}</strong>
                 {/if}
@@ -110,7 +109,13 @@
                 {if !empty($auto_renew)} {* Auto-renew membership confirmation *}
 {crmRegion name="contribution-confirm-recur-membership"}
                     <br />
-                    <strong>{ts 1=$frequency_interval 2=$frequency_unit}I want this membership to be renewed automatically every %1 %2(s).{/ts}</strong></p>
+                    <strong>
+                        {if $autoRenewOption == 1}
+                          {ts 1=$frequency_interval 2=$frequency_unit}I want this membership to be renewed automatically every %1 %2(s).{/ts}
+                        {elseif $autoRenewOption == 2}
+                          {ts 1=$frequency_interval 2=$frequency_unit}This membership will be renewed automatically every %1 %2(s).{/ts}
+                        {/if}
+                    </strong></p>
                     <div class="description crm-auto-renew-cancel-info">({ts}Your initial membership fee will be processed once you complete the confirmation step. You will be able to cancel the auto-renewal option by visiting the web page link that will be included in your receipt.{/ts})</div>
 {/crmRegion}
                 {else}
@@ -207,14 +212,12 @@
 {crmRegion name="contribution-confirm-billing-block"}
        {if ($credit_card_number or $bank_account_number)}
         <div class="crm-group credit_card-group">
-            <div class="header-dark">
-            {if $paymentProcessor.payment_type & 2}
-                 {ts}Direct Debit Information{/ts}
-            {else}
-                {ts}Credit Card Information{/ts}
+            {if $paymentFieldsetLabel}
+              <div class="header-dark">
+                {$paymentFieldsetLabel}
+              </div>
             {/if}
-            </div>
-            {if $paymentProcessor.payment_type & 2}
+            {if $paymentProcessor.payment_type == 2}
                 <div class="display-block">
                     {ts}Account Holder{/ts}: {$account_holder}<br />
                     {ts}Bank Account Number{/ts}: {$bank_account_number}<br />
@@ -235,7 +238,7 @@
                 <div class="crm-section no-label credit_card_details-section">
                   <div class="content">{$credit_card_type}</div>
                   <div class="content">{$credit_card_number}</div>
-                  <div class="content">{ts}Expires{/ts}: {$credit_card_exp_date|truncate:7:''|crmDate}</div>
+                  <div class="content">{if $credit_card_exp_date}{ts}Expires{/ts}: {$credit_card_exp_date|truncate:7:''|crmDate}{/if}</div>
                   <div class="clear"></div>
                 </div>
             {/if}

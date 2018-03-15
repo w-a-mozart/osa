@@ -26,7 +26,7 @@
 {foreach from=$profileElements item=element}
 <fieldset><legend>{$element.title}</legend>
 {if $element.edit_gid}
-<div class='osa-profile-edit'><a title='{$element.edit_title}' class='edit button box-load'  href='{crmURL p='civicrm/profile/edit' q="reset=1&snippet=1&context=boxload&gid=`$element.edit_gid`&id=`$element.edit_cid`"}&width=50%'><span><div class='icon edit-icon'></div> Edit </span></a></div>
+<div class='osa-profile-edit' style="float: right;"><a title='{$element.edit_title}' class='edit button box-load'  href='{crmURL p='civicrm/profile/edit' q="reset=1&snippet=1&context=boxload&gid=`$element.edit_gid`&id=`$element.edit_cid`"}&width=50%'><span><div class='icon edit-icon'></div> Edit </span></a></div>
 {/if}
 {$element.html}
 </fieldset>

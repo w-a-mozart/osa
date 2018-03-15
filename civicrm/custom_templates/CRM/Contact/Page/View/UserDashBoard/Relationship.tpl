@@ -41,7 +41,7 @@
     {/strip}
         </div>
 {else}
-        <div class="messages status">
+        <div class="status">
             <div class="icon inform-icon"></div> {ts}There are no other people related to this profile.{/ts}
         </div>
 {/if}

@@ -49,7 +49,7 @@
 {/if}
 
 {if NOT ($teachers)}
-    <div class="messages status">
+    <div class="status">
       <div class="icon inform-icon"></div> {ts}There are no teacher registrations on record for this profile.{/ts}
     </div>
 {/if}

@@ -118,8 +118,15 @@ class CRM_Core_DAO extends DB_DataObject {
     }
     $factory = new CRM_Contact_DAO_Factory();
     CRM_Core_DAO::setFactory($factory);
+    $currentModes = CRM_Utils_SQL::getSqlModes();
     if (CRM_Utils_Constant::value('CIVICRM_MYSQL_STRICT', CRM_Utils_System::isDevelopment())) {
-      CRM_Core_DAO::executeQuery('SET SESSION sql_mode = STRICT_TRANS_TABLES');
+      if (CRM_Utils_SQL::supportsFullGroupBy() && !in_array('ONLY_FULL_GROUP_BY', $currentModes) && CRM_Utils_SQL::isGroupByModeInDefault()) {
+        $currentModes[] = 'ONLY_FULL_GROUP_BY';
+      }
+      if (!in_array('STRICT_TRANS_TABLES', $currentModes)) {
+        $currentModes = array_merge(array('STRICT_TRANS_TABLES'), $currentModes);
+      }
+      CRM_Core_DAO::executeQuery("SET SESSION sql_mode = %1", array(1 => array(implode(',', $currentModes), 'String')));
     }
     CRM_Core_DAO::executeQuery('SET NAMES utf8');
     CRM_Core_DAO::executeQuery('SET @uniqueID = %1', array(1 => array(CRM_Utils_Request::id(), 'String')));
@@ -234,13 +241,16 @@ class CRM_Core_DAO extends DB_DataObject {
           break;
 
         case CRM_Utils_Type::T_DATE:
-        case CRM_Utils_Type::T_TIMESTAMP:
         case CRM_Utils_Type::T_DATE + CRM_Utils_Type::T_TIME:
           $this->$dbName = '19700101';
           if ($dbName == 'end_date') {
             // put this in the future
             $this->$dbName = '20200101';
           }
+          break;
+
+        case CRM_Utils_Type::T_TIMESTAMP:
+          $this->$dbName = '19700201000000';
           break;
 
         case CRM_Utils_Type::T_TIME:
@@ -342,6 +352,11 @@ class CRM_Core_DAO extends DB_DataObject {
   public function query($query, $i18nRewrite = TRUE) {
     // rewrite queries that should use $dbLocale-based views for multi-language installs
     global $dbLocale, $_DB_DATAOBJECT;
+
+    if (empty($_DB_DATAOBJECT['CONNECTIONS'][$this->_database_dsn_md5])) {
+      // Will force connection to be populated per CRM-20541.
+      new CRM_Core_DAO();
+    }
 
     $conn = &$_DB_DATAOBJECT['CONNECTIONS'][$this->_database_dsn_md5];
     $orig_options = $conn->options;
@@ -480,7 +495,7 @@ class CRM_Core_DAO extends DB_DataObject {
 
       if ($hook) {
         $event = new \Civi\Core\DAO\Event\PostUpdate($this);
-        \Civi::service('dispatcher')->dispatch("DAO::post-update", $event);
+        \Civi::service('dispatcher')->dispatch("civi.dao.postUpdate", $event);
       }
     }
     else {
@@ -488,7 +503,7 @@ class CRM_Core_DAO extends DB_DataObject {
 
       if ($hook) {
         $event = new \Civi\Core\DAO\Event\PostUpdate($this);
-        \Civi::service('dispatcher')->dispatch("DAO::post-insert", $event);
+        \Civi::service('dispatcher')->dispatch("civi.dao.postInsert", $event);
       }
     }
     $this->free();
@@ -526,10 +541,13 @@ class CRM_Core_DAO extends DB_DataObject {
    *     * @return mixed Int (No. of rows affected) on success, false on failure, 0 on no data affected
    */
   public function delete($useWhere = FALSE) {
+    $preEvent = new \Civi\Core\DAO\Event\PreDelete($this);
+    \Civi::service('dispatcher')->dispatch("civi.dao.preDelete", $preEvent);
+
     $result = parent::delete($useWhere);
 
     $event = new \Civi\Core\DAO\Event\PostDelete($this, $result);
-    \Civi::service('dispatcher')->dispatch("DAO::post-delete", $event);
+    \Civi::service('dispatcher')->dispatch("civi.dao.postDelete", $event);
     $this->free();
 
     return $result;
@@ -1025,6 +1043,22 @@ FROM   civicrm_domain
   }
 
   /**
+   * Returns a singular value.
+   *
+   * @return mixed|NULL
+   */
+  public function fetchValue() {
+    $result = $this->getDatabaseResult();
+    $row = $result->fetchRow();
+    $ret = NULL;
+    if ($row) {
+      $ret = $row[0];
+    }
+    $this->free();
+    return $ret;
+  }
+
+  /**
    * Get all the result records as mapping between columns.
    *
    * @param string $keyColumn
@@ -1064,7 +1098,7 @@ FROM   civicrm_domain
       empty($searchValue) ||
       trim(strtolower($searchValue)) == 'null'
     ) {
-      // adding this year since developers forget to check for an id
+      // adding this here since developers forget to check for an id
       // or for the 'null' (which is a bad DAO kludge)
       // and hence we get the first value in the db
       CRM_Core_Error::fatal();
@@ -1225,43 +1259,17 @@ FROM   civicrm_domain
     $i18nRewrite = TRUE,
     $trapException = FALSE
   ) {
-    $queryStr = self::composeQuery($query, $params, $abort);
-    //CRM_Core_Error::debug( 'q', $queryStr );
-    if (!$daoName) {
-      $dao = new CRM_Core_DAO();
-    }
-    else {
-      $dao = new $daoName();
-    }
 
-    if ($trapException) {
-      CRM_Core_Error::ignoreException();
-    }
-
-    // set the DAO object to use an unbuffered query
-    $dao->setOptions(array('result_buffering' => 0));
-
-    $result = $dao->query($queryStr, $i18nRewrite);
-
-    if ($trapException) {
-      CRM_Core_Error::setCallback();
-    }
-
-    if (is_a($result, 'DB_Error')) {
-      return $result;
-    }
-
-    // since it is unbuffered, ($dao->N==0) is true.  This blocks the standard fetch() mechanism.
-    $dao->N = TRUE;
-
-    if ($freeDAO ||
-      preg_match('/^(insert|update|delete|create|drop|replace)/i', $queryStr)
-    ) {
-      // we typically do this for insert/update/delete stataments OR if explicitly asked to
-      // free the dao
-      $dao->free();
-    }
-    return $dao;
+    return self::executeQuery(
+      $query,
+      $params,
+      $abort,
+      $daoName,
+      $freeDAO,
+      $i18nRewrite,
+      $trapException,
+      array('result_buffering' => 0)
+    );
   }
 
   /**
@@ -1276,6 +1284,7 @@ FROM   civicrm_domain
    * @param bool $freeDAO
    * @param bool $i18nRewrite
    * @param bool $trapException
+   * @param array $options
    *
    * @return CRM_Core_DAO|object
    *   object that holds the results of the query
@@ -1289,7 +1298,8 @@ FROM   civicrm_domain
     $daoName = NULL,
     $freeDAO = FALSE,
     $i18nRewrite = TRUE,
-    $trapException = FALSE
+    $trapException = FALSE,
+    $options = array()
   ) {
     $queryStr = self::composeQuery($query, $params, $abort);
 
@@ -1304,7 +1314,16 @@ FROM   civicrm_domain
       $errorScope = CRM_Core_TemporaryErrorScope::ignoreException();
     }
 
+    if ($dao->isValidOption($options)) {
+      $dao->setOptions($options);
+    }
+
     $result = $dao->query($queryStr, $i18nRewrite);
+
+    // since it is unbuffered, ($dao->N==0) is true.  This blocks the standard fetch() mechanism.
+    if (CRM_Utils_Array::value('result_buffering', $options) === 0) {
+      $dao->N = TRUE;
+    }
 
     if (is_a($result, 'DB_Error')) {
       return $result;
@@ -1318,6 +1337,37 @@ FROM   civicrm_domain
       $dao->free();
     }
     return $dao;
+  }
+
+  /**
+   * Wrapper to validate internal DAO options before passing to DB_mysql/DB_Common level
+   *
+   * @param array $options
+   *
+   * @return bool
+   *   Provided options are valid
+   */
+  public function isValidOption($options) {
+    $isValid = FALSE;
+    $validOptions = array(
+      'result_buffering',
+      'persistent',
+      'ssl',
+      'portability',
+    );
+
+    if (empty($options)) {
+      return $isValid;
+    }
+
+    foreach (array_keys($options) as $option) {
+      if (!in_array($option, $validOptions)) {
+        return FALSE;
+      }
+      $isValid = TRUE;
+    }
+
+    return $isValid;
   }
 
   /**
@@ -1913,10 +1963,13 @@ SELECT contact_id
    * @return bool
    */
   public static function checkTriggerViewPermission($view = TRUE, $trigger = TRUE) {
+    if (\Civi::settings()->get('logging_no_trigger_permission')) {
+      return TRUE;
+    }
     // test for create view and trigger permissions and if allowed, add the option to go multilingual
     // and logging
     // I'm not sure why we use the getStaticProperty for an error, rather than checking for DB_Error
-    $errorScope = CRM_Core_TemporaryErrorScope::ignoreException();
+    CRM_Core_TemporaryErrorScope::ignoreException();
     $dao = new CRM_Core_DAO();
     if ($view) {
       $result = $dao->query('CREATE OR REPLACE VIEW civicrm_domain_view AS SELECT * FROM civicrm_domain');
@@ -2166,6 +2219,30 @@ SELECT contact_id
     }
   }
 
+
+  /**
+   * Update the fields array to also hold keys for pseudoconstant fields that relate to contained fields.
+   *
+   * This is relevant where we want to offer both the ID field and the label field
+   * as an option, e.g. search builder.
+   *
+   * It is currently limited for optionGroupName for purposes keeping the scope of the
+   * change small, but is appropriate for other sorts of pseudoconstants.
+   *
+   * @param array $fields
+   */
+  protected static function appendPseudoConstantsToFields(&$fields) {
+    foreach ($fields as $field) {
+      if (!empty($field['pseudoconstant']) && !empty($field['pseudoconstant']['optionGroupName'])) {
+        $fields[$field['pseudoconstant']['optionGroupName']] = array(
+          'title' => CRM_Core_BAO_OptionGroup::getTitleByName($field['pseudoconstant']['optionGroupName']),
+          'name' => $field['pseudoconstant']['optionGroupName'],
+          'data_type' => CRM_Utils_Type::T_STRING,
+        );
+      }
+    }
+  }
+
   /**
    * Get options for the called BAO object's field.
    *
@@ -2183,7 +2260,7 @@ SELECT contact_id
   public static function buildOptions($fieldName, $context = NULL, $props = array()) {
     // If a given bao does not override this function
     $baoName = get_called_class();
-    return CRM_Core_PseudoConstant::get($baoName, $fieldName, array(), $context);
+    return CRM_Core_PseudoConstant::get($baoName, $fieldName, $props, $context);
   }
 
   /**
@@ -2501,7 +2578,7 @@ SELECT contact_id
     foreach ((array) $bao->addSelectWhereClause() as $field => $vals) {
       $clauses[$field] = NULL;
       if ($vals) {
-        $clauses[$field] = "`$tableAlias`.`$field` " . implode(" AND `$tableAlias`.`$field` ", (array) $vals);
+        $clauses[$field] = "(`$tableAlias`.`$field` IS NULL OR (`$tableAlias`.`$field` " . implode(" AND `$tableAlias`.`$field` ", (array) $vals) . '))';
       }
     }
     return $clauses;
