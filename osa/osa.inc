@@ -770,6 +770,7 @@ function _osa_addFamilyField(&$form, $members_only = FALSE) {
         $msg = ts('You must have a current <b>OSA Member</b> in your family to perform this action.');
       }
       drupal_set_message($msg, 'warning');
+      $form->assign('no_members', TRUE);
     }
   }
 

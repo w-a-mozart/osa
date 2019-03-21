@@ -58,6 +58,7 @@ function _osa_quickbooks_queue_order($commerce_order, $element_type) {
       $line_element = (array)$line_item;
       $line_element += $components['base_price'];
       $line_element['title'] = commerce_line_item_title($line_item);
+      $line_element['line_item_label'] = mb_convert_encoding($line_item->line_item_label, 'HTML-ENTITIES');
 
       // special code for Camp Fees
       if ($line_element['title'] == 'Camp Fees') {
@@ -89,9 +90,10 @@ function _osa_quickbooks_queue_order($commerce_order, $element_type) {
         $participant = $table[2][1];
         $tmp_table = array();
         foreach ($table as $row) {
-          $tmp_table[] = preg_replace('/[^[:print:]]/', '', rtrim(implode(' : ', $row), ' :'));
+          $tmp_table[] = rtrim(implode(' : ', $row), ' :');
         }
         $line_element['line_item_label'] = check_plain(implode("\r\n", $tmp_table));
+        $line_element['line_item_label'] = mb_convert_encoding($line_element['line_item_label'], 'HTML-ENTITIES');
       }
       
       $element["{$element_type}Line"][] = $line_element;
@@ -236,7 +238,7 @@ function osa_quickbooks_webconnect_process_response($qbxml, $qb_object, $element
     $result = civicrm_api('contact', 'create', array('id' => $element['contact_id'], 'external_identifier' => $external_id, 'version' => 3));
   }
   
-  // we use Sales Orders to track teacher pay instalments, so we'll create a post-dated invoice for each instalment
+  // we use Sales Orders to track teacher pay installments, so we'll create a post-dated invoice for each installment
   elseif ($element_type == 'SalesOrder') {
     // get the teacher pay item
     $line_item = $qb_object->getSalesOrderLine(0);
@@ -248,7 +250,7 @@ function osa_quickbooks_webconnect_process_response($qbxml, $qb_object, $element
     // get the date of the first invoice
     $num_installments = variable_get('osa_num_installments', 10);
     $inv_date = _osa_next_payment_date(variable_get('osa_start_date', 'first day of September'), $num_installments, $qb_object->getTxnDate());
-    // get the number of instalments from the Sales Order (in case it's different)
+    // get the number of installments from the Sales Order (in case it's different)
     $num_installments = $line_item->getQuantity();
 
     // build invoices based on the Sales Order
@@ -405,6 +407,45 @@ function osa_quickbooks_webconnect_element_alter(&$element, $element_type, &$ope
       // overload the Check Number with the card number
       $element['CheckNumber'] = $tmp[1];
       $element['PaymentMethodRef FullName'] = strncmp($tmp[1], '4', 1) === 0 ? 'Visa' : 'MasterCard';
+    }
+    elseif ($element['PaymentMethodRef FullName'] == 'adhoc') {
+      // the details are buried in the payment message,
+      $pm = 'Direct Payment';
+      $cn = '';
+
+      $start = strpos($element['message'], '<b>Payment method:</b> ');
+      if ($start !== FALSE) {
+        $start += 23;
+        $end = strpos($element['message'], '<', $start);
+        $tmp = substr($element['message'], $start, $end - $start);
+
+        if ($tmp == 'Credit card') {
+          $start = strpos($element['message'], '<b>Credit card type:</b> ');
+          if ($start !== FALSE) {
+            $start += 25;
+            $end = strpos($element['message'], '<', $start);
+            $tmp = substr($element['message'], $start, $end - $start);
+            if (($tmp == 'Visa') || ($tmp == 'MasterCard')) {
+              $pm = $tmp;
+              $cc = array();
+              if (preg_match('/[0-9][0-9]\**[0-9][0-9][0-9][0-9]/', $element['message'], $cc)) {
+                $cn = $cc[0];
+              }
+            }
+          }
+        }
+        elseif ($tmp == 'Check') {
+          $pm = 'Cheque';
+          $start = strpos($element['message'], '<b>Check #:</b> ');
+          if ($start !== FALSE) {
+            $start += 16;
+            $end = strpos($element['message'], '<', $start);
+            $cn = substr($element['message'], $start, $end - $start);
+          }
+        }
+      }
+      $element['PaymentMethodRef FullName'] = $pm;
+      $element['CheckNumber'] = $cn;
     }
     elseif (($element['PaymentMethodRef FullName'] == 'Cheque') && ($element_type == 'ReceivePayment')) {
       if (is_array($element['payload'])) {

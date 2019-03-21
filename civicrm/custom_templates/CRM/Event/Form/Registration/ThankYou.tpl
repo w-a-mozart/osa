@@ -1,8 +1,8 @@
 {*
  +--------------------------------------------------------------------+
- | CiviCRM version 4.7                                                |
+ | CiviCRM version 5                                                  |
  +--------------------------------------------------------------------+
- | Copyright CiviCRM LLC (c) 2004-2017                                |
+ | Copyright CiviCRM LLC (c) 2004-2019                                |
  +--------------------------------------------------------------------+
  | This file is a part of CiviCRM.                                    |
  |                                                                    |
@@ -84,7 +84,7 @@
             {/if}
         {else}
           <div class="help">
-            <p>{ts}Your registration has been processed successfully. Please print this page for your records.{/ts}</p>
+            <p>{ts}Your registration has been processed successfully.{/ts}</p>
             {if $is_email_confirm}
                 <p>{ts 1=$email}A registration confirmation email has also been sent to %1{/ts}</p>
             {/if}

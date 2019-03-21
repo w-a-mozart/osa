@@ -277,6 +277,11 @@ function osa_civicrm_buildForm_CRM_Profile_Form_Edit(&$form) {
 /**
  * Add custom validation to CiviCRM Profile based forms
  */
+function osa_civicrm_validateForm_CRM_Profile_Form_Edit(&$fields, &$files, &$form, &$errors) {
+  if (!isset($errors)) $errors = array();
+  $errors = array_merge($errors, osa_civicrm_validate_CRM_Profile_Form_Edit($fields, $files, $form));
+}
+
 function osa_civicrm_validate_CRM_Profile_Form_Edit(&$fields, &$files, &$form) {
   $errors = array();
   $gid = $form->getVar('_gid');
@@ -302,7 +307,7 @@ function osa_civicrm_validate_CRM_Profile_Form_Edit(&$fields, &$files, &$form) {
     }
   }
   
-  return empty($errors) ? TRUE : $errors;
+  return $errors;
 }
 
 /**
@@ -396,8 +401,9 @@ function osa_civicrm_buildForm_CRM_Contribute_Form_Contribution_Main(&$form) {
 
   // most of our contributions are from authenticated users,
   // so remove the email field - must include it in a Profile
-  $bltID = $form->_bltID;
-  $form->removeElement("email-$bltID");
+  $elementName = "email-{$form->_bltID}";
+  if ($form->elementExists($elementName))
+    $form->removeElement($elementName);
   
   $form->setDefaults(array('payment_processor' => $form->_paymentProcessor['id'] ));
 
@@ -450,6 +456,11 @@ function osa_civicrm_buildForm_CRM_Contribute_Form_Contribution_Main(&$form) {
 /**
  * Add custom validation to CiviCRM Contribution based forms
  */
+function osa_civicrm_validateForm_CRM_Contribute_Form_Contribution_Main(&$fields, &$files, &$form, &$errors) {
+  if (!isset($errors)) $errors = array();
+  $errors = array_merge($errors, osa_civicrm_validate_CRM_Contribute_Form_Contribution_Main($fields, $files, $form));
+}
+
 function osa_civicrm_validate_CRM_Contribute_Form_Contribution_Main(&$fields, &$files, &$form) {
   $errors = array();
   
@@ -471,7 +482,7 @@ function osa_civicrm_validate_CRM_Contribute_Form_Contribution_Main(&$fields, &$
     }
   }
 
-  return empty($errors) ? TRUE : $errors;
+  return $errors;
 }
 
 /**
@@ -712,16 +723,26 @@ function osa_civicrm_buildForm_CRM_Event_Form_Registration_Register(&$form) {
 /**
  * Add custom validation to Event registration forms
  */
+function osa_civicrm_validateForm_CRM_Event_Form_Registration_Register(&$fields, &$files, &$form, &$errors) {
+  if (!isset($errors)) $errors = array();
+  $errors = array_merge($errors, osa_civicrm_validate_CRM_Event_Form_Registration_Register($fields, $files, $form));
+}
+
 function osa_civicrm_validate_CRM_Event_Form_Registration_Register(&$fields, &$files, &$form) {
   $errors = array();
 
-  // ensure a contact_id was selected
-  if (isset($fields['contact_id']) && $fields['contact_id'] == '0') {
-    $errors['contact_id'] = ts('Family Member is a required field.');
-    $form->setElementError('contact_id', $errors['contact_id']);
+  // if we added a Family member selection box
+  if (isset($fields['contact_id'])) {
+    // ensure a contact_id was selected
+    if ($fields['contact_id'] == '0') {
+      $errors['contact_id'] = ts('Family Member is a required field.');
+      $form->setElementError('contact_id', $errors['contact_id']);
+    }
+    // add the selected contact_id to the request, so that the participant record gets created properly
+    $_REQUEST['cid'] = $fields['contact_id'];
   }
 
-  return empty($errors) ? TRUE : $errors;
+  return $errors;
 }
 
 /**
@@ -758,7 +779,9 @@ function osa_civicrm_postProcess_CRM_Event_Form_Registration_Register(&$form) {
     
     $form->set('params', $params);
   }
+
   
+/* No longer needed, because we can configure the Event to disable the Confirmation page
   // check if we are using the Drupal Commerce Cart
   if ($form->_paymentProcessor['payment_processor_type'] == 'drupalcommerce') {
     // since we use a Cart, we want to disable the confirmation form
@@ -777,6 +800,7 @@ function osa_civicrm_postProcess_CRM_Event_Form_Registration_Register(&$form) {
     $qfKey = $form->controller->_key;
     CRM_Utils_System::redirect(CRM_Utils_System::url('civicrm/event/register', "_qf_ThankYou_display=true&qfKey=$qfKey", TRUE, NULL, FALSE));
   }
+*/
 }
 
 /**

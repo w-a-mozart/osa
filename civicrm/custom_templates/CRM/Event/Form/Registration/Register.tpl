@@ -1,8 +1,8 @@
 {*
  +--------------------------------------------------------------------+
- | CiviCRM version 4.7                                                |
+ | CiviCRM version 5                                                  |
  +--------------------------------------------------------------------+
- | Copyright CiviCRM LLC (c) 2004-2017                                |
+ | Copyright CiviCRM LLC (c) 2004-2019                                |
  +--------------------------------------------------------------------+
  | This file is a part of CiviCRM.                                    |
  |                                                                    |
@@ -167,9 +167,13 @@
       {include file='CRM/common/ReCAPTCHA.tpl'}
     {/if}
 
+    {if $members_only && $no_members}
+        <div class="messages warning">Only OSA members may register for this event.</div> 
+    {else}
     <div id="crm-submit-buttons" class="crm-submit-buttons">
       {include file="CRM/common/formButtons.tpl" location="bottom"}
     </div>
+    {/if}
 
     {if $event.footer_text}
       <div id="footer_text" class="crm-public-form-item crm-section event_footer_text-section">

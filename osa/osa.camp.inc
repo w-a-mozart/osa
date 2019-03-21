@@ -17,38 +17,38 @@ function osa_calc_camp_price($name, $value, $other_values) {
   // @todo put this in a database or as part of the webform
   static $prices = array(
     'Early Childhood Music' => array(
-      'One Week' => 70.00,
-      'Both Weeks' => 120.00,
+      'One Week' => 85.00,
+      'Both Weeks' => 150.00,
     ),
-    'Junior Camp' => array(
+    'Junior Program' => array(
       'One Week' => 250.00,
-      'Both Weeks' => 470.00,
+      'Both Weeks' => 480.00,
     ),
-    'Intermediate Camp' => array(
+    'Intermediate Program' => array(
       'One Week' => 295.00,
-      'Both Weeks' => 560.00,
+      'Both Weeks' => 570.00,
     ),
-    'All Day for Juniors' => array(
-      'One Week' => 345.00,
-      'Both Weeks' => 660.00,
+    'Full Day Supervised' => array(
+      'One Week' => 415.00,
+      'Both Weeks' => 810.00,
     ),
-    'Senior Camp' => array(
+    'Senior Program' => array(
       'One Week' => 345.00,
-      'Both Weeks' => 660.00,
+      'Both Weeks' => 670.00,
     ),
     'Leader In Training' => array(
-      'One Week' => 210.00,
-      'Both Weeks' => 390.00,
+      'One Week' => 190.00,
+      'Both Weeks' => 360.00,
     ),
     'Student Leader' => array(
-      'One Week' => 160.00,
-      'Both Weeks' => 300.00,
+      'One Week' => 175.00,
+      'Both Weeks' => 330.00,
     ),
     'Student Leader Guitar and Piano' => array(
       'One Week' => 110.00,
       'Both Weeks' => 200.00,
     ),
-    'Chamber Only' => array(
+    'Chamber Only' => array(  /* not used in online form */
       'One Week' => 180.00,
       'Both Weeks' => 320.00,
     ),
@@ -68,13 +68,13 @@ function osa_calc_camp_price($name, $value, $other_values) {
       'Senior Chamber Group' => 50.00,
     ),
     'masterclass_terry_durbin' => array(
-      'Terry Durbin Violin Masterclass' => 60.00, // Intermediate & Advanced Violin Ensemble
+      'Violin Ensemble' => 60.00, // Intermediate & Advanced Violin Ensemble
     ),
     'daycare_options' => array(
       'AM Care' => 20.00,
       'PM Care' => 20.00,
     ),
-    'lunch_option' => array(
+    'lunch_option' => array( /* no longer used */
       'Student Lunch' => 37.00,
       'Student Lunch Both Weeks' => 70.00,
       'Parent Lunch' => 37.00,
@@ -95,7 +95,8 @@ function osa_calc_camp_price($name, $value, $other_values) {
       $value = 'One Week';
     }
   }
-  if (($name == 'primary_teacher') || ($name == 'secondary_teacher')) {
+  
+  if (strpos($name, '_teacher_') !== FALSE) {
     $name = 'teacher';
   }
   else {
@@ -122,67 +123,46 @@ function _osa_camp_teacher_premiums($components, $submitted, &$component, &$form
     return FALSE;
   }
 
-  // get the program, and the week(s) the student is attending
+  // figure out if this is for the primary or secondary instrument, and the week
+  list($instrument, $ignore, $week, $ignore2) = explode('_', $form_key, 4);
+  $instrument = ($instrument == 'secondary') ? 'second' : $instrument;
+  $wktxt = str_replace('wk', 'Week ', $week);
+  $wknum = str_replace('wk', '', $week);
+
+  // get the program to determine if the student is a Leader
   $program = is_array($submitted[4]) ? $submitted[4][0] : $submitted[4];
-  $weeks   = is_array($submitted[12]) ? $submitted[12][0] : $submitted[12];
-  $week[1] = (($weeks == 'Week 1') || ($weeks == 'Both Weeks')) ? 1 : 0;
-  $week[2] = (($weeks == 'Week 2') || ($weeks == 'Both Weeks')) ? 1 : 0;
-
-  // in 2016 Terry is only attending Week 1
-  // if ($teacher == 'Terry Durbin') {
-  //  $week[2] = 0;
-  // }
-
-  // figure out if this is for the primary or secondary instrument, and if the student is a Leader
-  list($instrument, $other) = explode('_', $form_key, 2);
-  $instrument = ($instrument == 'secondary') ? 'second' : $instrument; // why didn't I name them the same???
   $leader = (strpos($program, 'Leader') !== FALSE) || ($program == 'Chamber Only');
+  
+  // determine the lesson length
+  $lesson_length = 0;
 
-  // initialize the lesson length for each week
-  foreach ($week as $wknum => $attending) {
-    $lesson_length[$wknum] = 0;
-  }
-
-  // a 15min is included in primary instrument (except for Leaders)
   if (($instrument == 'primary') && !$leader) {
-    foreach ($week as $wknum => $attending) {
-      $lesson_length[$wknum] += 15 * $attending;
-    }
-  }
-
-  // add enhancements
-  $leaders = ($leader && ($instrument == 'primary')) ? 'leaders_' : '';
-  foreach ($week as $wknum => $attending) {
-    $keyname = "{$instrument}_instrument_enhancements_{$leaders}wk{$wknum}";
-    $cid = _osa_get_webform_component_id($components, $keyname);
-
-    $enh_str = '';
-    if (isset($submitted[$cid])) {
-      $enh_str = is_array($submitted[$cid]) ? $submitted[$cid][0] : $submitted[$cid];
-    }
-
-    $tmp = array();
-    $enh_min = (preg_match( '/[0-9]+min/', $enh_str, $tmp) === 1) ? intval(substr($tmp[0], 0, strlen($tmp[0]) - 3)) : 0;
-    $lesson_length[$wknum] += $enh_min * $attending;
-  }
-
-  // quit if no premium minutes
-  $total_length = 0;
-  foreach ($week as $wknum => $attending) {
-    $total_length += $lesson_length[$wknum] * $attending;
-  }
-  if ($total_length == 0) {
-    return FALSE;
+    // 15min is included in primary instrument (except for Leaders)
+    $lesson_length += 15;
   }
   
-  // Hack the component values to deal with the teacher
-  $component['name'] = "Teacher Premium";
-  $value = array();
-  foreach ($week as $wknum => $attending) {
-    if ($lesson_length[$wknum] > 0) {
-      $value[] = "{$teacher}: {$lesson_length[$wknum]}min lessons in Week {$wknum}";
-    }
+  // add enhancements
+  $leaders = ($leader && ($instrument == 'primary')) ? 'leaders_' : '';
+  $keyname = "{$instrument}_instrument_enhancements_{$leaders}wk{$wknum}";
+  $cid = _osa_get_webform_component_id($components, $keyname);
+
+  $enh_str = '';
+  if (isset($submitted[$cid])) {
+    $enh_str = is_array($submitted[$cid]) ? $submitted[$cid][0] : $submitted[$cid];
   }
+
+  $tmp = array();
+  $enh_min = (preg_match( '/[0-9]+min/', $enh_str, $tmp) === 1) ? intval(substr($tmp[0], 0, strlen($tmp[0]) - 3)) : 0;
+  $lesson_length += $enh_min;
+  
+  // quit if no premium minutes
+  if ($lesson_length == 0) {
+    return FALSE;
+  }
+
+  // Hack the component values to display the premium teacher
+  $component['name'] = "Teacher Premium";
+  $value = "{$teacher}: {$lesson_length}min lessons in Week {$wknum}";
 
   return TRUE;
 }
@@ -296,11 +276,11 @@ function osa_webform_submission_presave_summer_camp(&$node, &$submission) {
   $programs = $submission->data[$component['cid']][0];
   $options_grid = array();
   
-  if ($programs == 'Senior Camp') {
+  if ($programs == 'Senior Program') {
     $component = &_osa_get_webform_component($node, 'options_senior_program');
     $options_grid = $submission->data[$component['cid']];
   }
-  elseif ($programs == 'Intermediate Camp') {
+  elseif ($programs == 'Intermediate Program') {
     $component = &_osa_get_webform_component($node, 'options_intermediate_program');
     $options_grid = $submission->data[$component['cid']];
   }
@@ -440,7 +420,7 @@ function _osa_camp_parse_submission($components, $submitted, &$values, &$total, 
 
   $total = 0.00;
   $ignore_types = array('pagebreak', 'markup', 'fieldset', 'textarea', 'grid', 'textfield',);
-  $ignore_elements = array('caregiver_present', 'primary_instrument_level', 'add_a_second_instrument', 'second_instrument_level', 'ukulele_level', 'recorder_level', 'theory_level', 'musical_theatre', 'image_release_consent', 'first', 'referral');
+  $ignore_elements = array('caregiver_present', 'primary_instrument_level_wk1', 'add_a_second_instrument_wk1', 'second_instrument_level_wk1',  'primary_instrument_level_wk2', 'add_a_second_instrument_wk2', 'second_instrument_level_wk2', 'ukulele_level', 'recorder_level', 'theory_level', 'musical_theatre', 'image_release_consent', 'first', 'referral',);
   $rows = array();
 
   // loop through each component we care about and get it's value and price
@@ -459,7 +439,7 @@ function _osa_camp_parse_submission($components, $submitted, &$values, &$total, 
       }
       if (!empty($value) && ($value != 'NA')) {
         // nasty override logic for teacher premiums
-        if (($form_key == 'primary_teacher') || ($form_key == 'secondary_teacher')) {
+        if (strpos($form_key, '_teacher_') !== FALSE) {
           if (!_osa_camp_teacher_premiums($components, $submitted, $component, $form_key, $value)) {
             continue;
           }
@@ -471,9 +451,8 @@ function _osa_camp_parse_submission($components, $submitted, &$values, &$total, 
           'price' => osa_calc_camp_price($form_key, $value, $values),
         );
         $total += $values[$form_key]['price'];
-        if ($form_key != 'event_id') {
+        if ($form_key != 'event_id')
           $rows = array_merge($rows, _osa_camp_display_component($component, $values[$form_key], $style, $values));
-        }
       }       
     }
   }
@@ -497,50 +476,44 @@ function _osa_camp_display_component($component, $value, $style, $values, $forma
   $form_key = $component['form_key'];
   $class = str_replace('_', '-', $form_key);
 
-  // we are creating a table with a row for the title (if required) and a row for the item and price
-  $rows = array();
-
-  // create the Title row
-  if ($style == 'long') {
-    // if both weeks are selected don't add the title again
-    if (!((substr_compare($form_key, '_wk2', -4) == 0) && (array_key_exists(substr_replace($form_key, '_wk1', -4), $values)))) {
-      // remove the Week from the label
-      $remove = array(' for Week 1', ' for Week 2', ' - Week 1', ' - Week 2',);
-      $data = str_replace($remove, '', $component['name']);
-      $rows[] = array(
-        'data' => array(
-          array(
-            'data' => $data,
-            'colspan' => '2'
-          ),
-        ),
-        'class' => array('osa-camp-item-title', "osa-camp-$class"),
-      );
-    }
-  }
-
-  // display the contact name
   if ($form_key == 'camp_participant') {
     civicrm_initialize();
     $contact = _osa_get_contact($value['value'], FALSE);
     $value['value'] = $contact['display_name'];
   }
 
-  // create the Item row
-  $rows[] = array(
-    'data' => array(
-      array(
-        'data' => is_array($value['value']) ? implode(', and ', $value['value']) : $value['value'],
-        'class' => array('osa-camp-item-label'),
+  $rows = array();
+  
+  if (!empty($value['price']) && $value['price'] > 0.001) {
+    $rows[] = array(
+      'data' => array(
+        array(
+          'data' => is_array($value['value']) ? implode(', and ', $value['value']) : $value['value'],
+          'class' => array('osa-camp-item-label'),
+        ),
+        array(
+          'data' => '$ ' . number_format($value['price'], 2),
+          'class' => array('osa-camp-item-price'),
+          'style' => array('text-align: right;', 'vertical-align: top;', 'white-space: nowrap;'),
+        ),
       ),
-      array(
-        'data' => ($value['price'] > 0.001) ? '$ ' . number_format($value['price'], 2) : ' ',
-        'class' => array('osa-camp-item-price'),
-        'style' => array('text-align: right;', 'vertical-align: top;', 'white-space: nowrap;'),
+      'class' => array('osa-camp-item-content', "osa-camp-$class"),
+    );
+  } else {
+    $rows[] = array(
+      'data' => array(
+        array(
+          'data' => $component['name'],
+          'class' => array('osa-camp-item-label'),
+        ),
+        array(
+          'data' => is_array($value['value']) ? implode(', and ', $value['value']) : $value['value'],
+          'class' => array('osa-camp-item-label'),
+        ),
       ),
-    ),
-    'class' => array('osa-camp-item-content', "osa-camp-$class"),
-  );
+      'class' => array('osa-camp-item-title', "osa-camp-$class"),
+    );
+  }
 
   return $rows;
 }

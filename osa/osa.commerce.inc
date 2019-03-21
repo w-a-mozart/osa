@@ -72,7 +72,7 @@ function osa_commerce_checkout_form_validate($form, &$form_state) {
 }
 
 /**
- * Modify the completetion message for annoyomus orders with no email
+ * Modify the completion message for anonymous orders with no email
  */
 function osa_form_alter_commerce_checkout_form_complete(&$form, &$form_state) {
   $form['checkout_completion_message']['message']['#markup'] = str_replace('An email has been sent to  with a confirmation of your order.', '', $form['checkout_completion_message']['message']['#markup']);

@@ -1,9 +1,9 @@
 <?php
 /*
  +--------------------------------------------------------------------+
- | CiviCRM version 4.7                                                |
+ | CiviCRM version 5                                                  |
  +--------------------------------------------------------------------+
- | Copyright CiviCRM LLC (c) 2004-2017                                |
+ | Copyright CiviCRM LLC (c) 2004-2019                                |
  +--------------------------------------------------------------------+
  | This file is a part of CiviCRM.                                    |
  |                                                                    |
@@ -28,7 +28,7 @@
 /**
  *
  * @package CRM
- * @copyright CiviCRM LLC (c) 2004-2017
+ * @copyright CiviCRM LLC (c) 2004-2019
  */
 
 /**
@@ -577,7 +577,7 @@ AND    u.status = 1
    * @return null|string
    */
   public function cmsRootPath($scriptFilename = NULL) {
-/*
+
     $cmsRoot = $valid = NULL;
 
     if (!is_null($scriptFilename)) {
@@ -586,7 +586,7 @@ AND    u.status = 1
     else {
       $path = $_SERVER['SCRIPT_FILENAME'];
     }
-*/
+/*
     static $cmsRoot = NULL;
     static $valid = FALSE;
 
@@ -599,7 +599,7 @@ AND    u.status = 1
     else {
       $path = __DIR__;
     }
-
+*/
     if (function_exists('drush_get_context')) {
       // drush anyway takes care of multisite install etc
       return drush_get_context('DRUSH_DRUPAL_ROOT');
@@ -621,9 +621,9 @@ AND    u.status = 1
     //need to get back for windows.
     $firstVar = array_shift($pathVars);
 
-    //lets remove sript name to reduce one iteration.
-    // array_pop($pathVars);
-    $pathVars = array_slice($pathVars, 0, -7);
+    // Remove the script name to remove an necessary iteration of the loop.
+      array_pop($pathVars);
+//    $pathVars = array_slice($pathVars, 0, -7);
 
     // CRM-7429 -- do check for uppermost 'includes' dir, which would
     // work for multisite installation.
@@ -861,6 +861,28 @@ AND    u.status = 1
       'contactMatching' => $contactMatching,
       'contactCreated' => $contactCreated,
     );
+  }
+
+  /**
+   * Commit the session before exiting.
+   * Similar to drupal_exit().
+   */
+  public function onCiviExit() {
+    if (function_exists('module_invoke_all')) {
+      if (!defined('MAINTENANCE_MODE') || MAINTENANCE_MODE != 'update') {
+        module_invoke_all('exit');
+      }
+      drupal_session_commit();
+    }
+  }
+
+  /**
+   * Append Drupal7 js to coreResourcesList.
+   *
+   * @param array $list
+   */
+  public function appendCoreResources(&$list) {
+    $list[] = 'js/crm.drupal7.js';
   }
 
 }

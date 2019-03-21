@@ -21,6 +21,9 @@ function commerce_virtualmerchant_settings_form($settings = NULL) {
 /**
  * Payment method submit_form callback; generate the payment submission form.
  *
+ * This method either generates Converge Virtual Merchant Payment Form, or embeds its results
+ * into the Drupal Commerce payment form to be validated
+ *
  * @param $payment_method
  *   An array of the current settings.
  * @param $pane_values
@@ -33,30 +36,42 @@ function commerce_virtualmerchant_settings_form($settings = NULL) {
  * @return
  *   A form snippet for the checkout pane.
  */
-function commerce_virtualmerchant_submit_form($payment_method, $pane_values, $checkout_pane, $order) {
+function commerce_virtualmerchant_submit_form($payment_method, &$pane_values, &$checkout_pane, &$order) {
   global $base_url;
 
-  // include a hidden variable that will be used to return the response from Converge
-  $form['virtualmerchant_response'] = array('#type' => 'hidden');
+  // look for the Virtual Merchant response
+  if (empty($_POST['_vmr'])) {
+    
+    // no response data, so create an iframe that will hold the Converge Virtual Merchant Payment Form
+    $height = variable_get('commerce_virtualmerchant_form_height', '300px');
+    $width = variable_get('commerce_virtualmerchant_form_width', '100%');
+    $form['virtualmerchant_iframe'] = array(
+      '#markup' => "<iframe id=\"edit-commerce-payment-payment-details-virtualmerchant-iframe\" src=\"{$base_url}/commerce/virtualmerchant/form/{$order->order_id}\" width={$width} height={$height} scrolling=\"no\"></iframe>",
+    );
+ 
+    // include the hidden variable that will be used to hold the response from Converge - make sure it's value is null
+    $form['virtualmerchant_response'] = array('#type' => 'hidden', '#value' => '');
 
-  // create an iframe that will hold the Converge Virtual Merchant Payment Form
-  $height = variable_get('commerce_virtualmerchant_form_height', '300px');
-  $width = variable_get('commerce_virtualmerchant_form_width', '100%');
-  $form['virtualmerchant_iframe'] = array(
-    '#markup' => "<iframe id=\"edit-commerce-payment-payment-details-virtualmerchant-iframe\" src=\"{$base_url}/commerce/virtualmerchant/form/{$order->order_id}\" width={$width} height={$height} scrolling=\"no\"></iframe>",
-  );
-
-  // add a div to display the Converge logo
-  $form['virtualmerchant_logo'] = array(
-    '#markup' => '<div id="virtualmerchant-banner">' . t('Payment processing provided by') . ' <a href="https://www.myvirtualmerchant.com" title="Converge" target="_blank"><img id="virtualmerchant-logo" alt="Converge" src="https://www.myvirtualmerchant.com/VirtualMerchant/assets/images/logos/ConvergeLogo-horizontal.png" /></a></div>',
-  );
+    // add a div to display the Converge logo
+    $form['virtualmerchant_img'] = array(
+      '#markup' => '<div id="virtualmerchant-banner">' . t('Payment processing provided by') . ' <a href="https://www.myvirtualmerchant.com" title="Converge" target="_blank"><img id="virtualmerchant-logo" alt="Converge" src="https://www.myvirtualmerchant.com/VirtualMerchant/assets/images/logos/ConvergeLogo-horizontal.png" /></a></div>',
+    );
+  }
+  else {
+    // embed the response data into this form - javascript will submit this form automatically, if this is value is set
+    $form['virtualmerchant_response'] = array('#type' => 'hidden', '#value' => $_POST['_vmr']);
+    
+    // this can take a while so add a div to display the Processing gif
+    $form['virtualmerchant_img'] = array(
+      '#markup' => '<div id="virtualmerchant-processing" style="max-width: 400px; margin: 0 auto;"><img id="virtualmerchant-wait" style="max-width: 100%;" alt="Please Wait" src="/images/processing.gif" /></div>',
+    );
+  }
 
   return $form;
 }
 
 /**
- * Payment method submit_form_validate callback; validate the payment
- * submission form.
+ * Payment method submit_form_validate callback; validate the payment response
  *
  * @param $payment_method
  *   An array of the current settings.
@@ -69,11 +84,11 @@ function commerce_virtualmerchant_submit_form($payment_method, $pane_values, $ch
  * @param $form_parents
  *   The identifier of the base element of the payment pane.
  */
-function commerce_virtualmerchant_submit_form_validate($payment_method, $pane_form, $pane_values, $order, $form_parents = array()) {
+function commerce_virtualmerchant_submit_form_validate($payment_method, &$pane_form, &$pane_values, &$order, $form_parents = array()) {
   $valid = TRUE;
-  
+
   if (!empty($pane_values['virtualmerchant_response'])) {
-    $response_data = drupal_json_decode($pane_values['virtualmerchant_response']);
+    $response_data = drupal_json_decode(openssl_decrypt($pane_values['virtualmerchant_response'], "aes-128-ctr", variable_get('commerce_virtualmerchant_pin', 'PIN'), 0, 'virtual_merchant'));
   }
   else {
     $response_data = array(
@@ -91,6 +106,12 @@ function commerce_virtualmerchant_submit_form_validate($payment_method, $pane_fo
   if (isset($response_data['ssl_result']) && (($response_data['ssl_result'] != 0) || ($response_data['ssl_result_message'] != "APPROVAL" && $response_data['ssl_result_message'] != 'SUCCESS'))) {
     form_set_error('virtualmerchant_iframe', t('An error occurred processing your transaction: !1', array( '!1' => check_plain($response_data['ssl_result_message']))));
     $valid = FALSE;
+  }
+
+  // update annonymous order's email
+  if (($user->uid == 0) && !empty($response_data['ssl_email'])) {
+    $order->mail = $response_data['ssl_email'];
+    commerce_order_save($order);
   }
 
   return $valid;
@@ -114,8 +135,8 @@ function commerce_virtualmerchant_submit_form_validate($payment_method, $pane_fo
 function commerce_virtualmerchant_submit_form_submit($payment_method, $pane_form, $pane_values, $order, $charge) {
 
   // if we get here, the transaction was successful, so create a commerce transaction
-  // Should we create a commerce transaction on error? Don't see why.
-  $response_data = drupal_json_decode($pane_values['virtualmerchant_response']);
+  $response_data = drupal_json_decode(openssl_decrypt($pane_values['virtualmerchant_response'], "aes-128-ctr", variable_get('commerce_virtualmerchant_pin', 'PIN'), 0, 'virtual_merchant'));
+
   $currency = commerce_currency_load();
   $message = <<<EOD
 CARD NUMBER: {$response_data['ssl_card_number']}
@@ -132,6 +153,7 @@ EOD;
   $transaction->remote_status  = $response_data['ssl_result'];
   $transaction->message        = $message;
   $transaction->status         = COMMERCE_PAYMENT_STATUS_SUCCESS;
+  
   commerce_payment_transaction_save($transaction);
 
   return TRUE;

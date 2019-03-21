@@ -11,7 +11,7 @@ define('COMMERCE_VIRTUALMERCHANT_TIMEOUT', '5');
 
 /**
  * Fills the iFrame created in commerce_virtualmerchant_submit_form by
- * proxy-ing the request to Converge's to display it's payment form.
+ * proxy-ing the request to Converge to display it's payment form.
  * This way, the iframe content is from the same domain as it's host page, and
  * we don't send our Converge credentials to the browser.
  *
@@ -25,6 +25,7 @@ function commerce_virtualmerchant_payment_form($order_id = 0) {
   // default to the current user's shopping cart
   if ($order_id == 0) {
     $order = commerce_cart_order_load($user->uid);
+    $order_id = $order->order_id;
   }
   else {
     $order = commerce_order_load($order_id);
@@ -44,9 +45,9 @@ function commerce_virtualmerchant_payment_form($order_id = 0) {
   $currency = commerce_currency_load();
   $amount = number_format(commerce_currency_amount_to_decimal($order_balance['amount'], $order_balance['currency_code']), $currency['decimals'], $currency['decimal_separator'], '');
 
-  // check if using a dummy response
+  // check if we are using a dummy response
   if (variable_get('commerce_virtualmerchant_server', 0) != 2) {
-    // post a request to Converge for the Payment Form html
+    // create a post request to get the Converge Payment Form html
     $post_values = array(
       'ssl_merchant_id'         => variable_get('commerce_virtualmerchant_merchant_id', ''),
       'ssl_user_id'             => variable_get('commerce_virtualmerchant_user_id', ''),
@@ -70,16 +71,51 @@ function commerce_virtualmerchant_payment_form($order_id = 0) {
       'timeout' => COMMERCE_VIRTUALMERCHANT_TIMEOUT,
     );
 
+    // Post the request to Converge
     $http_response = drupal_http_request($url, $options);
     if (isset($http_response->error)) {
       _commerce_virtualmerchant_fatal_error("Error with HTTP request.\nResponse : " . print_r($http_response, TRUE));
     }
-    
-    $html = str_replace(array('<head>', '<br/>'), array("<head><base href=\"{$url}\"></base>"), $http_response->data);
+
+    // include javascript to validate email address of anonymous users
+    $js = 'function doPinPad(){';
+    if ($user->uid == 0) {
+      $js .= "
+              var emailInput = top.document.getElementById('edit-account-login-mail');
+              if (emailInput && emailInput.value.indexOf('@') < 1) {
+                emailInput.focus();
+                emailInput.style.color = 'white';
+                emailInput.style.backgroundColor = 'red';
+                alert('You must enter a valid e-mail address to receive your receipt');
+                return false;
+              }
+              document.getElementById('ssl_email').value = emailInput.value;
+             ";
+    }
+
+    // hack the html returned by Converge, so it will work in the iframe
+    $html = str_replace(array(
+                          '<head>',
+                          'name="form1"',
+                          '<br/>',
+                          'function doPinPad(){',
+                        ),
+                        array(
+                          "<head><base href=\"{$url}\"></base>",
+                          'name="form1" target=_top',
+                          '',
+                          $js,
+                        ),
+                        $http_response->data);
+
+    // hide the ssl_email element
+    $html = preg_replace('/<tr>\s*?.*?ssl_email">/', '<tr style="display:none;"><td><label for="ssl_email">', $html, 1);
   }
   else {
-    // build a form to create the dummy response
+    // build a test form to create the dummy response
     $form = drupal_get_form('commerce_virtualmerchant_dummy_form');
+
+    $form['#action'] .= "/{$order_id}";
     $form['ssl_amount']['#default_value'] = $amount;
     $form['ssl_amount']['#value'] = $amount;
     $html = '<!DOCTYPE html>'. drupal_render($form);
@@ -91,28 +127,41 @@ function commerce_virtualmerchant_payment_form($order_id = 0) {
 
 /**
  * Process the response from Converge's payment form
+ *
+ * Processing the response may take awhile, so we redirect to ourself,
+ * so we can hide the URL query parameters
  */
 function commerce_virtualmerchant_payment_response($order_id = 0) {
+  global $base_url;
 
-  // log all responses
-  watchdog('commerce_virtualmerchant', 'Response: !1', array('!1' => '<pre>' . check_plain(print_r($_GET, TRUE)) . '</pre>'), WATCHDOG_INFO);
-
-  $response = drupal_json_encode($_GET);
-  $html = <<<EOD
+  // first time
+  if (empty($_GET['_vmr'])) {
+    // log all responses
+    watchdog('commerce_virtualmerchant', 'Response: !1', array('!1' => '<pre>' . check_plain(print_r($_GET, TRUE)) . '</pre>'), WATCHDOG_INFO);
+    
+    // encode/encrypt the response variables
+    $response_data = openssl_encrypt(drupal_json_encode($_GET), "aes-128-ctr", variable_get('commerce_virtualmerchant_pin', 'PIN'), 0, 'virtual_merchant');
+    drupal_goto($base_url . '/' . request_path(), array('query' => array('_vmr' => $response_data)));
+  }
+  // second time, post the values to the checkout page to process
+  else {
+    $html = <<<EOD
+<!DOCTYPE html>
 <html>
-  <body>
-    <br/>
-    <br/>
-    <h2>Please wait...</h2>
-  </body>
+<body>
+<div id="virtualmerchant-processing" style="max-width: 400px; margin: 0 auto;"><img id="virtualmerchant-wait" style="max-width: 100%;" alt="Please Wait" src="/images/processing.gif" /></div>
+<form action="{$base_url}/checkout/{$order_id}" method="post">
+  <input type="hidden" name="_vmr" value="{$_GET['_vmr']}" />
+  </form>
   <script type="text/javascript">
-    window.parent.document.forms['commerce-checkout-form-checkout'].elements['commerce_payment[payment_details][virtualmerchant_response]'].value = '{$response}';
-    window.parent.document.forms['commerce-checkout-form-checkout'].elements['edit-continue'].click();
+    document.forms[0].submit();
   </script>
+</body>
 </html>
 EOD;
+    print $html;
+  }
 
-  print $html;
   drupal_exit();
 }
 
@@ -139,40 +188,41 @@ function commerce_virtualmerchant_dummy_form() {
   $form['#type'] = 'form';
   $form['#action'] = $base_url . '/commerce/virtualmerchant/response';
   $form['#method'] = 'get';
+  $form['#attributes']['target'] = '_top';  
   
   $form['ssl_card_number'] = array(
     '#type' => 'textfield', 
     '#title' => t('Card Number'), 
     '#default_value' => '41**********1111', 
-    '#size' => 20, 
+    '#size' => 20,
     '#required' => TRUE,
   );
   $form['ssl_exp_date'] = array(
     '#type' => 'textfield', 
     '#title' => t('Exp Date'), 
     '#default_value' => '0120', 
-    '#size' => 20, 
+    '#size' => 20,
     '#required' => TRUE,
   );
   $form['ssl_amount'] = array(
     '#type' => 'textfield', 
     '#title' => t('Amount'), 
     '#default_value' => '1.00',
-    '#size' => 20, 
+    '#size' => 20,
     '#required' => TRUE,
   );
   $form['ssl_result'] = array(
     '#type' => 'textfield', 
     '#title' => t('Result Code'), 
     '#default_value' => 0, 
-    '#size' => 20, 
+    '#size' => 20,
     '#required' => TRUE,
   );
   $form['ssl_result_message'] = array(
     '#type' => 'textfield', 
     '#title' => t('Result Message'), 
     '#default_value' => 'APPROVAL', 
-    '#size' => 20, 
+    '#size' => 20,
     '#required' => TRUE,
   );
   $form['ssl_txn_id'] = array(
@@ -188,6 +238,13 @@ function commerce_virtualmerchant_dummy_form() {
     '#default_value' => 'AA',
     '#size' => 20,
     '#required' => TRUE,
+  );
+  $form['ssl_email'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Email'),
+    '#default_value' => '',
+    '#size' => 20,
+    '#required' => FALSE,
   );
   $form['ssl_account_balance'] = array(
     '#type' => 'hidden',

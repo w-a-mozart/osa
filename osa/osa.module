@@ -65,14 +65,41 @@ function osa_civicrm_buildForm($formName, &$form) {
 /**
  * Implements hook_civicrm_validate to route requests to specific form overrides.
  *
+ * @deprecated as of CiviCRM 4.7.  Use {@link #osa_civicrm_validateForm()} instead.
+ *
  * @param string $formName
  *   The name of the form.
+ * @param array $fields
+ *   Array of name value pairs for all 'POST'ed form values.
+ * @param array $files
+ *   Array of file properties as sent by PHP POST protocol.
  * @param object $form
  *   A reference to the form object.
  */
 function osa_civicrm_validate($formName, &$fields, &$files, &$form) {
   if (function_exists("osa_civicrm_validate_$formName")) {
     call_user_func_array("osa_civicrm_validate_$formName", array(&$fields, &$files, &$form));
+  }
+}
+
+/**
+ * Implements hook_civicrm_validateForm to route requests to specific form overrides.
+ *
+ * @param string $formName
+ *    Name of the form being validated.
+ * @param array $fields
+ *    Array of name value pairs for all 'POST'ed form values.
+ * @param array $files
+ *    Array of file properties as sent by PHP POST protocol.
+ * @param CRM_Core_Form $form
+ *    Reference to the civicrm form object.
+ * @param array $errors
+ *    Reference to the errors array. All errors will be added to this array.
+ *
+ */
+function osa_civicrm_validateForm($formName, &$fields, &$files, &$form, &$errors) {
+  if (function_exists("osa_civicrm_validateForm_$formName")) {
+    call_user_func_array("osa_civicrm_validateForm_$formName", array(&$fields, &$files, &$form, &$errors));
   }
 }
 
@@ -178,8 +205,8 @@ class DrupalMailDriver {
       $b = strpos($headers['Content-Type'], 'boundary=') + strlen('boundary=');
       $boundary = str_replace('"', '', substr($headers['Content-Type'], $b));
     
-      $start = strpos($body, 'Content-Type: text/html; charset=utf-8') + strlen('Content-Type: text/html; charset=utf-8') + 2;
-      $length = strpos($body, "--{$boundary}--", $start) - $start - 2;
+      $start = strpos($body, 'Content-Type: text/html; charset=utf-8') + strlen('Content-Type: text/html; charset=utf-8') + 1;
+      $length = strpos($body, "--{$boundary}--", $start) - $start;
       $body = substr($body, $start, $length);
 
       $headers['Content-Type'] = 'text/html; charset=utf-8';
