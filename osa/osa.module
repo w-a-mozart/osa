@@ -11,6 +11,7 @@ require_once 'osa.commerce.inc';
 require_once 'osa.group_class.inc';
 require_once 'osa.teacher.inc';
 require_once 'osa.camp.inc';
+require_once 'osa.registration.inc';
 require_once 'osa.quickbooks.inc';
 
 // CiviCRM hooks
@@ -118,64 +119,6 @@ function osa_civicrm_postProcess($formName, &$form) {
 }
 
 /**
- * Implements hook_civicrm_alterPaymentProcessorParams to customize payment processing
- *
- */
-function osa_civicrm_alterPaymentProcessorParams($paymentObj, &$rawParams, &$cookedParams) {
-  // customize private lesson payments
-  if (isset($rawParams['contributionPageID']) && ($rawParams['contributionPageID'] == OSA_CONTRIB_TEACHER)) {
-    osa_civicrm_alterPaymentProcessorParams_teacher_registration($paymentObj, $rawParams, $cookedParams);
-  }
-
-  // add custom variables to the Elavon transaction
-  if (isset($paymentObj) && ($paymentObj->_processorName == 'Elavon')) {
-    $contact = _osa_get_contact(NULL, FALSE);
-    $cookedParams['osa_name_card'] = htmlspecialchars($contact['display_name']);
-    $cookedParams['osa_card_type'] = strtolower($rawParams['credit_card_type']);
-    $cookedParams['osa_qb_name'] = htmlspecialchars(_osa_qb_name($contact['id']));
-    $cookedParams['ssl_description'] = htmlspecialchars($cookedParams['ssl_description']);
-    
-    unset($cookedParams['ssl_ship_to_first_name']);
-    unset($cookedParams['ssl_ship_to_last_name']);
-    unset($cookedParams['ssl_customer_number']);
-  }
-
-  // modify the line item description for Event registrations
-  if (isset($paymentObj) && ($paymentObj->_processorName == 'Drupal Commerce Cart') && ($cookedParams['type'] == 'civi_event')) {
-    $participantID = $rawParams['participantID'];
-    $eventID = $rawParams['eventID'];
-    $event = civicrm_api('Event', 'getsingle', array('id' => $eventID, 'version' => 3,));
-    if ($event['event_type_id'] != OSA_EVENT_SUMMER_CAMP) {
-      $html = _osa_civicrm_participant_theme($participantID, 'short');
-      $cookedParams['label'] = trim($html);
-    }
-  }
-  // modify the line item description for Memberships
-  elseif (isset($paymentObj) && ($paymentObj->_processorName == 'Drupal Commerce Cart') && ($cookedParams['type'] == 'civi_membership')) {
-    // add next year's school year to the title
-    $contactID = $rawParams['contactID'];
-    $membership = _osa_get_membership($contactID);
-    if (isset($membership['end_date']) && $membership['is_current_member']) {
-      $end_date = new DateTimeEx($membership['end_date']);
-    }
-    else {
-      $membershipDates = _osa_get_membership_dates();
-      $end_date = new DateTimeEx($membershipDates['end_date']);
-      // need a date in the middle of the school year as the membership end date (August) is after the school end date (June)
-      $end_date->modify('-6 months');
-    }
-    $school_year = _osa_school_year($school_start_date, $school_end_date, $end_date->format('Y-m-d'));
-    $cookedParams['label'] = trim("$school_year {$cookedParams['label']}");
-  }
-
-  // @TODO fix this
-  if (($rawParams['eventID'] == 1019) || ($rawParams['eventID'] == 2191)) {
-    $cookedParams['quantity'] = ($cookedParams['amount'] / 12);
-    $cookedParams['amount'] = 12;
-  }  
-}
-
-/**
  * Implementation of hook_civicrm_alterMailer
  *
  * Replace the civicrm mailer with the drupal mailer
@@ -233,22 +176,247 @@ function osa_civicrm_post($op, $objectName, $objectId, &$objectRef) {
  * Change the permissions checked when doing civicrm API calls.
  */
 function osa_civicrm_alterAPIPermissions($entity, $action, &$params, &$permissions) {
+  static $relatedCheck = [];
 
-  $permissions['relationship'] = array(
-    'get' => array(
-      'edit my contact',
-    ),
-    'update' => array(
-      'edit my contact',
-    ),
-    'delete' => array(
-      'edit my contact',
-    ),
-  );
-  
+  // return if user can access CiviCRM back end
+  // should probably do more checks but this seems good for now
+  if (CRM_Core_Permission::check('access CiviCRM')) {
+    return;
+  }
+
+  // fix AJAX permissions
+  if (($_GET['q'] == 'civicrm/ajax/rest') || (substr_compare($_GET['q'], 'webform-civicrm/js/', 0, 19)  === 0)) {
+    // make sure the user can access AJAX API
+    if (!CRM_Core_Permission::check('access AJAX API')) {
+      $permissions[$entity][$action] = ['access AJAX API'];
+      return;
+    }
+
+    // fix bug in AJAX permissions
+    if (is_array($permissions[$entity][$action])) {
+      foreach ($permissions[$entity][$action] as $idx => $permission) {
+        if ($permission == 'access CiviCRM') {
+          $permissions[$entity][$action][$idx] = 'access AJAX API';
+          break;
+        }
+      }
+    }
+  }
+
+  // if accessing contact information, make sure the user has permissions to the contact
+  if (!empty($params['contact_id']) || ($entity == 'contact' && !empty($params['id']))) {
+    $contact_id = !empty($params['contact_id']) ? $params['contact_id'] : $params['id'];
+    $cid = CRM_Core_Session::getLoggedInContactID();
+    if (($cid != $contact_id) && !CRM_Core_Permission::check('edit all contacts')) {
+    
+      if (!isset($relatedCheck[$cid][$contact_id])) {
+        $sql = 'SELECT `id` FROM `civicrm_relationship` WHERE (`contact_id_a` = %1 AND `contact_id_b` = %2 AND `is_permission_b_a` = 1) OR (`contact_id_b` = %1 AND `contact_id_a` = %2 AND `is_permission_a_b` = 1)';
+        $dao = CRM_Core_DAO::executeQuery($sql, ['1' => [$contact_id, 'String'], '2' => [$cid, 'String']]);
+        $relatedCheck[$cid][$contact_id] = $dao->fetch();
+      }
+
+      if (!$relatedCheck[$cid][$contact_id]) {
+        $permissions[$entity][$action][] = 'edit all contacts';
+        return;
+      }
+    }
+  }
+
+  // allow users to edit their own relationships
+  $perm = ['edit my contact'];
+  $permissions['relationship'] = [
+    'get' => $perm,
+    'update' => $perm,
+    'delete' => $perm,
+  ];
+
   // need this because CiviCase is not enabled, so there are no permissions to set, but need the to access the Option Groups
-  if ($entity == 'case')
+  if ($entity == 'case') {
     $params['check_permissions'] = FALSE;
+  }
+}
+
+/**
+ * Change the permissions checked when doing civicrm calls
+ *
+ */
+function osa_civicrm_aclWhereClause($type, &$tables, &$whereTables, &$contactID, &$where) {
+  // anonymous requests have no access
+  if (!$contactID) {
+    return;
+  }
+  // permissions checked in osa_civicrm_alterAPIPermissions, so allow query access to all
+  if (array_key_exists('civicrm_contact', $whereTables)) {
+    $where = ' ( 1 )';
+  }
+}
+
+/**
+ * Add custom tokens to CiviMail
+ *
+ */
+function osa_civicrm_tokens(&$tokens) {
+  $tokens['osa'] = [
+    'osa.family_name' => 'Family Name',
+  ];
+}
+
+function osa_civicrm_tokenValues(&$values, $cids, $job = null, $tokens = [], $context = null) {
+  if(isset($tokens['osa'])) {
+    foreach ($cids as $cid) {
+      $hid = _osa_getHousehold($cid);
+      $h_contact = _osa_get_contact($hid, FALSE);
+      if (isset($h_contact)) {
+        $values[$cid]['osa.family_name'] = $h_contact['display_name'];
+      }
+    }
+  }
+}
+
+function osa_get_refunds($cid) {
+  $refunds = [
+    '26' => 88.57,  // Ian Gowing (test)
+    '4790' => 88.57,
+    '4791' => 88.57,
+    '5553' => 88.57,
+    '3059' => 104.64,
+    '1912' => 104.64,
+    '5996' => 60.80,
+    '6340' => 104.64,
+    '6638' => 56.30,
+    '3343' => 88.57,
+    '3342' => 104.64,
+    '5328' => 88.57,
+    '4879' => 60.80,
+    '3096' => 104.64,
+    '4195' => 104.64,
+    '5819' => 60.80,
+    '6657' => 88.57,
+    '4978' => 60.80,
+    '6600' => 60.80,
+    '5915' => 60.80,
+    '2693' => 104.64,
+    '500' => 56.30,
+    '2878' => 104.64,
+    '481' => 104.64,
+    '3615' => 56.30,
+    '2557' => 63.70,
+    '6331' => 60.80,
+    '6326' => 88.57,
+    '6672' => 88.57,
+    '3792' => 104.64,
+    '1073' => 104.64,
+    '2776' => 104.64,
+    '2052' => 104.64,
+    '4639' => 60.80,
+    '3538' => 63.70,
+    '488' => 104.64,
+    '2525' => 104.64,
+    '1296' => 104.64,
+    '5851' => 88.57,
+    '1965' => 104.64,
+    '4866' => 104.64,
+    '4129' => 88.57,
+    '5866' => 88.57,
+    '5958' => 60.80,
+    '1809' => 104.64,
+    '464' => 104.64,
+    '2811' => 104.64,
+    '2863' => 104.64,
+    '5760' => 88.57,
+    '5679' => 56.30,
+    '116' => 104.64,
+    '1640' => 104.64,
+    '2696' => 56.30,
+    '5053' => 104.64,
+    '6567' => 88.00,
+    '4702' => 56.30,
+    '4710' => 104.64,
+    '4971' => 56.30,
+    '2684' => 88.57,
+    '4544' => 88.57,
+    '1548' => 104.64,
+    '2035' => 104.64,
+    '4991' => 104.64,
+    '5079' => 104.64,
+    '6387' => 88.57,
+    '6647' => 88.57,
+    '5878' => 88.57,
+    '1429' => 104.64,
+    '3900' => 88.57,
+    '2176' => 88.57,
+    '2175' => 104.64,
+    '3736' => 104.64,
+    '5130' => 88.57,
+    '2718' => 88.57,
+    '2747' => 88.57,
+    '5620' => 104.64,
+    '6668' => 56.30,
+    '3781' => 104.64,
+    '3780' => 88.57,
+    '6399' => 88.57,
+    '5808' => 56.30,
+    '411' => 104.64,
+    '412' => 104.64,
+    '5872' => 60.80,
+    '4184' => 88.57,
+    '6627' => 60.80,
+    '6628' => 60.80,
+    '6412' => 88.57,
+    '6413' => 88.57,
+    '6912' => 72.86,
+    '461' => 104.64,
+    '4478' => 88.57,
+    '5710' => 104.64,
+    '6213' => 88.57,
+    '6916' => 88.57,
+    '5927' => 60.80,
+    '2066' => 104.64,
+    '4071' => 104.64,
+    '4839' => 60.80,
+    '2688' => 104.64,
+    '3361' => 104.64,
+    '2546' => 63.70,
+    '3334' => 56.30,
+    '1280' => 104.64,
+    '3409' => 104.64,
+    '4682' => 88.57,
+    '3877' => 104.64,
+    '3878' => 88.57,
+    '5557' => 56.30,
+    '2078' => 63.70,
+    '3311' => 63.70,
+    '6658' => 104.64,
+    '2891' => 112.14,
+    '5924' => 88.57,
+    '3600' => 104.64,
+    '6924' => 72.86,
+    '6666' => 88.57,
+    '2955' => 63.70,
+    '4751' => 60.80,
+    '5826' => 60.80,
+    '3612' => 104.64,
+    '6061' => 60.80,
+    '6067' => 88.57,
+    '3777' => 63.70,
+    '5845' => 56.30,
+    '6378' => 88.57,
+    '5505' => 88.57,
+    '5507' => 88.57,
+    '6602' => 60.80,
+    '6835' => 88.57,
+    '3735' => 56.30,
+    '1858' => 112.14,
+    '3076' => 104.64,
+    '4786' => 88.57,
+    '5253' => 104.64,
+    '6822' => 56.30,
+    '5863' => 56.30,
+    '6597' => 104.64,
+    '6807' => 88.57,
+  ];
+
+  return $refunds[$cid];
 }
 
 // Drupal hooks
@@ -381,6 +549,20 @@ function osa_webform_submission_insert($node, $submission) {
 }
 
 /**
+ * Implements hook_webform_submission_update() to process webform submissions
+ */
+function osa_webform_submission_update($node, $submission) {
+  $form_type = _osa_get_node_form_type($node);
+  if (isset($form_type) && function_exists("osa_webform_submission_update_{$form_type}")) {
+    call_user_func_array("osa_webform_submission_update_{$form_type}", array(&$node, &$submission));
+  }
+
+  if (function_exists("osa_webform_submission_update_{$node->nid}")) {
+    call_user_func_array("osa_webform_submission_update_{$node->nid}", array(&$node, &$submission));
+  }
+}
+
+/**
  * Define custom options lists used in drop downs on webforms
  */
 function osa_webform_select_options_info() {
@@ -390,6 +572,12 @@ function osa_webform_select_options_info() {
   $items['family_list'] = array(
     'title' => t('Family members'),
     'options callback' => 'osa_webform_options_family',
+    'file' => 'osa.inc',
+  );
+
+  $items['family_student_list'] = array(
+    'title' => t('Family members (Students only)'),
+    'options callback' => 'osa_webform_options_family_students',
     'file' => 'osa.inc',
   );
 
@@ -498,56 +686,9 @@ function osa_process_node(&$variables) {
 function osa_js_alter(&$javascript) {
 };
 
-/**
- * Implements hook_commerce_price_component_type_info.
- */
-function osa_commerce_price_component_type_info() {
-  $component_types = array();
-
-  // Add custom discount types
-  $discount_types = variable_get('osa_discount_types');
-  $types = empty($discount_types) ? array() : explode(PHP_EOL, trim($discount_types));
-
-  foreach ($types as $idx => $type) {
-    $type = trim($type);
-    if (!empty($type)) {
-      $component_types["osa_discount_$idx"] = array(
-        'title' => $type,
-        'parent_type' => 'discount',
-        'weight' => -40 + $idx,
-      );
-    }
-  }
-
-  return $component_types;
-}
-
-/**
- * Implements hook_commerce_price_formatted_components_alter.
- *
- * Change the way Order totals are displayed to consolidate discounts.
- */
-function osa_commerce_price_formatted_components_alter(&$components, $price, $entity) {
-  if (isset($entity->commerce_order_total)) {
-    foreach ($components as $type => $component) {
-      $component_type = commerce_price_component_type_load($type);
-      if (isset($component_type['parent_type'])) {
-        $parent_type = commerce_price_component_type_load($component_type['parent_type']);
-        $components[$component_type['parent_type']]['title'] = $parent_type['display_title'];
-        $components[$component_type['parent_type']]['weight'] = $parent_type['weight'];
-        if (!isset($components[$component_type['parent_type']]['price'])) {
-          $components[$component_type['parent_type']]['price'] = commerce_price_field_data_auto_creation();
-        }
-        $components[$component_type['parent_type']]['price']['amount'] += commerce_currency_convert($component['price']['amount'], $component['price']['currency_code'], $components[$component_type['parent_type']]['price']['currency_code']);
-        unset($components[$type]);
-      }
-    }
-  }
-}
-
 function osa_views_post_render(&$view, &$output, &$cache) {
   // kuldge to allow commerce item labels to display html
-  // note we had to chnage the label db column to TEXT from VARCHAR
+  // note we had to change the label db column to TEXT from VARCHAR
   // @todo must be a better way
   if (($view->base_table == 'commerce_line_item') || ($view->base_table == 'commerce_order')) {
     $output = htmlspecialchars_decode($output);

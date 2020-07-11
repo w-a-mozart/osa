@@ -1,0 +1,130 @@
+/* osa.family.css */
+#osa-fp-announcement {
+  position: absolute;
+  border: 1px solid black;
+  padding: 5px;
+  text-align: center;
+  font-size: 140%;
+  line-height: 110%;
+  background-color: lightyellow;
+}
+@media all and (max-width: 760px) {
+  #osa-fp-announcement {
+    position: static;
+  }
+}
+#crm-main-content-wrapper fieldset {
+  border: groove 2px threedface;
+  margin: 0 .7em 1em;
+  padding: 0.5em;
+}
+p.osa-fp-vol-commit {
+  padding: 5px;
+  background-color: lightcyan;
+  font-weight: bold;
+  border: 1px solid;
+  text-align: center;
+}
+p.osa-fp-vol-commit:hover {
+  background-color: lightsteelblue;
+  cursor: pointer;
+}
+.osa-fp-ul {
+  list-style: none;
+  padding-inline-start: 0;
+}
+.osa-fp-center {
+  margin: 0 auto;
+  display: table;
+  text-align: center;
+}
+.osa-fp-inline {
+  display: inline-grid;
+  text-align: initial;
+}
+.osa-fp-line-above::before {
+  content: '';
+  display: inline-grid;
+  position: relative;
+  width: 50%;
+  left: 0%;
+  border-top: 1px solid red;
+  height: 10px;
+  border-left: 1px solid red;
+  border-right: 1px solid red;
+}
+.osa-fp-tick-below::after {
+  content: '';
+  display: inline-grid;
+  position: relative;
+  left: 50%;
+  height: 10px;
+  border-left: 1px solid red;
+}
+.osa-fp-img {
+  display: inline-grid;
+  padding: 2px;
+  float: left;
+  margin-right: 2px;
+  width: 22%;
+}
+.osa-fp-details {
+  margin: 0 auto;
+  display: table;
+}
+.osa-fp-block {
+  display: block;
+}
+.osa-fp-button {
+  background-color: blue;
+  border-color: blue;
+  color: white;
+  padding: 1px;
+  margin: 4px 3px;
+}
+.osa-fp-action .osa-fp-button {
+  background-color: turquoise;
+  border-color: turquoise;
+  color: black;
+}
+#crm-main-content-wrapper .osa-fp-button .icon {
+  display: inline-grid;
+  height: 16px;
+  width: 16px;
+  background-image: url(/osa/sites/all/modules/civicrm/i/icons/jquery-ui-FFFFFF.png);
+}
+#crm-main-content-wrapper .osa-fp-button:hover .icon {
+  background-image: url(/osa/sites/all/modules/civicrm/i/icons/jquery-ui-8A1F11.png);
+  cursor: pointer;
+}
+.osa-fp-button .edit-icon {
+  background-position: -66px -113px;
+}
+.osa-fp-button .delete-icon {
+  background-position: -177px -97px;
+}
+.osa-fp-button .membership-icon {
+  background-position: -224px -112px;
+}
+.osa-fp-button .group-icon {
+  background-position: -32px -112px;
+}
+.osa-fp-button .event-icon {
+  background-position: -113px -112px;
+}
+.osa-fp-button .add-icon {
+  background-position: -32px -128px;
+}
+.osa-fp-button .log-icon {
+  background-position: -64px -96px;
+}
+.osa-fp-button .search-icon {
+  background-position: -161px -113px;
+}
+.osa-fp-button .register-icon {
+  background-position: -225px -113px;
+}
+
+.wait {
+  cursor: wait;
+}

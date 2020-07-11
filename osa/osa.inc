@@ -27,8 +27,24 @@ define('OSA_CONTRIB_ADJUST', 4);
 /**
  * Define constants for CiviCRM Financial Types.
  */
+define('OSA_FINTYPE_DONATION', 1);
+define('OSA_FINTYPE_MEMBER_DUES', 2);
 define('OSA_FINTYPE_CONCERT_TICKET', 5);
 define('OSA_FINTYPE_TEACHER_FEE', 6);
+define('OSA_FINTYPE_GROUP_CLASS_FEE', 7);
+
+/**
+ * Define constants for CiviCRM Contribution Status.
+ */
+define('OSA_CONTRIB_STATUS_COMPLETED', 1);
+define('OSA_CONTRIB_STATUS_PENDING', 2);
+
+/**
+ * Define constants for CiviCRM Contribution Method.
+ */
+define('OSA_CONTRIB_METHOD_CREDIT_CARD', 1);
+define('OSA_CONTRIB_METHOD_CASH', 3);
+define('OSA_CONTRIB_METHOD_CHEQUE', 4);
 
 /**
  * Define constants for CiviCRM Relationship Types.
@@ -53,6 +69,17 @@ define('OSA_PERM_PEER',  3);
  * Define constants for CiviCRM Membership Types.
  */
 define('OSA_MEMBER_STUDENT', 1);
+
+/**
+ * Define constants for CiviCRM Membership Status.
+ */
+define('OSA_MEMBER_STATUS_NEW', 1);
+define('OSA_MEMBER_STATUS_CURRENT', 2);
+define('OSA_MEMBER_STATUS_GRACE', 3);
+define('OSA_MEMBER_STATUS_EXPIRED', 4);
+define('OSA_MEMBER_STATUS_PENDING', 5);
+define('OSA_MEMBER_STATUS_CANCELLED', 6);
+define('OSA_MEMBER_STATUS_DECEASED', 7);
 
 /**
  * Define constants for CiviCRM Event Types.
@@ -90,6 +117,7 @@ function _osa_profileId($entity) {
 
 /**
  * Map name to CiviCRM Custom Data fields
+ * @TODO: now that the API works better, clean this up so it's not hard coded
  */
 function _osa_field($field) {
 
@@ -119,6 +147,29 @@ function _osa_field($field) {
   }
 
   return isset($custom_fields[$field]) ? $custom_fields[$field]: NULL;
+}
+
+/**
+ * Get a Map of CiviCRM Custom Data fields for a Custom Field Set
+ */
+function osa_custom_field_map($field_set) {
+  static $custom_field_maps = [];
+  if (empty($field_set))
+    return [];
+  if (!empty($custom_field_maps[$field_set]))
+    return $custom_field_maps[$field_set];
+
+  $result = civicrm_api3('CustomField', 'get', ['custom_group_id' => $field_set,]);
+  if ($result['is_error'])
+    return [];
+
+  $custom_field_maps[$field_set] = [];
+  foreach ($result["values"] as $id => $field_def) {
+    $name = strtolower($field_def['name']);
+    $custom_field_maps[$field_set][$name] = "custom_{$id}";
+  }
+  
+  return $custom_field_maps[$field_set];
 }
 
 /**
@@ -487,26 +538,8 @@ function osa_isVotingMember($uid = NULL) {
 }
 
 /**
- *  Return the contacts Name in Quickbooks
- */
-function _osa_qb_name($cid = NULL) {
-  civicrm_initialize();
-
-  // Use the Household as the Customer in QB
-  $family_id = _osa_getHousehold($cid);
-  if ($family_id) {
-    $family = _osa_get_contact($family_id, FALSE);
-  }
-  else {
-    $family_id = 1;
-    $family['display_name'] = 'Anonymous';
-  }
-
-  return "{$family['display_name']} <{$family_id}>";
-}
-
-/**
  *  Get the teachers related to a student
+ *  @deprecated
  */
 function _osa_getTeachers(&$student) {
 
@@ -824,7 +857,6 @@ function _osa_get_contact_id($uid = NULL) {
  * Wrapper function to return a contact record
  */
 function _osa_get_contact($cid = NULL, $custom = TRUE) {
-
   if (!isset($cid)) {
     $cid = _osa_get_contact_id();
   }
@@ -839,6 +871,7 @@ function _osa_get_contact($cid = NULL, $custom = TRUE) {
   }
 
   // get the contact record
+  civicrm_initialize();
   $result = civicrm_api('contact', 'get',  array('id' => $cid, 'version' => 3));
   if (($result['is_error'] == 0) && ($result['count'] == 1)) {
     $contact[$cache_key] = $result['values'][$cid];
@@ -1272,22 +1305,39 @@ function &_osa_get_webform_component(&$node, $form_key) {
 function _osa_get_webform_component_id($components, $form_key) {
 
   static $webform_component_map = array();
+  $map = array();
 
   $nid = isset($components[1]['nid']) ? $components[1]['nid'] : NULL;
-  if (isset($nid) && isset($webform_component_map[$nid]) && isset($webform_component_map[$nid][$form_key])) {
-    return $webform_component_map[$nid][$form_key];
+  if (isset($nid) && !empty($webform_component_map[$nid])) {
+    $map = $webform_component_map[$nid];
+  } else {
+    foreach ($components as $cid => $component) {
+      $map[$component['form_key']] = $cid;
+    }
+    if (isset($nid)) {
+      $webform_component_map[$nid] = $map;
+    }
   }
-
-  $map = array();
-  foreach ($components as $cid => $component) {
-    $map[$component['form_key']] = $cid;
-  }
-
-  if (isset($nid)) {
-    $webform_component_map[$nid] = $map;
-  }
-
+  
   return isset($map[$form_key]) ? $map[$form_key] : FALSE;
+}
+
+/**
+ * Returns the data of a webform submission keyed with form key
+ */
+function _osa_parse_webform_submission_data($components, $data) {
+  $submission_data = [];
+  foreach ($components as $cid => $component) {
+    $cid = $component['cid'];
+    if (!empty($data[$cid][0])) {
+      if (empty($component['extra']['multiple']))
+        $submission_data[$component['form_key']] = $data[$cid][0];
+      else
+        $submission_data[$component['form_key']] = $data[$cid];
+    }
+  }
+  
+  return($submission_data);
 }
 
 /**
@@ -1308,6 +1358,41 @@ function osa_webform_options_family() {
 
   civicrm_initialize();
   return _osa_getHouseholdMembers($camp_participant, 'display_name');
+}
+
+function osa_webform_options_family_students() {
+  $hid = NULL;
+
+  // find out if this is an existing submission
+  $path = request_path();
+  $matches = array();
+  if (preg_match('#node\/(?P<nid>\d+)\/submission\/(?P<sid>\d+)#', $path, $matches) === 1) {
+    $node = node_load($matches['nid']);
+    $submission = webform_get_submission($matches['nid'], $matches['sid']);
+    $cid = _osa_get_webform_component_id($node->webform['components'], 'students');
+    $student_id = $submission->data[$cid][0];
+    $hid = _osa_getHousehold($student_id);
+  }
+
+  civicrm_initialize();
+
+  // use static caching
+  static $family_students = array();
+  $cache_key = "hid=$hid";
+  
+  if (!isset($family_students[$cache_key])) {
+    $family_students[$cache_key] = array();
+    $family_members = _osa_getHouseholdMembers($hid);
+
+    foreach($family_members as $family_member) {
+      if ($family_member['contact']['is_student']) {
+        $family_students[$cache_key][$family_member['contact_id']] = $family_member['contact']['display_name'];
+      }
+    }
+    asort($family_students[$cache_key]);
+  }
+
+  return $family_students[$cache_key];
 }
 
 /**
@@ -1351,6 +1436,67 @@ function _osa_next_payment_date($rel_start_date, &$num_installments, $base = 'to
 
 /**
  *  Calculate the school year
+ */
+function osa_get_school_dates($base = null) {
+  static $school_dates_cache = array();
+
+  if (!isset($base)) {
+    $key = 'current';
+  } else {
+    $base_date = new DateTimeEx($base);
+    $key = $base_date->format('Y-m-d');
+  }
+
+  if (isset($school_dates_cache[$key])) {
+    $base_date = null;
+    return $school_dates_cache[$key];
+  }
+
+  $school_dates = array();
+
+  if ($key == 'current') {
+    $school_dates['start'] = new DateTimeEx(variable_get('osa_start_date', 'first day of September'));
+  } else {
+    $current = osa_get_school_dates();
+    $year = $base_date->get('year');
+    if ($base_date->get('month') < $current['start']->get('month'))
+      $year -= 1;
+    $school_dates['start'] = $base_date->setDate($year, $current['start']->get('month'), $current['start']->get('day'));
+  }
+  $school_dates['end'] = (new DateTimeEx($school_dates['start']))->modify('last day of +11 months');    
+
+  $school_dates_cache[$key] = $school_dates;
+  $base_date = null;
+
+  return $school_dates_cache[$key];
+}
+
+/**
+ *  Get the school year in form "YYYY / YYYY"
+ */
+function osa_get_school_year($base = null) {
+  static $school_year_cache = array();
+
+  if (!isset($base)) {
+    $key = 'current';
+  } else {
+    $base_date = new DateTimeEx($base);
+    $key = $base_date->format('Y-m-d');
+    $base_date = null;
+  }
+
+  if (isset($school_year_cache[$key])) {
+    return $school_year_cache[$key];
+  }
+
+  $school_dates = osa_get_school_dates($base);
+  $school_year_cache[$key] = '' . $school_dates['start']->get('year') . ' / ' . $school_dates['end']->get('year');
+
+  return $school_year_cache[$key];
+}
+
+/**
+ *  Calculate the school year - deprecated
  */
 function _osa_school_year(&$school_start_date, &$school_end_date, $base = 'today') {
   // cache, as it gets called a lot with the same date (i.e. end of membership date)

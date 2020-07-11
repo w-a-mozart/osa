@@ -65,13 +65,6 @@ function commerce_virtualmerchant_admin_settings() {
     '#collapsible' => TRUE,
     '#collapsed' => FALSE,
   );
-  
-  $form['commerce_virtualmerchant']['vmform']['commerce_virtualmerchant_form_height'] = array(
-    '#type' => 'textfield',
-    '#title' => t('Form Height'),
-    '#description' => t('Height of the Converge Virtual Merchant Payment Form.'),
-    '#default_value' => variable_get('commerce_virtualmerchant_form_height', '300px'),
-  );
 
   $form['commerce_virtualmerchant']['vmform']['commerce_virtualmerchant_form_width'] = array(
     '#type' => 'textfield',

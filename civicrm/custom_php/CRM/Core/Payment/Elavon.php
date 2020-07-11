@@ -248,7 +248,7 @@ EOD;
     if ($processorResponse['ssl_result_message'] == "APPROVED") {
       if ($this->_mode == 'test') {
         $query = "SELECT MAX(trxn_id) FROM civicrm_contribution WHERE trxn_id LIKE 'test%'";
-        $p = array();
+        $p = [];
         $trxn_id = strval(CRM_Core_Dao::singleValueQuery($query, $p));
         $trxn_id = str_replace('test', '', $trxn_id);
         $trxn_id = intval($trxn_id) + 1;
@@ -305,7 +305,7 @@ EOD;
    *
    */
   public function checkConfig() {
-    $errorMsg = array();
+    $errorMsg = [];
 
     if (empty($this->_paymentProcessor['user_name'])) {
       $errorMsg[] = ' ' . ts('ssl_merchant_id is not set for this payment processor');
@@ -423,7 +423,7 @@ EOD;
    * @return mixed
    */
   public function decodeXMLresponse($Xml) {
-    $processorResponse = array();
+    $processorResponse = [];
 
     $processorResponse['ssl_result'] = self::GetNodeValue("ssl_result", $Xml);
     $processorResponse['ssl_result_message'] = self::GetNodeValue("ssl_result_message", $Xml);

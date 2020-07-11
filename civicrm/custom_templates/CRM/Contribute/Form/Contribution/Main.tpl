@@ -158,7 +158,7 @@
           <div class="clear"></div>
           {if $start_date_editable}
             {if $is_date}
-              <div class="label">{$form.start_date.label}</div><div class="content">{include file="CRM/common/jcalendar.tpl" elementName=start_date}</div>
+              <div class="label">{$form.start_date.label}</div><div class="content">{$form.start_date.html}</div>
             {else}
               <div class="label">{$form.start_date.label}</div><div class="content">{$form.start_date.html}</div>
             {/if}
@@ -316,10 +316,7 @@
   </fieldset>
   {/if}
 
-  <div id="billing-payment-block">
-    {include file="CRM/Financial/Form/Payment.tpl" snippet=4}
-  </div>
-  {include file="CRM/common/paymentBlock.tpl"}
+  {include file="CRM/Core/BillingBlockWrapper.tpl"}
 
   <div class="crm-public-form-item crm-group custom_post_profile-group">
   {include file="CRM/UF/Form/Block.tpl" fields=$customPost}
@@ -441,5 +438,9 @@
 {/if}
 
 {* jQuery validate *}
-{* disabled because more work needs to be done to conditionally require credit card fields *}
-{*include file="CRM/Form/validate.tpl"*}
+{* disabled because originally this caused problems with some credit cards.
+Likely it no longer has an problems but allowing conditional
+ inclusion by extensions / payment processors for now in order to add in a conservative way *}
+{if $isJsValidate}
+  {include file="CRM/Form/validate.tpl"}
+{/if}

@@ -1,0 +1,179 @@
+<!--
+Controller: VolOppsCtrl
+Required vars: volOppData(), searchParams
+
+Updated for OSA
+-->
+
+<div class="crm-container">
+  <div crm-ui-debug="volOppData()"></div>
+  <div crm-ui-debug="searchParams"></div>
+  <div crm-ui-debug="proximityUnits"></div>
+  <div crm-ui-debug="countries"></div>
+
+  <div ng-show="totalCreditsRequired > 0" class="required-commitment">Based on your family enrolment, you are required to commit to <span style="color: blue; font-weight: bold;">{{totalCreditsRequired}} volunteer credit<span ng-hide="totalCreditsRequired === 1">s</span></span>.</div>
+  <div ng-show="totalCreditsRequired === 0" class="required-commitment">Based on your family enrolment, you are not <u>required</u> to commit to any volunteer credits however, if you are willing to sign up for volunteer duties it would be greatly appreciated.</div>
+  <div ng-show="creditsPrevSelected > 0" class="required-commitment">Based on our records, you have already committed to <span style="color: red; font-weight: bold;">{{creditsPrevSelected}} volunteer credit<span ng-hide="creditsPrevSelected === 1">s</span></span> for this school year.</div>
+  <div class="help" ng-bind-html="helpText()"></div>
+
+  <!-- Search Form -->
+  <div class="crm-vol-half-responsive crm-vol-opp-show-hidden-search" ng-show="allowShowSearch">
+    <div class="crm-buttons">
+      <button crm-icon="search" ng-click="showSearch()">{{ts('Filter this List of Volunteer Opportunities')}}</button>
+    </div>
+  </div>
+  <div class="crm-vol-half-responsive crm-vol-opp-search" ng-hide="hideSearch">
+    <h2>Filter Volunteer Opportunities</h2>
+    <form name="volOppSearchForm" crm-ui-id-scope>
+      <div class="crm-block ui-tabs ui-widget ui-widget-content ui-corner-all">
+        <div class="crm-group" crm-ui-id-scope>
+          <div crm-ui-field="{name: 'volOppSearchForm.date_start', title: ts('Between')}" class="crm-vol-opp-time">
+            <input crm-ui-id="volOppSearchForm.date_start" crm-ui-datepicker="{time: false}" ng-model="searchParams.date_start" />
+            <label crm-ui-for="volOppSearchForm.date_end">and</label>
+            <input crm-ui-id="volOppSearchForm.date_end" crm-ui-datepicker="{time: false}" ng-model="searchParams.date_end" />
+          </div>
+          <div crm-ui-field="{name: 'volOppSearchForm.role_id', title: ts('Role')}" class="crm-vol-opp-role">
+            <select
+              crm-ui-id="volOppSearchForm.role_id"
+              crm-ui-select="{minimumInputLength: 0, placeholder: ts('Select Volunteer Role(s)')}"
+              type="text"
+              multiple="multiple"
+              name="role_id"
+              ng-model="searchParams.role_id"
+              ng-options="r.key as r.value for r in sortedRoles track by r.key"
+              class="big crm-form-text">
+              <option />
+            </select>
+          </div>
+        </div>
+        <div class="crm-buttons">
+          <button crm-icon="search" ng-click="search()">Filter</button>
+        </div>
+      </div>
+    </form>
+  </div>
+
+
+  <!-- Shopping Cart -->
+  <div class="crm-vol-half-responsive crm-vol-opp-cart" ng-class="{'floating_cart': cartIsFloating, 'contents_visible': showCartContents}">
+    <h2>{{ts('Your Selected Volunteer Opportunities')}}</h2>
+    <div class="crm-block ui-tabs ui-widget ui-widget-content ui-corner-all " ng-form="volOppCheckoutForm" crm-ui-id-scope>
+      <div class="crm-vol-opp-cart-message-wrapper">
+        <div class="crm-vol-opp-cart-large-indicator">
+          <span>{{totalCreditsSelected}} / {{totalCreditsRequired}} {{ts('Commitments')}}</span>
+        </div>
+        <div class="crm-vol-opp-cart-message">
+          <span ng-show="itemCountInCart === 0">Make a commitment by clicking the checkbox for a volunteer opportunity that interests you.</span>
+          <span ng-show="(itemCountInCart > 0) && (totalCreditsSelected < totalCreditsRequired)">Please continue making selections until you have reached your required volunteer commitment.</span>
+          <span ng-show="(itemCountInCart > 0) && (totalCreditsSelected >= totalCreditsRequired)">You have reached your required volunteer commitment. Please feel free to continue making selections, as extra help is always appreciated.</span>
+        </div>
+      </div>
+
+      <table ng-show="showCartContents" class="display dataTable no-footer crm-vol-opp-cart-list" ng-class="{'contents_visible': showCartContents}" role="grid">
+        <thead>
+        <tr role="row">
+          <th class="ui-state-default crm-vol-opp-project">Event</th>
+          <th class="ui-state-default crm-vol-opp-role">{{ts('Role')}}</th>
+          <th class="ui-state-default crm-vol-opp-time">Date</th>
+          <th class="ui-state-default crm-vol-opp-credits">Credits</th>
+          <th class="ui-state-default crm-vol-opp-toggle">&nbsp;</th>
+        </tr>
+        </thead>
+        <tbody>
+          <tr ng-repeat="need in shoppingCart" role="row" class="crm-vol-opp-cart-need-{{need.id}}">
+            <td class="crm-vol-opp-project">
+            {{need.project.title}}
+              <span
+                class="icon ui-icon-comment"
+                ng-show="need.project.description"
+                ng-click="showProjectDescription(need.project)">
+              </span>
+          </td>
+          <td class="crm-vol-opp-role">{{need.role_label}}
+              <span
+                class="icon ui-icon-comment"
+                ng-show="need.role_description || need.description"
+                ng-click="showRoleDescription(need)">
+              </span>
+          </td>
+          <td class="crm-vol-opp-time">{{need.short_date}}</td>
+          <td class="crm-vol-opp-credits">{{need.duration}}</td>
+          <td class="crm-vol-opp-toggle">
+              <span
+                class="icon ui-icon-trash"
+                ng-checked="need.inCart"
+                ng-click="toggleSelection(need)"
+            </span>
+          </td>
+        </tr>
+        </tbody>
+      </table>
+
+      <div class="crm-buttons">
+        <button class="crm-vol-button crm-vol-opp-cart-sign-up" crm-icon="check" ng-click="checkout()" ng-disabled="itemCountInCart === 0">
+          {{ts('Sign Up!')}}
+        </button>
+        <a class="crm-vol-opp-cart-show-contents" ng-hide="itemCountInCart === 0" ng-click="toggleCartList()">{{showCartContents ? ts('Hide selections') : ts('View selections')}}</a>
+      </div>
+    </div>
+  </div>
+
+  <div class="clear"></div>
+
+  <!-- Results -->
+  <div class="crm-vol-opp-results messages status no-popup" ng-show="_.size(volOppData()) === 0">
+    <div class="icon inform-icon"></div>
+    {{searchMessage}}
+  </div>
+  <div class="crm-vol-opp-results" ng-show="_.size(volOppData()) > 0">
+    <h2>{{ts('Available Volunteer Opportunities')}}</h2>
+    <p class="description">
+      For additional details, click the corresponding detail icon in the table below.
+      <span class="icon ui-icon-comment"></span>
+    </p>
+    <table class="display dataTable no-footer" role="grid">
+      <thead>
+      <tr role="row">
+        <th class="ui-state-default crm-vol-opp-time">Date</th>
+        <th class="ui-state-default crm-vol-opp-project">Event</th>
+        <th class="ui-state-default crm-vol-opp-role">{{ts('Role')}}</th>
+        <th class="ui-state-default crm-vol-opp-project">Notes</th>
+        <th class="ui-state-default crm-vol-opp-credits">Positions<br/>Available</th>
+        <th class="ui-state-default crm-vol-opp-credits">Credits</th>
+        <th class="ui-state-default crm-vol-opp-toggle">Select</th>
+      </tr>
+      </thead>
+      <tbody>
+        <tr ng-repeat="need in volOppData()" role="row" class="crm-vol-opp-need-{{need.id}}">
+          <td class="crm-vol-opp-time">{{need.long_date}}</td>
+          <td class="crm-vol-opp-project">
+          {{need.project.title}}
+            <span
+              class="icon ui-icon-comment"
+              ng-show="need.project.description"
+              ng-click="showProjectDescription(need.project)">
+            </span>
+        </td>
+        <td class="crm-vol-opp-role">{{need.role_label}}
+            <span
+              class="icon ui-icon-comment"
+              ng-show="need.role_description || need.description"
+              ng-click="showRoleDescription(need)">
+            </span>
+        </td>
+        <td class="crm-vol-opp-description">{{need.description}}</td>
+        <td class="crm-vol-opp-credits">{{need.quantity - need.quantity_assigned - ((need.inCart) ? 1 : 0)}}</td>
+        <td class="crm-vol-opp-credits">{{need.duration}}</td>
+        <td class="crm-vol-opp-toggle">
+          <input
+            type="checkbox"
+            ng-checked="need.inCart"
+            ng-click="toggleSelection(need)"
+            class="crm-form-checkbox"
+          />
+        </td>
+      </tr>
+      </tbody>
+    </table>
+  </div>
+</div>

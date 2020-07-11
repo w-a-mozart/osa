@@ -362,7 +362,7 @@ function osa_webform_submission_insert_summer_camp($node, $submission) {
   $result = civicrm_api('contribution', 'create', $params);
   if ($result['is_error'] <> 0) {
     watchdog('osa', "Error creating Camp Contribution for cid $contact_id %1", array('%1' => $result['error_message']), WATCHDOG_ERROR);
-    drupal_set_message('An unexpected error has occured. Please contact the administrator', 'error');
+    drupal_set_message('An unexpected error has occurred. Please contact the administrator', 'error');
   }
   $contribution_id = $result['id'];
 
@@ -374,7 +374,7 @@ function osa_webform_submission_insert_summer_camp($node, $submission) {
   $result = civicrm_api('participant_payment', 'create', $params);
   if ($result['is_error'] <> 0) {
     watchdog('osa', "Error creating participant_payment for cid $contact_id, participant_id $participant_id, contribution_id $contribution_id %1", array('%1' => $result['error_message']), WATCHDOG_ERROR);
-    drupal_set_message('An unexpected error has occured. Please contact the administrator', 'error');
+    drupal_set_message('An unexpected error has occurred. Please contact the administrator', 'error');
   }
   
   // add it to the drupal cart

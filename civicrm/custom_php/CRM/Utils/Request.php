@@ -132,9 +132,9 @@ class CRM_Utils_Request {
       }
       if (!isset($value)) {
         if ($isThrowException) {
-          throw new CRM_Core_Exception(ts("Could not find valid value for %1", array(1 => $name)));
+          throw new CRM_Core_Exception(ts("Could not find valid value for %1", [1 => $name]));
         }
-        CRM_Core_Error::fatal(ts("Could not find valid value for %1", array(1 => $name)));
+        CRM_Core_Error::fatal(ts("Could not find valid value for %1", [1 => $name]));
       }
     }
 
@@ -159,7 +159,7 @@ class CRM_Utils_Request {
    * @param array $method - '$_GET', '$_POST' or '$_REQUEST'.
    *
    * @return mixed
-   *    The value of the variable
+   *   The value of the variable
    */
   protected static function getValue($name, $method) {
     if (isset($method[$name])) {
@@ -196,7 +196,7 @@ class CRM_Utils_Request {
     // http://www.php.net/manual/en/ini.core.php#ini.request-order
     // http://www.php.net/manual/en/ini.core.php#ini.variables-order
 
-    $result = array();
+    $result = [];
     if ($_GET) {
       $result = array_merge($result, $_GET);
     }
@@ -248,7 +248,7 @@ class CRM_Utils_Request {
    * @param array $attributes
    *   The form attributes array.
    *
-   * @return string $value
+   * @return string
    *   The desired value.
    */
   public static function retrieveComponent($attributes) {

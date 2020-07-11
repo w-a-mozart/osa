@@ -1,0 +1,200 @@
+/* osa.registration.css */
+.content .webform-client-form {
+    padding-top: 0;
+}
+
+#form-loading {
+    background-color: white;
+    opacity: 0.7;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 300;
+}
+
+#form-loading-spinner {
+    position: relative;
+    top: 7em;
+    width: 30%;
+    left: 35%;
+}
+
+/* position the progress bar and save draft button */
+.webform-progressbar {
+    margin-top: 2em;
+}
+
+input.webform-draft.form-submit {
+    float: none;
+    display: block;
+    margin: 3em auto -2em;
+    position: relative;
+    top: 2em;
+    font-size: 80%;
+    padding: 0.2em 1.7em .2em 0.4em;
+    background-image: url("images/save.png");
+}
+
+input.webform-previous.form-submit {
+    padding: 8px 16px 8px 32px;
+    background-image: url("images/prev-arrow.png");
+    background-position-x: 10%;
+}
+
+/* format the Select Students page */
+div#edit-submitted-students {
+    position: relative;
+    left: 10%;
+    width: 90%;
+}
+
+.form-item.webform-component--students .description {
+    font-size: 100%;
+}
+
+/* fix issue with date picker */
+.ui-datepicker th {
+    font-size: 100%;
+}
+
+/* format the Instrument selection boxes */
+.instrument-fieldset {
+    float: left;
+    width: 30%;
+    height: 14em;
+}
+
+/* format box to show price of selected items */
+[class*="-registration-price"] {
+    float: right;
+    border: threedface 2px solid;
+    padding: 1em;
+    margin: -1em auto 0;
+}
+
+/* create a dynamic menu for class descriptions */
+.info-button {
+  background-color: blue;
+  color: white;
+  padding: 1em;
+  font-size: 1em;
+  border: none;
+  cursor: pointer;
+  float: right;
+}
+
+.info-button:hover {
+  background-color: lightblue;
+}
+
+.info-menu-content {
+  display: none;
+  background-color: white;
+  min-width: 10em;
+  overflow: auto;
+  box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
+  line-height: 1em;
+  z-index: 1;
+  position: absolute;
+  margin: 3.4em auto auto -10em;
+}
+
+.info-menu-content a {
+  color: black;
+  padding: 0.8em 1em;
+  text-decoration: none;
+  display: block;
+  
+}
+
+.info-menu-content a:hover {
+  background-color: lightgrey;
+}
+
+/* hide the start and end date/time in the event info for class descriptions */
+.crm-section.event_date_time-section {
+    display: none;
+}
+
+/*
+ * format the volunteer selection page
+ */
+.required-commitment {
+  margin-bottom: 1em;
+}
+
+#printer-friendly {
+  display: none;
+}
+
+div#crm_volunteer_angular_view .crm-vol-opp-search form {
+  padding: 0;
+}
+
+.crm-container .crm-section .content {
+    margin: .5em 0 .2em 0;
+}
+
+a.crm-hover-button.crm-clear-link {
+    margin: 0;
+}
+
+.crm-container input.crm-form-date {
+    width: 7em;
+}
+
+.crm-vol-opp-search h2,
+.crm-vol-opp-cart h2,
+.crm-vol-opp-results h2,
+.crm-vol-opp-cart-large-indicator {
+  font-size: 100%;
+}
+
+.crm-vol-half-responsive.crm-vol-opp-cart.floating_cart {
+  z-index: 100;
+  width: 25%;
+  right: 5px;
+}
+
+.crm-vol-opp-results.messages.status {
+  background-image: none;
+}
+
+button.crm-vol-opp-cart-sign-up,
+.crm-vol-opp-beneficiary,
+.crm-vol-proximity {
+  display: none;
+}
+
+.crm-vol-opp-results {
+  margin-top: 0;
+  margin-bottom: 2em;
+}
+
+.crm-vol-opp-credits {
+  text-align: right;
+}
+
+.crm-vol-opp-toggle {
+  text-align: center;
+}
+
+input[type="submit"][disabled] {
+  background-color: lightgrey;
+}
+
+input[type="submit"][disabled]:hover {
+  background-color: lightgrey;
+  cursor: not-allowed;
+}
+
+/* fix the info pages */
+.location.vcard {
+    display: inline-block;
+    margin-left: 2em;
+}
+div#google_map {
+    margin: 0 auto;
+}

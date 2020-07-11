@@ -35,7 +35,7 @@
  * Money utilties
  */
 class CRM_Utils_Money {
-  static $_currencySymbols = NULL;
+  public static $_currencySymbols = NULL;
 
   /**
    * Format a monetary string.
@@ -63,53 +63,13 @@ class CRM_Utils_Money {
    */
   public static function format($amount, $currency = NULL, $format = NULL, $onlyNumber = FALSE, $valueFormat = NULL) {
 
-    if (CRM_Utils_System::isNull($amount)) {
+    if (empty($amount))
       return '';
-    }
+    
+    $amount = str_replace(array(',', '$', ' '), '', $amount);
+    $amount = number_format($amount, 2);
 
-    $config = CRM_Core_Config::singleton();
-
-    if (!$format) {
-      $format = $config->moneyformat;
-    }
-
-    if (!$valueFormat) {
-      $valueFormat = $config->moneyvalueformat;
-    }
-
-    if ($onlyNumber) {
-      // money_format() exists only in certain PHP install (CRM-650)
-      if (is_numeric($amount) and function_exists('money_format')) {
-        $amount = money_format($valueFormat, $amount);
-      }
-      return $amount;
-    }
-
-    if (!self::$_currencySymbols) {
-      self::$_currencySymbols = CRM_Core_PseudoConstant::get('CRM_Contribute_DAO_Contribution', 'currency', array(
-          'keyColumn' => 'name',
-          'labelColumn' => 'symbol',
-        ));
-    }
-
-    if (!$currency) {
-      $currency = $config->defaultCurrency;
-    }
-    $amount = self::formatNumericByFormat($amount, $valueFormat);
-    // If it contains tags, means that HTML was passed and the
-    // amount is already converted properly,
-    // so don't mess with it again.
-    // @todo deprecate handling for the html tags because .... WTF
-    if (strpos($amount, '<') === FALSE) {
-      $amount = self::replaceCurrencySeparators($amount);
-    }
-
-    $replacements = array(
-      '%a' => sprintf("%01.2f", $amount),
-      '%C' => $currency,
-      '%c' => CRM_Utils_Array::value($currency, self::$_currencySymbols, $currency),
-    );
-    return strtr($format, $replacements);
+    return ($onlyNumber) ? $amount : "\$ $amount";
   }
 
   /**
@@ -243,10 +203,10 @@ class CRM_Utils_Money {
    */
   protected static function replaceCurrencySeparators($amount) {
     $config = CRM_Core_Config::singleton();
-    $rep = array(
+    $rep = [
       ',' => $config->monetaryThousandSeparator,
       '.' => $config->monetaryDecimalPoint,
-    );
+    ];
     return strtr($amount, $rep);
   }
 

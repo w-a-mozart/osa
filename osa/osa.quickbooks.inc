@@ -87,19 +87,27 @@ function _osa_quickbooks_queue_order($commerce_order, $element_type) {
       // other events 
       elseif ($line_element['type'] == 'civi_event') {
         $table = osa_html_table_to_array($line_element['line_item_label']);
-        $participant = $table[2][1];
-        $tmp_table = array();
-        foreach ($table as $row) {
-          $tmp_table[] = rtrim(implode(' : ', $row), ' :');
+        if (!empty($table)) {
+          $participant = $table[2][1];
+          $tmp_table = array();
+          foreach ($table as $row) {
+            $tmp_table[] = rtrim(implode(' : ', $row), ' :');
+          }
+          $line_element['line_item_label'] = check_plain(implode("\r\n", $tmp_table));
+          $line_element['line_item_label'] = mb_convert_encoding($line_element['line_item_label'], 'HTML-ENTITIES');
+        } else {
+          $tmp_table = explode(' for ', $line_element['line_item_label']);
+          if (count($tmp_table) > 1)
+            $participant = end($tmp_table);
+          else
+            $participant = $line_element['line_item_label'];
         }
-        $line_element['line_item_label'] = check_plain(implode("\r\n", $tmp_table));
-        $line_element['line_item_label'] = mb_convert_encoding($line_element['line_item_label'], 'HTML-ENTITIES');
       }
       
       $element["{$element_type}Line"][] = $line_element;
       unset($components['base_price']);
     }
-    
+
     // create other line items (usually discounts)
     uasort($components, 'drupal_sort_weight');
     foreach ($components as $name => $component) {
@@ -293,7 +301,7 @@ function osa_quickbooks_webconnect_qbxml_name_map() {
 
     // Order   => SalesReceipt / Invoice
     'order_id' => 'RefNumber',
-    'changed'  => 'TxnDate',
+    'placed'   => 'TxnDate',
 
     // Civi Contribution => SalesOrder
     'receive_date'       => 'TxnDate',
@@ -464,6 +472,25 @@ function osa_quickbooks_webconnect_element_alter(&$element, $element_type, &$ope
 function osa_quickbooks_webconnect_qbxml_alter(&$qbxml, $element, $element_type) {
   // log the outgoing XML
   watchdog('osa_quickbooks', 'OUT: @qbxml', array('@qbxml' => $qbxml), WATCHDOG_INFO);
+}
+
+/**
+ *  Return the contacts Name in Quickbooks
+ */
+function _osa_qb_name($cid = NULL) {
+  civicrm_initialize();
+
+  // Use the Household as the Customer in QB
+  $family_id = _osa_getHousehold($cid);
+  if ($family_id) {
+    $family = _osa_get_contact($family_id, FALSE);
+  }
+  else {
+    $family_id = 1;
+    $family['display_name'] = 'Anonymous';
+  }
+
+  return "{$family['display_name']} <{$family_id}>";
 }
 
 /**

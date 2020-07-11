@@ -43,11 +43,18 @@ function commerce_virtualmerchant_submit_form($payment_method, &$pane_values, &$
   if (empty($_POST['_vmr'])) {
     
     // no response data, so create an iframe that will hold the Converge Virtual Merchant Payment Form
-    $height = variable_get('commerce_virtualmerchant_form_height', '300px');
     $width = variable_get('commerce_virtualmerchant_form_width', '100%');
-    $form['virtualmerchant_iframe'] = array(
-      '#markup' => "<iframe id=\"edit-commerce-payment-payment-details-virtualmerchant-iframe\" src=\"{$base_url}/commerce/virtualmerchant/form/{$order->order_id}\" width={$width} height={$height} scrolling=\"no\"></iframe>",
-    );
+    $form['virtualmerchant_iframe'] = [
+      '#markup' => "<script type=\"text/javascript\">
+        function setIframeHeight() {
+          var ifrm = jQuery(\"#edit-commerce-payment-payment-details-virtualmerchant-iframe\");
+          ifrm.height(1);
+          var doc = ifrm.contents();
+          ifrm.height(doc[0].body.scrollHeight);
+        }
+      </script>
+      <iframe id=\"edit-commerce-payment-payment-details-virtualmerchant-iframe\" src=\"{$base_url}/commerce/virtualmerchant/form/{$order->order_id}\" width={$width} height=0 scrolling=\"no\" onload=\"setIframeHeight();\"></iframe>",
+    ];
  
     // include the hidden variable that will be used to hold the response from Converge - make sure it's value is null
     $form['virtualmerchant_response'] = array('#type' => 'hidden', '#value' => '');
