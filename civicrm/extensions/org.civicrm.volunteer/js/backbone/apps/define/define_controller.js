@@ -39,10 +39,6 @@ CRM.volunteerApp.module('Define', function(Define, volunteerApp, Backbone, Mario
         flexibleItemView.model = flexibleNeedModel;
         layout.flexibleNeeds.show(flexibleItemView);
       });
-
-    var s = angular.element('.crm-container.ng-scope').scope();
-    var p = CRM._.findWhere(s.projects, { id : volunteerApp.project_id });
-    $('.ui-dialog-title').html($('.ui-dialog-title').html() + ' - ' + p.title);
   });
 
 });

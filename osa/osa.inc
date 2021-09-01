@@ -1271,6 +1271,38 @@ function _osa_get_household_participants($hid, $event_id) {
 }
 
 /**
+ * Returns the amount a contact has paid to participate in an event prior to the given contribution
+ */
+function _osa_previous_contribution_amount($event_id, $contact_id, $contribution_id = null) {
+  // use static caching
+  static $previous_contribution_amount = [];
+  $cache_key = "event_id=$event_id&contact_id=$contact_id";
+  if (isset($previous_contribution_amount[$cache_key])) {
+    return $previous_contribution_amount[$cache_key];
+  }
+  $previous_contribution_amount[$cache_key] = 0;
+
+  $query = <<<EOD
+SELECT SUM(civicrm_contribution.total_amount)
+FROM civicrm_contribution
+JOIN civicrm_participant_payment ON civicrm_contribution.id = civicrm_participant_payment.contribution_id
+JOIN civicrm_participant ON civicrm_participant_payment.participant_id = civicrm_participant.id
+WHERE civicrm_contribution.contact_id = $contact_id
+AND civicrm_participant.event_id = $event_id
+AND civicrm_contribution.contribution_status_id = 1
+EOD;
+
+  if (isset($contribution_id))
+    $query .= " AND civicrm_contribution.id < $contribution_id";
+
+  $sum = CRM_Core_DAO::singleValueQuery($query);
+  if (!empty($sum))
+    $previous_contribution_amount[$cache_key] = $sum;
+  
+  return $previous_contribution_amount[$cache_key];
+}
+
+/**
  * Returns the form_type field from the node associated with a form (i.e. a webform)
  */
 function _osa_get_form_type(&$form) {
@@ -1318,7 +1350,7 @@ function _osa_get_webform_component_id($components, $form_key) {
       $webform_component_map[$nid] = $map;
     }
   }
-  
+
   return isset($map[$form_key]) ? $map[$form_key] : FALSE;
 }
 

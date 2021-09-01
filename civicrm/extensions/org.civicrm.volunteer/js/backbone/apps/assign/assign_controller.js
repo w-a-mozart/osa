@@ -26,10 +26,6 @@ CRM.volunteerApp.module('Assign', function(Assign, volunteerApp, Backbone, Mario
     $('body').on('click', ':not(".crm-vol-menu-items *")', function(e) {
       $('.crm-vol-menu-items').remove();
     });
-    
-    var s = angular.element('.crm-container.ng-scope').scope();
-    var p = CRM._.findWhere(s.projects, { id : volunteerApp.project_id });
-    $('.ui-dialog-title').html($('.ui-dialog-title').html() + ' - ' + p.title);
   });
   // Detach event handlers
   Assign.on('stop', function() {

@@ -64,7 +64,7 @@
       <div class="crm-vol-circle"><div class="icon"></div></div>
     </div>
   </div>
-  <h3><%= pseudoConstant.volunteer_role[role_id] %> : <%= description %> : Required <%= quantity || '{ts domain='org.civicrm.volunteer' escape='js'}Any{/ts}' %> : Credits <%= duration %></h3>
+  <h3><%= pseudoConstant.volunteer_role[role_id] %> (<%= quantity || '{ts domain='org.civicrm.volunteer' escape='js'}Any{/ts}' %>): <%= display_time %></h3>
   <table class="row-highlight">
     <thead><tr>
       <th>{ts domain='org.civicrm.volunteer'}Name{/ts}</th>

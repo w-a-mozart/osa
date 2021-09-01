@@ -39,7 +39,14 @@ function _osa_quickbooks_queue_order($commerce_order, $element_type) {
     $line_item = $line_item_wrapper->value();
     $item_price = $line_item->commerce_total['und'][0];
     $components = array();
-    
+
+    // hack: merge pre-paid amounts into the base price so they are not sent to QB as separate line items
+    foreach ($item_price['data']['components'] as $idx => $component) {
+      if ($component['name'] == 'osa_paid')
+        $item_price['data']['components'][$idx]['name'] = 'base_price';
+    }
+
+    // get the total for each price component type
     foreach ($item_price['data']['components'] as $component) {
       $component_type = commerce_price_component_type_load($component['name']);
       $component_price = commerce_price_component_total($item_price, $component['name']);

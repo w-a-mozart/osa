@@ -23,9 +23,10 @@
  | see the CiviCRM license FAQ at http://civicrm.org/licensing        |
  +--------------------------------------------------------------------+
 *}
-<div id="osa-fp-announcement" class="grid_3">
-    <p>2019-2020 Registration is now open. Click here to register.</p>
-    <button class="osa-fp-button" title="Register Now" onclick="window.location='/osa/form/2019-2020-registration';"><div class="icon register-icon"></div> Register&nbsp;&nbsp;</button>
+<div id="osa-fp-announcement" class="grid_3" style="font-size: 100%; display: none;">
+  <p><strong>2020-2021 Registration</strong> is now be open</p>
+  <p>Please read the </strong><a href='/osa/node/585'>announcement</a></strong> regarding how the OSA is working hard to provide the best musical experience for our students, during this difficult time.</p>
+  <button class="osa-fp-button" title="Register Now" onclick="window.location='/osa/form/2020-2021-registration';"><div class="icon register-icon"></div> Register Now&nbsp;&nbsp;</button>
 </div>
 <!-- Family Tree -->
 <ul class="osa-fp-ul">
@@ -58,7 +59,7 @@
               {$family.city}, {$family.state_province}<br/>
               {$family.postal_code}
             </p>
-            {if ($family.credits_committed >= 0) || ($family.credits_required > 0)}
+            {if ($family.credits_committed > 0) || ($family.credits_required > 0)}
             <hr style="width: 90%; margin: 0.5em 0;"/>
             <p class="osa-fp-vol-commit" style="width: 85%;" onclick="window.location='/osa/view/volunteer-commitments/{$family.id}';">
               {$family.credits_committed} / {$family.credits_required} Volunteer Commitments
@@ -186,8 +187,8 @@
 </ul>
 
 <div class="osa-fp-action osa-fp-block osa-fp-center">
-  <button class="osa-fp-button" title="Register for Membership and Group Classes" onclick="window.location='/osa/form/2019-2020-registration';">
-    <div class="icon register-icon"></div> Register for 2019-20&nbsp;&nbsp;
+  <button class="osa-fp-button" title="Register for Membership and Group Classes" onclick="window.location='/osa/form/2020-2021-registration';">
+    <div class="icon register-icon"></div> Register for 2020-21&nbsp;&nbsp;
   </button>
   <button class="osa-fp-button" title="Sign up for an Event" onclick="window.location='/osa/events';">
     <div class="icon event-icon"></div> Special Events&nbsp;&nbsp;
@@ -211,7 +212,9 @@
   <button class="osa-fp-button" title="View your payment history" {literal}onclick="OSA.loadView('family_contributions', 'block', {title: 'Family Contributions'});"{/literal}>
     <div class="icon log-icon"></div> Payment History&nbsp;&nbsp;
   </button>
+{*
   <button class="osa-fp-button" title="Search for Volunteer Opportunities" onclick="window.location='/osa/ang/search-volunteer-opportunities';">
     <div class="icon search-icon"></div> Volunteer Opportunities&nbsp;&nbsp;
   </button>
+*}
 </div>

@@ -66,6 +66,11 @@ div#edit-submitted-students {
     height: 14em;
 }
 
+/* format consent block */
+[class$="-custom-205"] {
+    display: inline-block;
+}
+
 /* format box to show price of selected items */
 [class*="-registration-price"] {
     float: right;

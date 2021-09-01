@@ -171,7 +171,6 @@
 
 #crm-vol-define-needs-table .time_components {
   margin-top: 1em;
-  width: fit-content;
 }
 
 /* Prevent resizing of the table when a Need's schedule type is toggled */
@@ -207,6 +206,10 @@
 /* OSA customizations */
 .crm-vol-field-projects-search-beneficiaries,
 .crm-vol-field-projects-search-campaign,
+.crm-vol-campaign,
+.crm-vol-location,
+.crm-vol-relationships,
+.crm-vol-profiles,
 .crm-vol-manage-entity,
 .crm-vol-manage-beneficiaries,
 .crm-vol-manage-location {

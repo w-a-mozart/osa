@@ -656,7 +656,7 @@ class CRM_Volunteer_BAO_Project extends CRM_Volunteer_DAO_Project {
    */
   public function getEntityAttributes() {
     if (!$this->entityAttributes) {
-      $arrayKeys = array('start_time', 'end_time', 'title');
+      $arrayKeys = array('start_time', 'title');
       $this->entityAttributes = array_fill_keys($arrayKeys, NULL);
 
       if ($this->entity_table && $this->entity_id) {
@@ -668,7 +668,6 @@ class CRM_Volunteer_BAO_Project extends CRM_Volunteer_DAO_Project {
               ));
               $this->entityAttributes['title'] = $result['title'];
               $this->entityAttributes['start_time'] = $result['start_date'];
-              $this->entityAttributes['end_time'] = $result['end_date'];
               break;
           }
         }
@@ -677,15 +676,6 @@ class CRM_Volunteer_BAO_Project extends CRM_Volunteer_DAO_Project {
             . 'No %s with ID %d exists; perhaps it has been deleted.';
           $msg = sprintf($format, $this->id, $this->entity_table, $this->entity_id);
           CRM_Core_Error::debug_log_message($msg, FALSE, 'org.civicrm.volunteer');
-        }
-      } else {
-        // not linked to an event, so add start/end of needs
-        $result = CRM_Core_DAO::executeQuery("SELECT min(`start_time`) as start_time, max(`end_time`) as end_time FROM `civicrm_volunteer_need` WHERE `project_id` = {$this->id}");
-        if ($result) {
-          if ($result->fetch()) {
-            $this->entityAttributes['start_time'] = $result->start_time;
-            $this->entityAttributes['end_time'] = $result->end_time;
-          }
         }
       }
     }

@@ -70,10 +70,10 @@
       }) %>
     {/literal}
   </td>
-  <td><textarea rows="2" cols="20" name="description" id="description" class="crm-form-textarea" style="width: 14em;"><%= description %></textarea></td>
-  <td style="vertical-align: middle;"><input type="text" class="crm-form-text" name="quantity" value="<%= quantity %>" size="2"style="text-align: right;"></td>
+  <td><textarea rows="4" cols="60" name="description" id="description" class="crm-form-textarea"><%= description %></textarea></td>
+  <td><input type="text" class="crm-form-text" name="quantity" value="<%= quantity %>" size="4"></td>
   <td>
-<div style="display: none;">
+<div>
     <label>
     {ts domain='org.civicrm.volunteer'}Schedule Type:{/ts}
       <select name="schedule_type">
@@ -106,15 +106,15 @@
       <tbody>
         <tr>
           <td class="start_datetime">
-            <input type="text" class="crm-form-text dateplugin" name="display_start_date"  value="<%= display_start_date %>" size="15">
-            <input type="text" class="crm-form-text" name="display_start_time" size="6">
+            <input type="text" class="crm-form-text dateplugin" name="display_start_date"  value="<%= display_start_date %>" size="20">
+            <input type="text" class="crm-form-text" name="display_start_time" size="10">
           </td>
           <td class="end_datetime">
-            <input type="text" class="crm-form-text dateplugin" name="display_end_date"  value="<%= display_end_date %>" size="15">
-            <input type="text" class="crm-form-text" name="display_end_time" size="6">
+            <input type="text" class="crm-form-text dateplugin" name="display_end_date"  value="<%= display_end_date %>" size="20">
+            <input type="text" class="crm-form-text" name="display_end_time" size="10">
           </td>
           <td class="duration">
-            <input type="text" class="crm-form-text" name="duration" value="<%= duration %>" size="4" style="text-align: right;">
+            <input type="text" class="crm-form-text" name="duration" value="<%= duration %>" size="6">
           </td>
         </tr>
       </tbody>

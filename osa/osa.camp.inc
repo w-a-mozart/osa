@@ -13,8 +13,21 @@ require_once 'osa.inc';
  */
 function osa_calc_camp_price($name, $value, $other_values) {
 
+  // prices for 2021
+  static $prices = array(
+    'Intermediate Camp' => array(
+      'One Week' => 230.00,
+      'Both Weeks' => 460.00,
+    ),
+    'Senior Camp' => array(
+      'One Week' => 230.00,
+      'Both Weeks' => 460.00,
+    ),
+  );
+  
   // create a price table
   // @todo put this in a database or as part of the webform
+/*
   static $prices = array(
     'Early Childhood Music' => array(
       'One Week' => 85.00,
@@ -48,7 +61,7 @@ function osa_calc_camp_price($name, $value, $other_values) {
       'One Week' => 110.00,
       'Both Weeks' => 200.00,
     ),
-    'Chamber Only' => array(  /* not used in online form */
+    'Chamber Only' => array(  // not used in online form
       'One Week' => 180.00,
       'Both Weeks' => 320.00,
     ),
@@ -74,7 +87,7 @@ function osa_calc_camp_price($name, $value, $other_values) {
       'AM Care' => 20.00,
       'PM Care' => 20.00,
     ),
-    'lunch_option' => array( /* no longer used */
+    'lunch_option' => array( // no longer used
       'Student Lunch' => 37.00,
       'Student Lunch Both Weeks' => 70.00,
       'Parent Lunch' => 37.00,
@@ -87,6 +100,7 @@ function osa_calc_camp_price($name, $value, $other_values) {
       'TJ McAvaney: 30min lessons' => 150.00,
     ),
   );
+*/
 
   // fiddle with the names / values
   if ($name == 'weeks') {
@@ -233,7 +247,8 @@ function _osa_form_alter_summer_camp(&$form, &$form_state) {
   $html = '';
 
   // there are some pages we don't want to display the "running total" on
-  $exclude_pages = array(1, 2, 5, 8, 9);
+  $exclude_pages = array(1, 2,);
+  // $exclude_pages = array(1, 2, 5, 8, 9);
   if (array_search($page_num, $exclude_pages) === FALSE) {
     $settings['display'] = TRUE;
     
@@ -420,7 +435,7 @@ function _osa_camp_parse_submission($components, $submitted, &$values, &$total, 
 
   $total = 0.00;
   $ignore_types = array('pagebreak', 'markup', 'fieldset', 'textarea', 'grid', 'textfield',);
-  $ignore_elements = array('caregiver_present', 'primary_instrument_level_wk1', 'add_a_second_instrument_wk1', 'second_instrument_level_wk1',  'primary_instrument_level_wk2', 'add_a_second_instrument_wk2', 'second_instrument_level_wk2', 'ukulele_level', 'recorder_level', 'theory_level', 'musical_theatre', 'image_release_consent', 'first', 'referral',);
+  $ignore_elements = array('age', 'caregiver_present', 'primary_instrument_level_wk1', 'add_a_second_instrument_wk1', 'second_instrument_level_wk1',  'primary_instrument_level_wk2', 'add_a_second_instrument_wk2', 'second_instrument_level_wk2', 'ukulele_level', 'recorder_level', 'theory_level', 'musical_theatre', 'image_release_consent', 'first', 'referral',);
   $rows = array();
 
   // loop through each component we care about and get it's value and price

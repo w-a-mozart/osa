@@ -261,9 +261,18 @@ function civicrm_commerce_update_contribution($commerce_payment_transaction) {
         // update the participant records
         if ($line_item_wrapper->type->value() == 'civi_event') {
           $participant_params['id'] = $line_item_wrapper->civicrm_commerce_participant_id->value();
-          $result = civicrm_api('participant', 'create', $participant_params);
-          if ($result['is_error'] != 0) {
-            watchdog('civicrm_commerce', 'Error updating civicrm participant %1: %2', array( '%1' => $participant_params['id'], '%2' => $result['error_message']), WATCHDOG_ERROR);
+          // only update if status has not been overridden
+          $result = civicrm_api('participant', 'get', array('id' => $participant_params['id'], 'version' => 3));
+          if (($result['is_error'] != 0) || empty($result['values'][$participant_params['id']])) {
+            watchdog('civicrm_commerce', 'Error getting civicrm participant %1: %2', array( '%1' => $participant_params['id'], '%2' => $result['error_message']), WATCHDOG_ERROR);
+          } else {
+            $participant_status_id = $result['values'][$participant_params['id']]['participant_status_id'];
+            if (($participant_status_id == 5) || ($participant_status_id == 6)) {
+              $result = civicrm_api('participant', 'create', $participant_params);
+              if ($result['is_error'] != 0) {
+                watchdog('civicrm_commerce', 'Error updating civicrm participant %1: %2', array( '%1' => $participant_params['id'], '%2' => $result['error_message']), WATCHDOG_ERROR);
+              }
+            }
           }
         }
       }
@@ -283,45 +292,40 @@ function civicrm_commerce_remove_contribution($commerce_line_item) {
   
   $contribution_id = $line_item_wrapper->civicrm_commerce_contribution_id->value();
   civicrm_initialize();
-  $result = civicrm_api('contribution', 'delete', array('id' => $contribution_id, 'version' => 3));
+  $result = civicrm_api3('contribution', 'delete', ['id' => $contribution_id]);
 
   // membership status get messed up when you delete a pending contribution
   if (($commerce_line_item->type == 'civi_membership') && (isset($line_item_wrapper->civicrm_commerce_membership_id))) {
     $membership_id = $line_item_wrapper->civicrm_commerce_membership_id->value();
-    
-    // 1 or 2 entries have been added to the membership log
-    // one when it was added to the cart and one when the status and end_date were updated if this was a renewal
-    $last_id_query = "SELECT MAX(id) FROM civicrm_membership_log WHERE membership_id = {$membership_id}";
-    $last_id = CRM_Core_DAO::singleValueQuery($last_id_query);
-    if ($last_id) {
-      // delete the renewal update entry (if it's a new membership we don't care because we will just delete everything anyway)
-      CRM_Core_DAO::executeQuery("DELETE FROM civicrm_membership_log WHERE id = {$last_id}");
-      
-      // get the old end_date and status from the 'added to the cart' entry
-      $last_id = CRM_Core_DAO::singleValueQuery($last_id_query);
-      if ($last_id) {
-        $end_date = CRM_Core_DAO::singleValueQuery("SELECT end_date FROM civicrm_membership_log WHERE id = {$last_id}");
-        $status_id = CRM_Core_DAO::singleValueQuery("SELECT status_id FROM civicrm_membership_log WHERE id = {$last_id}");
-      }
-    }
-    
-    // reset the status and end_date of the membership
-    if (isset($end_date)) {
-      $result = civicrm_api('membership', 'create', array('id' => $membership_id, 'status_id' => $status_id, 'end_date' => $end_date, 'version' => 3));
-    }
-    // or delete the membership if there is no end date
-    else {
-      $result = civicrm_api('membership', 'delete', array('id' => $membership_id, 'version' => 3));
-    }
 
-    // delete all of the unwanted log entries (the reset api call creates another entry)
-    $last_id = isset($last_id) ? $last_id : 0;
-    CRM_Core_DAO::executeQuery("DELETE FROM civicrm_membership_log WHERE membership_id = {$membership_id} AND id >= {$last_id}");
+    // 2 entries have been added to the membership log
+    // one when it was added to the cart and one when the start_date and end_date were updated
+    // we need to delete these two entries and reset the membership to the state of the 3rd to last log entry
+    $result = civicrm_api3('MembershipLog', 'get', ['membership_id' => $membership_id, 'sequential' => 1,]);
+    $log_entry = null;
+    if ($result['count'] >= 3)
+      $log_entry = $result['values'][$result['count'] - 3];
+
+    if (isset($log_entry)) {
+      $result = civicrm_api3('membership', 'create', [
+        'id'         => $membership_id,
+        'start_date' => $log_entry['start_date'],
+        'end_date'   => $log_entry['end_date'],
+        'status_id'  => $log_entry['status_id'],
+      ]);
+    }
+    else {
+      $result = civicrm_api3('membership', 'delete', ['id' => $membership_id]);
+    }
+    
+    // now delete all of the unwanted log entries
+    $log_id = isset($log_entry) ? $log_entry['id'] : 0;
+    CRM_Core_DAO::executeQuery("DELETE FROM civicrm_membership_log WHERE membership_id = {$membership_id} AND id > {$log_id}");
   }
 
   // remove the participant record
   if (($commerce_line_item->type == 'civi_event') && (isset($line_item_wrapper->civicrm_commerce_participant_id))) {
     $participant_id = $line_item_wrapper->civicrm_commerce_participant_id->value();
-    $result = civicrm_api('participant', 'delete', array('id' => $participant_id, 'version' => 3));
+    $result = civicrm_api3('participant', 'delete', ['id' => $participant_id]);
   }
 }

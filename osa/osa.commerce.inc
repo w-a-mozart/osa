@@ -210,6 +210,12 @@ function osa_commerce_price_component_type_info() {
     }
   }
 
+  // Add a type to capture an amount already paid (e.g. deposit)
+  $component_types["osa_paid"] = array(
+    'title' => 'Prior Paid',
+    'weight' => 10,
+  );
+
   return $component_types;
 }
 
@@ -271,7 +277,8 @@ function osa_add_to_commerce_cart($type, $element, $contact, $contribution) {
     } else {
       $event_title = civicrm_api3('Event', 'getvalue', ['return' => 'title', 'id' => $element['event_id'],]);
     }
-    $line_item_wrapper->line_item_label = (!empty($event_title) ? $event_title : 'Event participation') . (!empty($element['fee_level']) ? " - {$element['fee_level']}, " : ' ') . "for {$contact['display_name']}";
+    $fee_level = preg_replace('/ \((.*) min.\)/', '', $element['fee_level']);
+    $line_item_wrapper->line_item_label = (!empty($event_title) ? $event_title : 'Event participation') . (!empty($fee_level) ? " - {$fee_level}, " : ' ') . "for {$contact['display_name']}";
     $line_item_wrapper->civicrm_commerce_participant_id = $element['id'];
     $line_item_wrapper->civicrm_commerce_event_id = $element['event_id'];
     $line_item_wrapper->commerce_display_path = "civicrm/event/info?reset=1&id={$element['event_id']}";

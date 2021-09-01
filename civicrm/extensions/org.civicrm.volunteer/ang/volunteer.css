@@ -151,23 +151,3 @@ span.crm-button-text {
 #crm-vol-form-textarea-wrapper {
   clear: left;
 }
-
-/* OSA customizations */
-.crm-vol-campaign,
-.crm-vol-location,
-.crm-vol-relationships,
-.crm-vol-profiles {
-  display: none;
-}
-
-.sf-menu li {
-  z-index: 100 !important;
-}
-
-.ui-datepicker th {
-  font-size: 130%;
-}
-
-input.dateplugin {
-    width: 6em !important;
-}

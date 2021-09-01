@@ -42,6 +42,7 @@ jQuery(document).ready(function($) {
     var groupAmount = 0;
     var theoryName = '';
     var theoryAmount = 0;
+    var prevPaidAmount = 0.00;
     var group = $("[name$='_group_class]']").val();
     var preferredDay = $("[name*='_preferred_day]']:checked").val();
     if (preferredDay) { preferredDay = preferredDay.toLowerCase(); }
@@ -111,6 +112,7 @@ jQuery(document).ready(function($) {
       
       /* now determine the Kodaly / Theory option */
       theoryName += $(theorySel).val();
+      if (theoryName == 'null') theoryName = '';
       thryPriceKeys.push(parseOptionKey(theoryName));
       if (theoryName.includes('Reading')) {
         var bundleOption = $("[name$='_theory_option_bundle]']:enabled").val();
@@ -127,6 +129,18 @@ jQuery(document).ready(function($) {
       theoryAmount = isNaN(priceTable[price_idx]) ? 0 : priceTable[price_idx];
     } /* end of non-ECM */
 
+    /* calculate amounts already paid */
+    if (($('[name$="_group_class]"]').val()) && (groupDefaults[_contact_id])) {
+      grpDefault = groupDefaults[_contact_id];
+      key = group.replace(' ', '_');
+      if ((groupAmount > 0) && (grpDefault[key])) {
+        prevPaidAmount += parseFloat(grpDefault[key].prev_paid);
+      }
+      if ((theoryAmount > 0) && (grpDefault['Kodaly-Theory'])) {
+        prevPaidAmount += parseFloat(grpDefault['Kodaly-Theory'].prev_paid);
+      }
+    }
+    
     /* update the prices being displayed */
     if (memAmount > 0) {
       $("#membership-amount").html(`${memAmount}.00`);
@@ -137,6 +151,11 @@ jQuery(document).ready(function($) {
 
     if (groupAmount > 0) {
       groupName = groupName.replace(/ \(.*?\)/g,"");
+      if ((groupAmount <= 40) && (groupName.includes('Early Childhood') || groupName.includes('Chamber'))) {
+        groupName = groupName + " - DEPOSIT";
+      } else {
+        groupName = groupName + " - Term 3";
+      }
       $("#group-name").html(groupName);
       $("#group-amount").html(`${groupAmount}.00`);
       $("#line-item-group").show();
@@ -150,8 +169,10 @@ jQuery(document).ready(function($) {
       }
     }
 
-    if ((theoryAmount > 0) || (theoryName.includes('Kodaly') && (groupName.includes('Violin Group') || groupName.includes('Cello Group')))) {
-      theoryName = theoryName.replace(/ \(.*?\)/g,"");
+//    if ((theoryAmount > 0) || (theoryName.includes('Kodaly') && (groupName.includes('Violin Group') || groupName.includes('Cello Group')))) {
+//    if ((theoryAmount > 0) || ((theoryName.length > 0) && (groupName.includes('Violin Group') || groupName.includes('Cello Group') || groupName.includes('Chamber')))) {
+    if (theoryAmount > 0) {
+      theoryName = theoryName.replace(/ \(.*?\)/g,"") + " - Term 3";
       $("#theory-name").html(theoryName);
       $("#theory-amount").html(`${theoryAmount}.00`);
       $("#line-item-theory").show();
@@ -159,13 +180,74 @@ jQuery(document).ready(function($) {
       $("#line-item-theory").hide();
     }
 
-    var totalAmount = memAmount + groupAmount + theoryAmount;
+    if (prevPaidAmount > 0) {
+      $("#prev-paid-amount").html(prevPaidAmount.toFixed(2));
+      $("#line-item-prev-paid").show();
+    } else {
+      $("#line-item-prev-paid").hide();
+    }
+
+    var totalAmount = memAmount + groupAmount + theoryAmount - prevPaidAmount;
     $("#total-amount").html(`${totalAmount}.00`);
   }
 
+//  $("[name$='_custom_205]']").change(function() {
   $(".webform-client-form :input").change(function() {
     generatePrice();
   });
+
+  // function to set default values if the student is already registered
+  function setDefaults(grpDefault) {
+    console.log(grpDefault);
+
+    var grp_class = '';
+    var found = false;
+    var participant;
+    var tmp_element = '';
+
+    // loop through the group class select until find match
+    $('[name$="_group_class]"] option').each(function(index,item) {
+      if (found)
+        return;
+      grp_class = item.value;
+      key = grp_class.replace(' ', '_');
+      if (grpDefault[key]) {
+        found = true;
+        $('[name$="_group_class]"]').val(grp_class).change();
+        participant = grpDefault[key];
+      }
+    });
+  
+    if (!found)
+      return;
+
+    if (participant.custom_104) {
+      $('[name$="_preferred_day]"][value="' + participant.custom_104 + '"]').prop('checked', true).change();
+      tmp_element = participant.custom_104.toLowerCase();
+    }
+
+    if (grp_class == 'ECM') {
+      $('[name$="_ecm_level]"]').val(participant.participant_fee_level.substr(0,5)).change();      
+    } else if (grp_class == 'Violin Group') {
+      $('[name$="_violin_group_'+ tmp_element + ']"]').val(participant.participant_fee_level).change();
+    } else if (grp_class == 'Cello Group') {
+      $('[name$="_cello_group]"]').val(participant.participant_fee_level).change();
+      tmp_element = 'saturday';
+    } else if (grp_class == 'Chamber') {
+      tmp_element = 'advanced';
+    } else if (grp_class == 'Kodaly-Theory') {
+    }
+
+    if (grpDefault['Kodaly-Theory']) {
+      participant = grpDefault['Kodaly-Theory'];
+      $('[name$="_kodaly_theory_option_'+ tmp_element + ']"]').val(participant.participant_fee_level).change();
+    }
+  }
+
+  // if the student has previously registered, and hasn't selected anything, set the defaults to previous registration values
+  if ((!$('[name$="_group_class]"]').val()) && (groupDefaults[_contact_id])) {
+    setDefaults(groupDefaults[_contact_id]);
+  }
 
   generatePrice();
 });

@@ -134,31 +134,6 @@
       return result;
     };
 
-    /**
-     * Utility for stringifying dates
-     *
-     * @param array project
-     *   An item from the projectData provider.
-     * @return string
-     */
-    $scope.formatDate = function (project) {
-      var result = '';
-
-      var start = new Date(project.entity_attributes.start_time.replace(' ', 'T'));
-      var end   = new Date(project.entity_attributes.end_time.replace(' ', 'T'));
-
-      if (start.toLocaleDateString('en-CA', {month: 'short', day: 'numeric', year: 'numeric'}) == end.toLocaleDateString('en-CA', {month: 'short', day: 'numeric', year: 'numeric'})) {
-        result = start.toLocaleDateString('en-CA', {month: 'short', day: 'numeric', year: 'numeric'});
-        result += ' ' + start.toLocaleTimeString('en-CA', {hour: 'numeric', minute: 'numeric'});
-        result += ' - ' + end.toLocaleTimeString('en-CA', {hour: 'numeric', minute: 'numeric'});
-      } else {
-        result = start.toLocaleDateString('en-CA', {month: 'short', day: 'numeric', year: 'numeric'});
-        result += ' - ' + end.toLocaleDateString('en-CA', {month: 'short', day: 'numeric', year: 'numeric'});
-      }
-
-      return result;
-    }
-
     // TODO for VOL-276: Replace or obviate the need for this method. This is
     // the blocker to removing the deprecated api.VolunteerUtil.getbeneficiaries.
     // Other related changes are trivial.
@@ -312,7 +287,3 @@
   });
 
 })(angular, CRM.$, CRM._);
-
-jQuery(document).ready(function($) {
-  $.timeEntry.setDefaults({spinnerImage : '/images/spinnerDefault.png'});
-});

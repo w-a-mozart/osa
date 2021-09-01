@@ -357,7 +357,7 @@ function osa_civicrm_buildForm_CRM_Contribute_Form_Contribution_ThankYou(&$form)
   // except for membership, we need the logged in user to be the contact
   if ($form->_id == OSA_CONTRIB_MEMBER) {
     $contact = _osa_get_contact($form->_membershipContactID);
-    drupal_set_message("<br /><span style=\"font-size:120%; color:#B22222;\"><em>It is <strong>highly recommened</strong> that all registered OSA students <strong>participate in group classes</strong>.</em></span><br /><br />
+    drupal_set_message("<br /><span style=\"font-size:120%; color:#B22222;\"><em>It is <strong>highly recommended</strong> that all registered OSA students <strong>participate in group classes</strong>.</em></span><br /><br />
                         Click one of the links below to sign-up.<br />
                         You can also return to your <a href=\"{$base_url}/civicrm/user?reset=1\">Family Profile</a> to register another child, or click <a href=\"{$base_url}/checkout\">here</a> to complete your payment.");
 
@@ -998,3 +998,33 @@ function osa_civicrm_buildForm_CRM_Contact_Form_Task_EmailCommon(&$form) {
   $form->assign('toContact', json_encode($toArray));
   $form->assign('suppressedEmails', $suppressedEmails);
 }
+
+/**
+ * For webform_civicrm forms handle wait lists
+ * moved to Rules
+function _osa_webform_submission_presave_enable_waitlist(&$node, &$submission) {
+
+  // get the event id
+  $submission_data = _osa_parse_webform_submission_data($node->webform['components'], $submission->data);
+  $form_key = 'civicrm_1_participant_1_participant_event_id';
+  if (empty($submission_data[$form_key]))
+    return;
+  list($event_id) = explode('-', $submission_data[$form_key]);
+
+  // check if the event is now full
+  civicrm_initialize();
+  $full = CRM_Event_BAO_Participant::eventFull($event_id);
+  if (empty($full))
+    return;
+  $component = _osa_get_webform_component($node, $form_key);
+
+  // if the event is full, put participant on the wait list
+}
+*/
+
+/**
+ *
+function osa_webform_submission_presave_graduation(&$node, &$submission) {
+  _osa_webform_submission_presave_enable_waitlist($node, $submission);
+}
+*/
