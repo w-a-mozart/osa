@@ -13,7 +13,7 @@ require_once 'osa.inc';
  */
 function osa_calc_camp_price($name, $value, $other_values) {
 
-  // prices for 2021
+  /* prices for 2021
   static $prices = array(
     'Intermediate Camp' => array(
       'One Week' => 230.00,
@@ -24,83 +24,98 @@ function osa_calc_camp_price($name, $value, $other_values) {
       'Both Weeks' => 460.00,
     ),
   );
-  
+  */
+
   // create a price table
   // @todo put this in a database or as part of the webform
-/*
   static $prices = array(
+    /* no ECM in 2022
     'Early Childhood Music' => array(
       'One Week' => 85.00,
       'Both Weeks' => 150.00,
     ),
+    */
     'Junior Program' => array(
-      'One Week' => 250.00,
-      'Both Weeks' => 480.00,
+      'One Week' => 275.00,
+      'Both Weeks' => 505.00,
     ),
     'Intermediate Program' => array(
-      'One Week' => 295.00,
-      'Both Weeks' => 570.00,
+      'One Week' => 275.00,
+      'Both Weeks' => 505.00,
     ),
+    /* 
     'Full Day Supervised' => array(
       'One Week' => 415.00,
       'Both Weeks' => 810.00,
     ),
+    */
     'Senior Program' => array(
-      'One Week' => 345.00,
-      'Both Weeks' => 670.00,
+      'One Week' => 425.00,
+      'Both Weeks' => 805.00,
     ),
     'Leader In Training' => array(
-      'One Week' => 190.00,
-      'Both Weeks' => 360.00,
+      'One Week' => 210.00,
+      'Both Weeks' => 400.00,
     ),
     'Student Leader' => array(
-      'One Week' => 175.00,
-      'Both Weeks' => 330.00,
+      'One Week' => 210.00,
+      'Both Weeks' => 400.00,
     ),
     'Student Leader Guitar and Piano' => array(
-      'One Week' => 110.00,
-      'Both Weeks' => 200.00,
+      'One Week' => 160.00,
+      'Both Weeks' => 300.00,
     ),
+    /*
     'Chamber Only' => array(  // not used in online form
       'One Week' => 180.00,
       'Both Weeks' => 320.00,
     ),
+    */
+    /*
     'primary_instrument_enhancements' => array(
       'Additional 15min Private Lesson' => 70.00,
     ),
+    */
     'primary_instrument_enhancements_leaders' => array(
-      '15min Private Lesson' => 70.00,
-      '30min Private Lesson' => 140.00,
+      // '15min Private Lesson' => 70.00,
+      '30min Private Lesson' => 170.00,
     ),
+    /* second instrument fee to be charged later - if scheduled
     'second_instrument_enhancements' => array(
-      'Second Instrument 15min Private Lesson' => 70.00,
-      'Second Instrument 30min Private Lesson' => 140.00,
+      // 'Second Instrument 15min Private Lesson' => 70.00,
+      'Second Instrument 30min Private Lesson' => 170.00,
     ),
+    */
     'chamber_group' => array(
-      'Junior Chamber Group' => 40.00,
-      'Senior Chamber Group' => 50.00,
+      'Junior Chamber Group' => 50.00,
+      'Senior Chamber Group' => 60.00,
     ),
+    /*
     'masterclass_terry_durbin' => array(
       'Violin Ensemble' => 60.00, // Intermediate & Advanced Violin Ensemble
     ),
+    */
+    /*
     'daycare_options' => array(
-      'AM Care' => 20.00,
-      'PM Care' => 20.00,
+      'AM Care' => 0.00,
+      'PM Care' => 0.00,
     ),
+    */
+    /*
     'lunch_option' => array( // no longer used
       'Student Lunch' => 37.00,
       'Student Lunch Both Weeks' => 70.00,
       'Parent Lunch' => 37.00,
       'Parent Lunch Both Weeks' => 70.00,
     ),
+    */
     'teacher' => array(
-      'Terry Durbin: 15min lessons' => 80.00,
-      'Terry Durbin: 30min lessons' => 160.00,
-      'TJ McAvaney: 15min lessons' => 75.00,
+      // 'Terry Durbin: 15min lessons' => 80.00,
+      // 'Terry Durbin: 30min lessons' => 160.00,
+      // 'TJ McAvaney: 15min lessons' => 75.00,
       'TJ McAvaney: 30min lessons' => 150.00,
     ),
   );
-*/
 
   // fiddle with the names / values
   if ($name == 'weeks') {
@@ -109,7 +124,7 @@ function osa_calc_camp_price($name, $value, $other_values) {
       $value = 'One Week';
     }
   }
-  
+
   if (strpos($name, '_teacher_') !== FALSE) {
     $name = 'teacher';
   }
@@ -146,13 +161,15 @@ function _osa_camp_teacher_premiums($components, $submitted, &$component, &$form
   // get the program to determine if the student is a Leader
   $program = is_array($submitted[4]) ? $submitted[4][0] : $submitted[4];
   $leader = (strpos($program, 'Leader') !== FALSE) || ($program == 'Chamber Only');
-  
+
+  //** 2022 - all lessons are 30 min.
+
   // determine the lesson length
   $lesson_length = 0;
 
   if (($instrument == 'primary') && !$leader) {
-    // 15min is included in primary instrument (except for Leaders)
-    $lesson_length += 15;
+    // 15min lesson included in primary instrument (except for Leaders)
+    $lesson_length += 30;
   }
   
   // add enhancements

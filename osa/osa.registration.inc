@@ -9,53 +9,52 @@ require_once 'osa.inc';
  * Set the price of group classes
  * @TODO get the from DB
  *
- * update on Dec 7 for 2020-2021 (Covid-Year), term 2 prices
- * update on Mar 7 for 2020-2021 (Covid-Year), term 3 prices
+ * update on Sep 2 for 2021-2022
  */
 function osa_get_groupclass_price_table() {
   $priceTable = [
+    /* Membership price */
+    'Membership' => 95.00,
+
     /* ecm price per term */
-    'ECM_Term_1' => 40,
-    'ECM_Term_2' => 60,
-    'ECM_Term_3' => 60,
-    'ECM_Max' => 150,  /* full year */
+    'ECM_Term_1' => 110,
+    'ECM_Term_2' => 100,
+    'ECM_Term_3' => 90,
+    'ECM_Max' => 285,  /* full year */
 
-    /* violin group class price (includes 30 min Kodaly)*/
-    'Violin_Group_Parent_Training' => 95,
-    'Violin_Group_30_min' => 95,
-    'Violin_Group_45_min' => 125,
-    'Violin_Group_60_min' => 0,
+    /* violin group class price */
+    'Violin_Group_30_min' => 300,
+    'Violin_Group_45_min' => 300, // not used in 2021-22
+    'Violin_Group_60_min' => 300,
+
     /* kodaly/theory price for violin group students */
-    'Violin_Group_Kodaly_30_min' => 50, /* $155 */
-    'Violin_Group_Kodaly_45_min' => 65,
-    'Violin_Group_RCM' => 110,
-    'Violin_Group_Reading' => 0, 
-    /* note these look high because only one class is reduced by $155 */
-    'Violin_Group_Reading_Kodaly_45_min' => 0,
-    'Violin_Group_Reading_RCM' => 0,
+    // kodaly/theory prices are the same for all instruments in 2021-22
+    'Violin_Group_Kodaly_20_min' => 165,
+    'Violin_Group_Kodaly_30_min' => 235,
+    'Violin_Group_Kodaly_45_min' => 235,  // not used in 2021-22
+    'Violin_Group_RCM' => 450,
 
-    'Preludio' => 0,
-    'Preludio_RCM' => 0,
+    /* cello group class price */
+    'Cello_Group_30_min' => 385,
+    'Cello_Group_45_min' => 490,
+    'Cello_Group_60_min' => 520,
 
-    'Vivace' => 0,
-    'Vivace_RCM' => 0,
-
-    /* cello group class price (includes Kodaly) */
-    'Cello_Group_30_min' => 95,
-    'Cello_Group_45_min' => 125,
-    'Cello_Group_60_min' => 150,
     /* kodaly/theory price for cello group students */
-    'Cello_Group_Kodaly_30_min' => 50,
-    'Cello_Group_Kodaly_45_min' => 65,
-    'Cello_Group_RCM' => 110,
-
-    'Chamber' => 0,
-    'Chamber_RCM' => 110,
+    'Cello_Group_Kodaly_20_min' => 165,
+    'Cello_Group_Kodaly_30_min' => 235,
+    'Cello_Group_Kodaly_45_min' => 235,  // not used in 2021-22
+    'Cello_Group_RCM' => 450,
 
     /* kodaly/theory only prices */
-    'Kodaly_Theory_Kodaly_30_min' => 50,
-    'Kodaly_Theory_Kodaly_45_min' => 65,
-    'Kodaly_Theory_RCM' => 110,
+    'none_Kodaly_20_min' => 165,
+    'none_Kodaly_30_min' => 235,
+    'none_Kodaly_45_min' => 235,
+    'none_RCM' => 450,
+
+    /* enrichment programs */
+    'Chamber' => 80,
+    'History' => 40,
+    'CAD' => 70,
   ];
   return $priceTable;
 }
@@ -66,13 +65,13 @@ function osa_get_groupclass_price_table() {
  */
 function osa_get_groupclass_eventIds() {
   $eventIdTable = [
-    'ECM' => 3826,
-    'Violin_Group' => 3827,
-//    'Preludio' => 0,
-//    'Vivace' => 0,
-    'Cello_Group' => 3828,
-    'Chamber' => 3829,
-    'Kodaly_Theory' => 3830,
+    'ECM' => 4539,
+    'Violin_Group' => 4540,
+    'Cello_Group' => 4541,
+    'Kodaly_Theory' => 4542,
+    'Chamber' => 4543,
+    'History' => 4544,
+    'CAD' => 4798,
   ];
   return $eventIdTable;
 }
@@ -81,6 +80,9 @@ function osa_get_groupclass_eventIds() {
  * Set the credits_required for group classes
  */
 function osa_get_groupclass_credits_required() {
+  //covid
+  return [];
+
   $creditsRequiredTable = [
     'ECM' => 0,
     'Violin Group' => [
@@ -123,6 +125,9 @@ function _osa_participant_key_map() {
  * Get any existing registrations for the family, this year
  */
 function osa_get_groupclass_registrations($hid = null) {
+  // covid
+  return [];
+
   if (!isset($hid))
     $hid = _osa_getHousehold();
 
@@ -146,9 +151,7 @@ function osa_get_groupclass_registrations($hid = null) {
   $event_id_map[$groupclass_eventIds['Kodaly_Theory']] = 'Kodaly-Theory';
 
   foreach ($result['values'] as $pid => $participant) {
-    // don't use prepaid for Term 2 or 3
-    // $participant['prev_paid'] = _osa_previous_contribution_amount($participant['event_id'], $participant['contact_id']);
-    $participant['prev_paid'] = 0;
+    $participant['prev_paid'] = _osa_previous_contribution_amount($participant['event_id'], $participant['contact_id']);
     $groupclass_registrations[$hid][$participant['contact_id']][$event_id_map[$participant['event_id']]] = $participant;
   }
   return $groupclass_registrations[$hid];
@@ -192,7 +195,7 @@ function osa_get_volunteer_credits_required($hid, $submission = null) {
 
       if (is_array($tmp_credits)) {
         $group_level = '';
-        $level_fields = [ "student_{$idx}_violin_group_saturday", "student_{$idx}_violin_group_thursday", "student_{$idx}_cello_group" ];
+        $level_fields = [ "student_{$idx}_violin_group", "student_{$idx}_cello_group" ];
         foreach ($level_fields as $level_field) {
           if (!empty($submission_data[$level_field])) {
             $group_level = $submission_data[$level_field];
@@ -331,7 +334,7 @@ function osa_form_alter_registration(&$form, &$form_state) {
     'Start',
     'Select Students',
     'Register Students',
-//    'Select Volunteer Duties',
+// covid    'Select Volunteer Duties',
     'Complete',
   ];
   $form['progressbar']['#page_count'] = 4;
@@ -456,10 +459,11 @@ function osa_volunteer_duties_form($uid, $nid, $sid) {
  * - create the membership and contribution record in civicrm
  * - create the participant and contribution record in civicrm for group class
  * - create the participant and contribution record in civicrm for kodaly/theory class
+ * - create the participant and contribution record in civicrm for any enhancement classes
  * - add a line items to the shopping cart
- * - process volunteer sign ups
  */
 function osa_webform_submission_update_registration($node, $submission) {
+
   // ignore the saving of drafts
   if ($submission->is_draft)
     return;
@@ -468,10 +472,10 @@ function osa_webform_submission_update_registration($node, $submission) {
   $submission_data = _osa_parse_webform_submission_data($node->webform['components'], $submission->data);
   $schoolYear      = osa_get_school_year();
   $schoolDates     = osa_get_school_dates();
-  $membershipPrice = 95.00;
   $eventIdTable    = osa_get_groupclass_eventIds();
   $priceTable      = osa_get_groupclass_price_table();
   $customFieldMap  = osa_custom_field_map('Group_Class_Details');
+  $membershipPrice = $priceTable['Membership'];
 
   $membershipParms = ['status_id' => "Pending", 'skipStatusCal' => TRUE, 'source' => 'Online Registration', 'start_date' => $schoolDates['start']->format('Y-m-d'), 'end_date' => $schoolDates['end']->format('Y-m-d'),];
   $contributionParms = ['contribution_status_id' => 'Pending', 'payment_instrument_id' => 'Credit Card', 'source' => 'Online Registration', 'receive_date' => date('Y-m-d H:i:s')];
@@ -485,7 +489,7 @@ function osa_webform_submission_update_registration($node, $submission) {
     $contact = _osa_get_contact($contact_id, FALSE);
     $group_class = $submission_data["student_{$idx}_group_class"];
     $group_level = '';
-    $level_fields = ["student_{$idx}_violin_group_saturday", "student_{$idx}_violin_group_thursday", "student_{$idx}_cello_group"];
+    $level_fields = ["student_{$idx}_violin_group", "student_{$idx}_cello_group"];
     foreach ($level_fields as $level_field) {
       if (!empty($submission_data[$level_field])) {
         $group_level = $submission_data[$level_field];
@@ -493,14 +497,13 @@ function osa_webform_submission_update_registration($node, $submission) {
       }
     }
     $theory_level = '';
-    $level_fields = ["student_{$idx}_kodaly_theory_option_saturday", "student_{$idx}_kodaly_theory_option_thursday", "student_{$idx}_kodaly_theory_option_advanced"];
+    $level_fields = ["student_{$idx}_kodaly_theory_option", ];
     foreach ($level_fields as $level_field) {
       if (!empty($submission_data[$level_field])) {
         $theory_level = $submission_data[$level_field];
         break;
       }
     }
-    $theory_bundle = !empty($submission_data["student_{$idx}_kodaly_theory_option_bundle"]) ? $submission_data["student_{$idx}_kodaly_theory_option_bundle"] : '';
 
     // process membership
     // Note: ECM students are counted as members but don't have a membership record
@@ -542,11 +545,10 @@ function osa_webform_submission_update_registration($node, $submission) {
     $add_participant = [];
     if (!empty($submission_data["student_{$idx}_preferred_day"]))
       $add_participant[$customFieldMap['preferred_group_day']] = $submission_data["student_{$idx}_preferred_day"];
-    if (!empty($submission_data["student_{$idx}_ecm_saturday_time"]))
-      $add_participant[$customFieldMap['additional_data']] = 'Preferred Time : ' . $submission_data["student_{$idx}_ecm_saturday_time"];
     if (!empty($submission_data["student_{$idx}_more_info"]))
       $add_participant[$customFieldMap['more_information']] = $submission_data["student_{$idx}_more_info"];
 
+    // create entries for ECM
     if ($group_class == 'ECM') {
       $event_id = $eventIdTable[$group_class];
       $price_level = [$submission_data["student_{$idx}_ecm_level"]];
@@ -556,8 +558,9 @@ function osa_webform_submission_update_registration($node, $submission) {
         $price_level[] = $ecm_term;
       }
       $eventPrice = min($eventPrice, $priceTable['ECM_Max']);
-      
-    } elseif ($group_class != 'Kodaly-Theory') {
+
+    // create entries for Violin or Cello Group
+    } elseif ($group_class != 'none') {
       $key = str_replace([' ', '-'], '_', $group_class);
       $event_id = $eventIdTable[$key];
       $tmp_price_key = [$key];
@@ -586,35 +589,23 @@ function osa_webform_submission_update_registration($node, $submission) {
       if ($result['is_error'])
         throw new CRM_Core_Exception($errMsg, 'RE0007', $result);
 
-      // *** Don't add Chamber to Shopping Cart until we have a price
-/*      if ($group_class != 'Chamber') {
-        if (osa_add_to_commerce_cart('Event', $participant, $contact, $contribution) === FALSE)
-          throw new CRM_Core_Exception($errMsg, 'RE0008', array_merge($participant, $contribution));
-      } else {
-        civicrm_api3('Participant', 'create', ['id' => $participant['id'], 'status_id' => "Pending from pay later",]);
-      }
-*/
       $participant['event_title'] = civicrm_api3('Event', 'getvalue', ['return' => 'title', 'id' => $participant['event_id'],]);
-      $participant['event_title'] .= ' - TERM 3';
       if (($line_item = osa_add_to_commerce_cart('Event', $participant, $contact, $contribution)) === FALSE)
         throw new CRM_Core_Exception($errMsg, 'RE0008', array_merge($participant, $contribution));
     }
 
-    // process kodaly/theory class
-    if (!empty($theory_level)) {
+    // create entries for kodaly/theory class
+    if (!empty($theory_level) && ($theory_level != 'none')) {
       $event_id = $eventIdTable['Kodaly_Theory'];
       $price_level = [$theory_level];
       $tmp_price_key = [str_replace([' ', '-'], '_', $group_class)];
-      if (($tmp_price_key[] = _osa_registration_price_key_component($theory_level)) == 'Reading') {
-        if (!empty($theory_bundle)) {
-          $price_level[] = $theory_bundle;
-          $tmp_price_key[] = _osa_registration_price_key_component($theory_bundle);
-        }
-      }
+      $tmp_price_key[] = _osa_registration_price_key_component($theory_level);
       $price_key = implode('_', $tmp_price_key);
       $eventPrice = is_numeric($priceTable[$price_key]) ? $priceTable[$price_key] : 0;
       $fee_level = implode(', ', $price_level);
       $participant = ['event_id' => $event_id, 'contact_id' => $contact_id, 'participant_fee_level' => $fee_level, 'participant_fee_amount' => $eventPrice];
+      if (!empty($submission_data["student_{$idx}_preferred_day_kodaly"]))
+        $add_participant[$customFieldMap['preferred_group_day']] = $submission_data["student_{$idx}_preferred_day_kodaly"];
       $result = civicrm_api3('Participant', 'create', array_merge($participant, $participantParms, $add_participant));
       if ($result['is_error'])
         throw new CRM_Core_Exception($errMsg, 'RE0009', $result);
@@ -631,46 +622,41 @@ function osa_webform_submission_update_registration($node, $submission) {
         throw new CRM_Core_Exception($errMsg, 'RE0011', $result);
 
       $participant['event_title'] = civicrm_api3('Event', 'getvalue', ['return' => 'title', 'id' => $participant['event_id'],]);
-      $participant['event_title'] .= ' - TERM 3';
       if (($line_item = osa_add_to_commerce_cart('Event', $participant, $contact, $contribution)) === FALSE)
         throw new CRM_Core_Exception($errMsg, 'RE0012', array_merge($participant, $contribution));
     }
-  }
-
-  // process volunteer payment in-lieu
-  $cid = _osa_get_contact_id();
-  $hid = _osa_getHousehold($cid);
-  if (!empty($submission_data['donation_in_lieu'])) {
-    $donationAmt = $submission_data['donation_amount'];
-    $contribution = ['contact_id' => $hid, 'financial_type_id' => 'Donation', 'source' => "In-Lieu of Volunteering {$schoolYear}", 'total_amount' => $donationAmt, 'net_amount' => $donationAmt,];
-    $result = civicrm_api3('Contribution', 'create', array_merge($contributionParms, $contribution));
-    if ($result['is_error'])
-      throw new CRM_Core_Exception($errMsg, 'RE0013', $result);
-    else
-      $contribution = $result['values'][$result['id']];
-    if (osa_add_to_commerce_cart('Contribution', $contribution, $contact, $contribution) === FALSE)
-      throw new CRM_Core_Exception($errMsg, 'RE0014', array_merge($participant, $contribution));
-  }
-
-  // process volunteer duties
-  if (!empty($submission_data['volunteer_duties'])) {
-    $needIds = explode(',', $submission_data['volunteer_duties']);
-    $result = civicrm_api3('VolunteerNeed', 'get', ['id' => ['IN' => $needIds],]);
-    if ($result['is_error'])
-      throw new CRM_Core_Exception($errMsg, 'RE0015', $result);
-
-    foreach ($result['values'] as $need) {
-      $vol_activity = [
-        'source_contact_id' => $cid,
-        'volunteer_need_id' => $need['id'],
-        'activity_date_time' => $need['start_time'],
-        'assignee_contact_id' => $hid,
-        'status_id' => 'Scheduled',
-        'credits' => $need['duration'], // credits
-      ];
-      CRM_Volunteer_BAO_Assignment::createVolunteerActivity($vol_activity);
+    
+    // create entries for enhancement programs
+    // TODO: refactor with above code to reduce code duplication
+    $enrichment_programs = [];
+    unset($add_participant[$customFieldMap['preferred_group_day']]);
+    if (!empty($submission_data["student_{$idx}_enrichment_programs"]))
+      $enrichment_programs = $submission_data["student_{$idx}_enrichment_programs"];
+    foreach ($enrichment_programs as $enrichment_program) {
+      $event_id = $eventIdTable[$enrichment_program];
+      $fee_level = (($enrichment_program == 'Chamber') || ($enrichment_program == 'CAD')) ? 'Term 1' : '';
+      $eventPrice = is_numeric($priceTable[$enrichment_program]) ? $priceTable[$enrichment_program] : 0;
+      $participant = ['event_id' => $event_id, 'contact_id' => $contact_id, 'participant_fee_level' => $fee_level, 'participant_fee_amount' => $eventPrice];
+      $result = civicrm_api3('Participant', 'create', array_merge($participant, $participantParms, $add_participant));
+      if ($result['is_error'])
+        throw new CRM_Core_Exception($errMsg, 'RE0013', $result);
+      else
+        $participant = $result['values'][$result['id']];
+      $contribution = ['contact_id' => $contact_id, 'financial_type_id' => 'Group Class Fee', 'amount_level' => $fee_level, 'total_amount' => $eventPrice, 'net_amount' => $eventPrice,];
+      $result = civicrm_api3('Contribution', 'create', array_merge($contribution, $contributionParms));
+      if ($result['is_error'])
+        throw new CRM_Core_Exception($errMsg, 'RE0014', $result);
+      else
+        $contribution = $result['values'][$result['id']];
+      $result = civicrm_api3('ParticipantPayment', 'create', ['contribution_id' => $contribution['id'], 'participant_id' => $participant['id'],]);
+      if ($result['is_error'])
+        throw new CRM_Core_Exception($errMsg, 'RE0015', $result);
+      $participant['event_title'] = civicrm_api3('Event', 'getvalue', ['return' => 'title', 'id' => $participant['event_id'],]);
+      if (($line_item = osa_add_to_commerce_cart('Event', $participant, $contact, $contribution)) === FALSE)
+        throw new CRM_Core_Exception($errMsg, 'RE0016', array_merge($participant, $contribution));
     }
-  }
+
+  } // end for each student
 }
 
 /**

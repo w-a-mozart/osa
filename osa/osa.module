@@ -546,6 +546,82 @@ function osa_process_node(&$variables) {
  * Implements hook_js_alter to modify javascript added by other modules
  */
 function osa_js_alter(&$javascript) {
+
+  if (current_path() == 'events/calendar') {
+    $data = $javascript['settings']['data'];
+    $events = [];
+    $d_idx = -1;
+    foreach ($data as $idx => $value) {
+      if (array_key_exists('civicrm_events', $value)) {
+        $d_idx = $idx;
+        $events = $javascript['settings']['data'][$idx]['civicrm_events']['events'];
+        break;
+      }
+    }
+
+    $newEvents = [];
+    foreach ($events as $idx => $event) {
+    
+      if (isset($event['title']))
+        $event['title'] = preg_replace('/20..-.. /', '', $event['title']);
+
+      if (isset($event['className'])) {
+        // group class (child)
+        if ($event['className'] == 'civi-event-type-9') {
+          $event['color'] = 'blue';
+          if (strpos($event['title'], 'Cello') !== FALSE )
+            $event['color'] = 'green';
+          elseif (strpos($event['title'], 'ECM') !== FALSE )
+            $event['color'] = 'crimson';
+          elseif (strpos($event['title'], 'Kodaly') !== FALSE )
+            $event['color'] = 'cadetblue';
+          elseif (strpos($event['title'], 'Theory') !== FALSE )
+            $event['color'] = 'dimgray';
+          elseif (strpos($event['title'], 'History') !== FALSE )
+            $event['color'] = 'coral';
+          elseif (strpos($event['title'], 'Chamber') !== FALSE )
+            $event['color'] = 'chocolate';
+          elseif (strpos($event['title'], 'Improv') !== FALSE )
+            $event['color'] = 'deeppink';
+        }
+        // concert
+        elseif ($event['className'] == 'civi-event-type-5') {
+          $event['color'] = 'darkgray';
+          if (strpos($event['title'], 'Christmas Concert') !== FALSE ) {
+            $event['color'] = 'red';
+            $event['title'] = 'OSA Christmas Concert';         
+          }
+          elseif (strpos($event['title'], 'Final Violin Concert') !== FALSE )
+            $event['color'] = 'deepskyblue';
+        }
+        // graduation
+        elseif ($event['className'] == 'civi-event-type-7') {
+          $event['color'] = 'darkviolet';
+          if (strpos($event['title'], 'Senior') !== FALSE )
+            $event['title'] = 'Senior Recital & Book Graduation';
+          elseif (strpos($event['title'], 'Junior') !== FALSE )
+            $event['title'] = 'Junior Recital & Book Graduation';
+        }
+        // exhibition
+        elseif (isset($event['className']) && $event['className'] == 'civi-event-type-2') {
+          $event['color'] = 'darkgoldenrod';
+       }
+        // holiday
+        elseif (isset($event['className']) && $event['className'] == 'civi-event-type-1') {
+          $event['color'] = 'darkred';
+          if (strpos($event['title'], 'Halloween') !== FALSE )
+            $event['color'] = 'darkorange';
+          elseif (strpos($event['title'], 'Thanksgiving') !== FALSE )
+            $event['color'] = 'darkorange';
+        }
+      }
+      
+      $newEvents[] = $event;
+    }
+    
+    if ($d_idx >= 0)
+      $javascript['settings']['data'][$d_idx]['civicrm_events']['events'] = $newEvents;
+  }
 };
 
 function osa_views_post_render(&$view, &$output, &$cache) {
