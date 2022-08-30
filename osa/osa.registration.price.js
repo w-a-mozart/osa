@@ -75,7 +75,7 @@ jQuery(document).ready(function($) {
                     $("[name$='_violin_group]']").val() :
                     $("[name$='_cello_group]']").val();
         if (level) {
-          groupName = group + ' - ' + level + ' - ' + preferredDay;
+          groupName = group + ' - ' + level;
           grpPriceKeys.push(parseOptionKey(level));
         }
 
@@ -84,19 +84,48 @@ jQuery(document).ready(function($) {
         groupName = '';
         grpPriceKeys = [];
       }
-      
+
       /* determine the Kodaly / Theory option */
       var theorySel = "[name$='kodaly_theory_option]']";
       theoryName += $(theorySel).val();
       if (theoryName == 'null') theoryName = '';
+
+      /* HACKs */
+      /* 2022-23: 30 min Violin and Beginner and Book 1 Cello, should include price for "mandatory" 30 min Kodaly */
+      var hack_price_idx = grpPriceKeys.join('_').replace(/\s|-/g, '_');
+      var kodaly_included = false;
+      if (hack_price_idx.endsWith('30_min') || (groupName.includes('Cello') && level.includes('Book 1'))) {
+        kodaly_included = true;
+        if ((theoryName == '') || (theoryName == 'none')) {
+          if (groupName.includes('Beginner')) {
+            theoryName = 'Kodaly Prep (30 min.)';
+          } else {
+            theoryName = 'Kodaly Level 1 (30 min.)';
+          }
+          $(theorySel).val(theoryName);
+        }
+        $("[id$='kodaly-theory-option'] option[value='none']").hide();
+      } else {
+        $("[id$='kodaly-theory-option'] option[value='none']").show();
+      }
+      /* end HACK part 1 */
+
       thryPriceKeys.push(parseOptionKey(theoryName));
-      theoryName += ' - ' + preferredDayKodaly;
       
-      /* get the price from the price table */
-      var price_idx = grpPriceKeys.join('_').replace(/\s|-/g, '_');
-      groupAmount = isNaN(priceTable[price_idx]) ? 0 : priceTable[price_idx];
-      price_idx = thryPriceKeys.join('_').replace(/\s|-/g, '_');
-      theoryAmount = isNaN(priceTable[price_idx]) ? 0 : priceTable[price_idx];
+      /* get the prices from the price table */
+      var grp_price_idx = grpPriceKeys.join('_').replace(/\s|-/g, '_');
+      groupAmount = isNaN(priceTable[grp_price_idx]) ? 0 : priceTable[grp_price_idx];
+      var thry_price_idx = thryPriceKeys.join('_').replace(/\s|-/g, '_');
+      theoryAmount = isNaN(priceTable[thry_price_idx]) ? 0 : priceTable[thry_price_idx];
+
+      /* HACK part 2 */
+      if (kodaly_included && thry_price_idx.endsWith('30_min')) {
+        groupName += ' - includes ' + theoryName;
+        groupAmount += theoryAmount - 20;
+        theoryAmount = 1;
+      }
+      /* end HACK part 2 */
+      
     } /* end of non-ECM */
 
     /* update the prices being displayed */
@@ -113,16 +142,16 @@ jQuery(document).ready(function($) {
       $("#group-amount").html(`${groupAmount}.00`);
       $("#line-item-group").show();
     } else {
-      if (group == 'Chamber') {
-        $("#group-name").html(groupName);
-        $("#group-amount").html('<b>tbd</b>');
-        $("#line-item-group").show();
-      } else {
-        $("#line-item-group").hide();
-      }
+      $("#line-item-group").hide();
     }
 
     if (theoryAmount > 0) {
+      /* HACK part 3 */
+      if (theoryAmount == 1) {
+        theoryAmount = 0;
+      }
+      /* end HACK part 3 */
+
       theoryName = theoryName.replace(/ \(.*?\)/g,"");
       $("#theory-name").html(theoryName);
       $("#theory-amount").html(`${theoryAmount}.00`);

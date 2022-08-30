@@ -9,7 +9,7 @@ require_once 'osa.inc';
  * Set the price of group classes
  * @TODO get the from DB
  *
- * update on Sep 2 for 2021-2022
+ * updated on Jul 23 for 2022-2023
  */
 function osa_get_groupclass_price_table() {
   $priceTable = [
@@ -17,44 +17,42 @@ function osa_get_groupclass_price_table() {
     'Membership' => 95.00,
 
     /* ecm price per term */
-    'ECM_Term_1' => 110,
-    'ECM_Term_2' => 100,
-    'ECM_Term_3' => 90,
-    'ECM_Max' => 285,  /* full year */
+    'ECM_Term_1' => 160,
+    'ECM_Term_2' => 115,
+    'ECM_Term_3' => 115,
+    'ECM_Max' => 370,  /* full year */
 
     /* violin group class price */
-    'Violin_Group_30_min' => 300,
-    'Violin_Group_45_min' => 300, // not used in 2021-22
-    'Violin_Group_60_min' => 300,
+    'Violin_Group_30_min' => 330,
+    'Violin_Group_45_min' => 430,
+    // 'Violin_Group_60_min' => 530,
 
     /* kodaly/theory price for violin group students */
-    // kodaly/theory prices are the same for all instruments in 2021-22
-    'Violin_Group_Kodaly_20_min' => 165,
-    'Violin_Group_Kodaly_30_min' => 235,
-    'Violin_Group_Kodaly_45_min' => 235,  // not used in 2021-22
-    'Violin_Group_RCM' => 450,
+    'Violin_Group_Kodaly_30_min' => 165,
+    'Violin_Group_Kodaly_45_min' => 245,
+    'Violin_Group_RCM' => 375,
 
     /* cello group class price */
-    'Cello_Group_30_min' => 385,
-    'Cello_Group_45_min' => 490,
-    'Cello_Group_60_min' => 520,
+    'Cello_Group_30_min' => 380,
+    'Cello_Group_45_min' => 505,
+    // 'Cello_Group_60_min' => 555,
 
     /* kodaly/theory price for cello group students */
-    'Cello_Group_Kodaly_20_min' => 165,
-    'Cello_Group_Kodaly_30_min' => 235,
-    'Cello_Group_Kodaly_45_min' => 235,  // not used in 2021-22
-    'Cello_Group_RCM' => 450,
+    'Cello_Group_Kodaly_30_min' => 165,
+    'Cello_Group_Kodaly_45_min' => 245,
+    'Cello_Group_RCM' => 375,
 
     /* kodaly/theory only prices */
-    'none_Kodaly_20_min' => 165,
-    'none_Kodaly_30_min' => 235,
-    'none_Kodaly_45_min' => 235,
-    'none_RCM' => 450,
+    'none_Kodaly_30_min' => 165,
+    'none_Kodaly_45_min' => 245,
+    'none_RCM' => 375,
 
     /* enrichment programs */
-    'Chamber' => 80,
-    'History' => 40,
-    'CAD' => 70,
+    'Chamber_Term_1' => 120,
+    'Chamber_Term_2' => 120,
+    'Chamber_Term_3' => 120,
+    // 'History' => 40,
+    'CAD_Term_1' => 35,
   ];
   return $priceTable;
 }
@@ -65,13 +63,13 @@ function osa_get_groupclass_price_table() {
  */
 function osa_get_groupclass_eventIds() {
   $eventIdTable = [
-    'ECM' => 4539,
-    'Violin_Group' => 4540,
-    'Cello_Group' => 4541,
-    'Kodaly_Theory' => 4542,
-    'Chamber' => 4543,
-    'History' => 4544,
-    'CAD' => 4798,
+    'ECM' => 5176,
+    'Violin_Group' => 5177,
+    'Cello_Group' => 5178,
+    'Kodaly_Theory' => 5179,
+    'Chamber' => 5180,
+    // 'History' => 4544,
+    'CAD' => 5181,
   ];
   return $eventIdTable;
 }
@@ -551,13 +549,17 @@ function osa_webform_submission_update_registration($node, $submission) {
     // create entries for ECM
     if ($group_class == 'ECM') {
       $event_id = $eventIdTable[$group_class];
-      $price_level = [$submission_data["student_{$idx}_ecm_level"]];
+      // 2022-23 : no ECM 2
+      // $price_level = [$submission_data["student_{$idx}_ecm_level"]];
+      $price_level = [];
       foreach ($submission_data["student_{$idx}_ecm_term"] as $ecm_term) {
         $price_key = $group_class . '_' . str_replace(' ', '_', $ecm_term);
         $eventPrice += is_numeric($priceTable[$price_key]) ? $priceTable[$price_key] : 0;
         $price_level[] = $ecm_term;
       }
       $eventPrice = min($eventPrice, $priceTable['ECM_Max']);
+      if ($eventPrice == $priceTable['ECM_Max'])
+        $price_level = ['Full Year'];
 
     // create entries for Violin or Cello Group
     } elseif ($group_class != 'none') {
@@ -571,6 +573,30 @@ function osa_webform_submission_update_registration($node, $submission) {
       $price_key = implode('_', $tmp_price_key);
       $eventPrice = is_numeric($priceTable[$price_key]) ? $priceTable[$price_key] : 0;
     }
+
+    // 2022-23 : HACK
+    // Violin and Cello, beginners and book 1 include "mandatory" 30 min Kodaly
+    // - fix next year if it doesn't change (again)
+    $kodaly_included = FALSE;
+    $kodaly_included_price = 0;
+    if ((($group_class == 'Violin Group') && (strpos($group_level, '30 min') !== FALSE)) ||
+        (($group_class == 'Cello Group') && ((strpos($group_level, 'Beginner') !== FALSE) || (strpos($group_level, 'Book 1') !== FALSE)))) {
+
+      if (empty($theory_level) || ($theory_level == 'none')) {
+        if (strpos($group_level, 'Beginner') !== FALSE) {
+          $theory_level = 'Kodaly Prep (30 min.)';
+        } else {
+          $theory_level = 'Kodaly Level 1 (30 min.)';
+        }
+      }
+      if (strpos($theory_level, '30 min') !== FALSE) {
+        $kodaly_included = TRUE;
+        $kodaly_included_price = $priceTable['none_Kodaly_30_min'] - 20;
+        $eventPrice += $kodaly_included_price;
+        $price_level[] = 'includes Kodaly';
+      }
+    }
+
     if ($event_id) {
       $fee_level = implode(', ', $price_level);
       $participant = ['event_id' => $event_id, 'contact_id' => $contact_id, 'participant_fee_level' => $fee_level, 'participant_fee_amount' => $eventPrice];
@@ -602,6 +628,10 @@ function osa_webform_submission_update_registration($node, $submission) {
       $tmp_price_key[] = _osa_registration_price_key_component($theory_level);
       $price_key = implode('_', $tmp_price_key);
       $eventPrice = is_numeric($priceTable[$price_key]) ? $priceTable[$price_key] : 0;
+      
+      // 2022-23 HACK
+      $eventPrice = $kodaly_included ? 0 : $eventPrice;
+      
       $fee_level = implode(', ', $price_level);
       $participant = ['event_id' => $event_id, 'contact_id' => $contact_id, 'participant_fee_level' => $fee_level, 'participant_fee_amount' => $eventPrice];
       if (!empty($submission_data["student_{$idx}_preferred_day_kodaly"]))
@@ -633,8 +663,8 @@ function osa_webform_submission_update_registration($node, $submission) {
     if (!empty($submission_data["student_{$idx}_enrichment_programs"]))
       $enrichment_programs = $submission_data["student_{$idx}_enrichment_programs"];
     foreach ($enrichment_programs as $enrichment_program) {
-      $event_id = $eventIdTable[$enrichment_program];
-      $fee_level = (($enrichment_program == 'Chamber') || ($enrichment_program == 'CAD')) ? 'Term 1' : '';
+      $event_id = $eventIdTable[explode('_', $enrichment_program)[0]];
+      $fee_level = implode(' ', array_slice(explode('_', $enrichment_program),1));
       $eventPrice = is_numeric($priceTable[$enrichment_program]) ? $priceTable[$enrichment_program] : 0;
       $participant = ['event_id' => $event_id, 'contact_id' => $contact_id, 'participant_fee_level' => $fee_level, 'participant_fee_amount' => $eventPrice];
       $result = civicrm_api3('Participant', 'create', array_merge($participant, $participantParms, $add_participant));

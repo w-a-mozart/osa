@@ -135,11 +135,11 @@ class CRM_Contact_Page_View_UserDashBoard extends CRM_Core_Page {
 
     $today = new DateTimeEx(); 
     $result = civicrm_api3('Event', 'get', ['end_date' => ['>=' => $today->format('Y-m-d')], 'event_type_id' => ['NOT IN' => ["Meeting", "Conference", "Group Class (Child)", "Group Class (Special)"]],]);
-    if (!$result['is_error']) {
+    if (!$result['is_error']&& ($result['count'] > 0)) {
       $events = $result['values'];
       $event_ids = array_keys($events);
       $result = civicrm_api3('Participant', 'get', ['contact_id' => ['IN' => $family_ids], 'event_id' => ['IN' => $event_ids], 'status_id' => ['NOT IN' => ["Cancelled", "Pending from incomplete transaction", "Rejected", "Expired", "Pending refund", "Transferred",]],]);
-      if (!$result['is_error']) {
+      if (!$result['is_error'] && ($result['count'] > 0)) {
         foreach ($result['values'] as $pid => $participant) {
           if ($events[$participant['event_id']]['event_type_id'] == OSA_EVENT_GROUP_CLASS_MASTER) {
             $family_members[$participant['contact_id']]['group_class'][$pid] = $participant;
