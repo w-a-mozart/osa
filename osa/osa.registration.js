@@ -38,6 +38,12 @@ jQuery(document).ready(function($) {
     var lbl = cb.next();
     lbl.html('<span style="text-decoration-line: line-through;">' + lbl.html() + '</span> &nbsp;' + reason);
     cb.change();
+    
+    cb.click(function(event) {
+      event.stopPropagation();
+      $(this).attr('disabled', 'disabled');
+      $(this).prop("checked", false);
+    });
   }
 
   // function to rename checkbox option
@@ -56,5 +62,8 @@ jQuery(document).ready(function($) {
 
   // close any full options
   // closeOption('kodaly-theory-option-thursday', 'RCM Theory Levels 3 / 4 / 5 (45 min.)', 'Full');
-  // closeOption('kodaly-theory-option-thursday', 'RCM Theory Levels 6 / 7 / 8 (45 min.)', 'Full');
+  closeCheckBoxOption('enrichment-programs-1', 'Registration Closed'); // Chamber Term 1
 });
+
+
+
