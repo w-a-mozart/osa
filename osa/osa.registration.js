@@ -62,8 +62,10 @@ jQuery(document).ready(function($) {
 
   // close any full options
   // closeOption('kodaly-theory-option-thursday', 'RCM Theory Levels 3 / 4 / 5 (45 min.)', 'Full');
-  closeCheckBoxOption('enrichment-programs-1', 'Registration Closed'); // Chamber Term 1
+  closeCheckBoxOption('ecm-term-1', 'Closed'); // ECM Term 1
+  closeCheckBoxOption('ecm-term-2', 'Closed'); // ECM Term 2
+  closeCheckBoxOption('enrichment-programs-1', 'Closed'); // Chamber Term 1
+  closeCheckBoxOption('enrichment-programs-2', 'Closed'); // Chamber Term 2
+  closeCheckBoxOption('enrichment-programs-4', 'Closed'); // CAD Term 1
+  closeCheckBoxOption('enrichment-programs-5', 'Closed'); // CAD Term 2
 });
-
-
-

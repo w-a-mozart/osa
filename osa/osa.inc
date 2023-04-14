@@ -1708,7 +1708,7 @@ function _osa_create_ticket($event_id, $line_item_id, $number) {
   }
 
   // clean up for display on the tickets
-  $start_date = strftime('%A %B %#d, %I:%M %p', strtotime($event['start_date']));
+  $ticket_date = strftime('%A %B %#d, %Y -%l:%M %p', strtotime($event['start_date'])) . strftime(' to%l:%M %p', strtotime($event['end_date']));
   require_once 'CRM/Core/BAO/Location.php';
   $location = CRM_Core_BAO_Location::getValues(array('entity_id' => $event_id, 'entity_table' => 'civicrm_event'), TRUE);
   $address = $location['address'][1];
@@ -1732,7 +1732,7 @@ function _osa_create_ticket($event_id, $line_item_id, $number) {
     <tr>
       <td>
         <hr />
-        $start_date
+        $ticket_date
       </td>
     </tr>
     <tr>

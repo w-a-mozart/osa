@@ -53,6 +53,8 @@ function osa_get_groupclass_price_table() {
     'Chamber_Term_3' => 120,
     // 'History' => 40,
     'CAD_Term_1' => 35,
+    'CAD_Term_2' => 35,
+    'CAD_Term_3' => 35,
   ];
   return $priceTable;
 }

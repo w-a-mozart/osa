@@ -870,7 +870,7 @@ function osa_civicrm_customFieldOptions($fieldID, &$options, $detailedFormat = F
     $cache[$fieldID]['std'] = array();
 
     // Teachers selection
-    if (($fieldID == 24) || ($fieldID == 86) || ($fieldID == 87) || ($fieldID == 88)) {
+    if (($fieldID == 24) || ($fieldID == 86) || ($fieldID == 87) || ($fieldID == 88) || ($fieldID == 175)) {
       // populate the teacher list
       _osa_get_teacher_lists($contacts, $select_options, $pricelevel, $prices30min, $prices45min, $prices60min);
       foreach ($select_options as $value => $label) {
