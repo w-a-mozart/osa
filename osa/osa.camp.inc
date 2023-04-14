@@ -29,20 +29,26 @@ function osa_calc_camp_price($name, $value, $other_values) {
   // create a price table
   // @todo put this in a database or as part of the webform
   static $prices = array(
-    /* no ECM in 2022
+    /* no ECM in 2022 or 2023
     'Early Childhood Music' => array(
       'One Week' => 85.00,
       'Both Weeks' => 150.00,
     ),
     */
     'Junior Program' => array(
-      'One Week' => 275.00,
-      'Both Weeks' => 505.00,
+      'One Week' => 295.00,
+      'Both Weeks' => 540.00,
     ),
+    'Full Junior Program' => array(
+      'One Week' => 495.00,
+      'Both Weeks' => 940.00,
+    ),
+    /*
     'Intermediate Program' => array(
       'One Week' => 275.00,
       'Both Weeks' => 505.00,
     ),
+    */
     /* 
     'Full Day Supervised' => array(
       'One Week' => 415.00,
@@ -50,21 +56,23 @@ function osa_calc_camp_price($name, $value, $other_values) {
     ),
     */
     'Senior Program' => array(
-      'One Week' => 425.00,
-      'Both Weeks' => 805.00,
+      'One Week' => 445.00,
+      'Both Weeks' => 840.00,
     ),
     'Leader In Training' => array(
-      'One Week' => 210.00,
-      'Both Weeks' => 400.00,
+      'One Week' => 270.00,
+      'Both Weeks' => 490.00,
     ),
     'Student Leader' => array(
-      'One Week' => 210.00,
-      'Both Weeks' => 400.00,
+      'One Week' => 270.00,
+      'Both Weeks' => 490.00,
     ),
+    /*
     'Student Leader Guitar and Piano' => array(
       'One Week' => 160.00,
       'Both Weeks' => 300.00,
     ),
+    */
     /*
     'Chamber Only' => array(  // not used in online form
       'One Week' => 180.00,
@@ -87,20 +95,18 @@ function osa_calc_camp_price($name, $value, $other_values) {
     ),
     */
     'chamber_group' => array(
-      'Junior Chamber Group' => 50.00,
-      'Senior Chamber Group' => 60.00,
+      'Junior Chamber Group' => 60.00,
+      'Senior Chamber Group' => 100.00,
     ),
     /*
     'masterclass_terry_durbin' => array(
       'Violin Ensemble' => 60.00, // Intermediate & Advanced Violin Ensemble
     ),
     */
-    /*
     'daycare_options' => array(
-      'AM Care' => 0.00,
-      'PM Care' => 0.00,
+      'AM Care' => 30.00,
+      'PM Care' => 40.00,
     ),
-    */
     /*
     'lunch_option' => array( // no longer used
       'Student Lunch' => 37.00,
