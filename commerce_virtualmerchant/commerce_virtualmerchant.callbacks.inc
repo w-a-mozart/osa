@@ -61,7 +61,7 @@ function commerce_virtualmerchant_submit_form($payment_method, &$pane_values, &$
 
     // add a div to display the Converge logo
     $form['virtualmerchant_img'] = array(
-      '#markup' => '<div id="virtualmerchant-banner">' . t('Payment processing provided by') . ' <a href="https://www.myvirtualmerchant.com" title="Converge" target="_blank"><img id="virtualmerchant-logo" alt="Converge" src="https://www.myvirtualmerchant.com/VirtualMerchant/assets/images/logos/ConvergeLogo-horizontal.png" /></a></div>',
+      '#markup' => '<div id="virtualmerchant-banner">' . t('Payment processing provided by') . ' <a href="https://www.convergepay.com/" title="Converge" target="_blank"><img id="virtualmerchant-logo" alt="Converge" src="https://www.convergepay.com/converge-webapp/assets/images/logos/Converge_tagline-horizontal.png" /></a></div>',
     );
   }
   else {

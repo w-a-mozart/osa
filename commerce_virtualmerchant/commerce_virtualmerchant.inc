@@ -19,6 +19,25 @@ define('COMMERCE_VIRTUALMERCHANT_TIMEOUT', '5');
  * our server, so we are out of scope for PCI compliance.
  */
 function commerce_virtualmerchant_payment_form($order_id = 0) {
+
+  $html = <<<EOD
+<!DOCTYPE html>
+<html>
+<body>
+  <p>
+    We are currently experiencing issues with our credit card payments, and are working to resolve the problem.<br/>
+    The contents of your order will remain in your cart. Please check back later to complete your payment.<br/>
+    We are sorry for the inconvenience.<br/>
+    &nbsp;&nbsp;<br/>
+    &nbsp;&nbsp;<br/>
+  </p>
+</body>
+</html>
+EOD;
+  print $html;
+  drupal_exit();
+  return;
+  
   global $base_url, $user;
   
   // need the order to get the order balance to pay
