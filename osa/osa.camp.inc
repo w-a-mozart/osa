@@ -29,20 +29,22 @@ function osa_calc_camp_price($name, $value, $other_values) {
   // create a price table
   // @todo put this in a database or as part of the webform
   static $prices = array(
-    /* no ECM in 2022 or 2023
+    /* no ECM in 2022, 2023 and 2024
     'Early Childhood Music' => array(
       'One Week' => 85.00,
       'Both Weeks' => 150.00,
     ),
     */
     'Junior Program' => array(
-      'One Week' => 295.00,
-      'Both Weeks' => 540.00,
+      'One Week' => 300.00,
+      'Both Weeks' => 550.00,
     ),
+    /* not Full Day Junior in 2024
     'Full Junior Program' => array(
       'One Week' => 495.00,
       'Both Weeks' => 940.00,
     ),
+    */
     /*
     'Intermediate Program' => array(
       'One Week' => 275.00,
@@ -56,12 +58,12 @@ function osa_calc_camp_price($name, $value, $other_values) {
     ),
     */
     'Senior Program' => array(
-      'One Week' => 445.00,
-      'Both Weeks' => 840.00,
+      'One Week' => 455.00,
+      'Both Weeks' => 860.00,
     ),
     'Leader In Training' => array(
-      'One Week' => 270.00,
-      'Both Weeks' => 490.00,
+      'One Week' => 280.00,
+      'Both Weeks' => 510.00,
     ),
     'Student Leader' => array(
       'One Week' => 270.00,
@@ -84,19 +86,29 @@ function osa_calc_camp_price($name, $value, $other_values) {
       'Additional 15min Private Lesson' => 70.00,
     ),
     */
+    /*
     'primary_instrument_enhancements_leaders' => array(
       // '15min Private Lesson' => 70.00,
       '30min Private Lesson' => 170.00,
     ),
+    */
     /* second instrument fee to be charged later - if scheduled
     'second_instrument_enhancements' => array(
-      // 'Second Instrument 15min Private Lesson' => 70.00,
+      'Second Instrument 15min Private Lesson' => 70.00,
       'Second Instrument 30min Private Lesson' => 170.00,
     ),
     */
     'chamber_group' => array(
       'Junior Chamber Group' => 60.00,
       'Senior Chamber Group' => 100.00,
+    ),
+    /*
+    'add_a_masterclass_litsl' => array(
+      'Masterclass' => 75.00,
+    ),
+    */
+    'add_a_semiprivatelesson_litsl' => array(
+      'Semi-Private Lessons' => 75.00,
     ),
     /*
     'masterclass_terry_durbin' => array(
@@ -115,12 +127,14 @@ function osa_calc_camp_price($name, $value, $other_values) {
       'Parent Lunch Both Weeks' => 70.00,
     ),
     */
+    /*
     'teacher' => array(
-      // 'Terry Durbin: 15min lessons' => 80.00,
-      // 'Terry Durbin: 30min lessons' => 160.00,
-      // 'TJ McAvaney: 15min lessons' => 75.00,
+      'Terry Durbin: 15min lessons' => 80.00,
+      'Terry Durbin: 30min lessons' => 160.00,
+      'TJ McAvaney: 15min lessons' => 75.00,
       'TJ McAvaney: 30min lessons' => 150.00,
     ),
+    */
   );
 
   // fiddle with the names / values
