@@ -881,8 +881,8 @@ function osa_civicrm_customFieldOptions($fieldID, &$options, $detailedFormat = F
         );
         $cache[$fieldID]['std'][$value] = $label;
       }
-      uasort($cache[$fieldID]['detail'], function ($a, $b) {return strcmp($a['label'], $b['label']);});
-      asort($cache[$fieldID]['std']);
+//      uasort($cache[$fieldID]['detail'], function ($a, $b) {return strcmp($a['label'], $b['label']);});
+//      asort($cache[$fieldID]['std']);
       
       // add a non-OSA teacher
       $value = 'nonOSA';

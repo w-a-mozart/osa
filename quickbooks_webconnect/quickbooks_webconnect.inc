@@ -113,7 +113,7 @@ function _quickbooks_webconnect_replace(&$element, $map, $breadcrumb = array()) 
 function _quickbooks_webconnect_wrap_qbxml($qbxml){
 
   $convmap = array(0x80, 0xff, 0, 0xff);
-  $xml = mb_encode_numericentity($qbxml, $convmap, "UTF-8");
+  $xml = str_replace("’", '&apos;', mb_encode_numericentity($qbxml, $convmap, "UTF-8"));
 
   $ver = variable_get('quickbooks_webconnect_qbxml_version', '8.0');
   $output = <<<EOD

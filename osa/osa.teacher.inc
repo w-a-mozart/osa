@@ -218,7 +218,12 @@ function _osa_get_teacher_lists( &$contacts, &$select_options, &$pricelevel, &$p
     $cache['prices45min'][0] = array(0 => 0);
     $cache['prices60min'][0] = array(0 => 0);
 
-    $result = civicrm_api('contact', 'get',  array('contact_sub_type' => 'Teacher', 'option.sort' => 'sort_name', 'rowCount' => PHP_INT_MAX, 'version' => 3));
+    $result = civicrm_api3('Contact', 'get', [
+      'contact_sub_type' => "Teacher",
+      'group' => "m_2020_2021_Teachers_117", // m-current Teachers
+      'is_deceased' => 0,
+      'options' => ['sort' => "sort_name", 'limit' => PHP_INT_MAX],
+    ]);
     if ($result['is_error']) {
       watchdog('osa', 'Error: %1\nfailed to get teacher contacts', array(1 => $result['error_message']), WATCHDOG_ERROR);
     }

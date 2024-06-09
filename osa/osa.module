@@ -173,16 +173,35 @@ function osa_civicrm_post($op, $objectName, $objectId, &$objectRef) {
 }
 
 /**
- * Change the permissions checked when doing civicrm API calls.
+ * Change the permissions checked when doing civicrm API calls
  */
 function osa_civicrm_alterAPIPermissions($entity, $action, &$params, &$permissions) {
-  static $relatedCheck = [];
 
-  // return if user can access CiviCRM back end
-  // should probably do more checks but this seems good for now
+  // do nothing if the user can already access CiviCRM
   if (CRM_Core_Permission::check('access CiviCRM')) {
     return;
   }
+
+  // get the id of the contact being accessed
+  if ($entity == 'custom_value')
+    $contact_id = $params['entity_id'];
+  else
+    $contact_id = !empty($params['contact_id']) ? $params['contact_id'] : $params['id'];
+  if (empty($contact_id))
+    return;
+
+  // override permissions, required, for users accessing family members
+  $cid = CRM_Core_Session::getLoggedInContactID();
+  $family = _osa_getHouseholdMembers($cid);
+
+  if (array_key_exists($cid, $family)) {
+//    $params = [];
+    $params['check_permissions'] = FALSE;
+    $permissions[$entity][$action] = [];
+  }    
+
+/* remove when fully tested
+  static $relatedCheck = [];
 
   // fix AJAX permissions
   if (($_GET['q'] == 'civicrm/ajax/rest') || (substr_compare($_GET['q'], 'webform-civicrm/js/', 0, 19)  === 0)) {
@@ -211,7 +230,7 @@ function osa_civicrm_alterAPIPermissions($entity, $action, &$params, &$permissio
     
       if (!isset($relatedCheck[$cid][$contact_id])) {
         $sql = 'SELECT `id` FROM `civicrm_relationship` WHERE (`contact_id_a` = %1 AND `contact_id_b` = %2 AND `is_permission_b_a` = 1) OR (`contact_id_b` = %1 AND `contact_id_a` = %2 AND `is_permission_a_b` = 1)';
-        $dao = CRM_Core_DAO::executeQuery($sql, ['1' => [$contact_id, 'String'], '2' => [$cid, 'String']]);
+        $dao = CRM_Core_DAO::executeQuery($sql, ['1' => [$contact_id, 'Integer'], '2' => [$cid, 'Integer']]);
         $relatedCheck[$cid][$contact_id] = $dao->fetch();
       }
 
@@ -229,11 +248,18 @@ function osa_civicrm_alterAPIPermissions($entity, $action, &$params, &$permissio
     'update' => $perm,
     'delete' => $perm,
   ];
+*/
 
-  // need this because CiviCase is not enabled, so there are no permissions to set, but need the to access the Option Groups
+  // need this because CiviCase is not enabled, so there are no permissions to set, but we need to access the Option Groups
   if ($entity == 'case') {
     $params['check_permissions'] = FALSE;
   }
+
+/*
+  $msg = ['entity' => $entity, 'action' => $action, 'params' => $params, 'permissions' => $permissions];
+  $msg = print_r($msg, true);
+  watchdog('osa', "osa_civicrm_alterAPIPermissions\n" .$msg, null, WATCHDOG_CRITICAL);  
+*/
 }
 
 /**
@@ -275,7 +301,7 @@ function osa_civicrm_tokenValues(&$values, $cids, $job = null, $tokens = [], $co
 
 function osa_get_refunds($cid) {
   $refunds = [
-    '26' => 88.57,  // Ian Gowing (test)
+//    '26' => 88.57,  // Ian Gowing (test)
   ];
 
   return $refunds[$cid];
@@ -421,6 +447,20 @@ function osa_webform_submission_update($node, $submission) {
 
   if (function_exists("osa_webform_submission_update_{$node->nid}")) {
     call_user_func_array("osa_webform_submission_update_{$node->nid}", array(&$node, &$submission));
+  }
+}
+
+/**
+ * Implements hook_webform_submission_delete() to process webform submissions
+ */
+function osa_webform_submission_delete($node, $submission) {
+  $form_type = _osa_get_node_form_type($node);
+  if (isset($form_type) && function_exists("osa_webform_submission_delete_{$form_type}")) {
+    call_user_func_array("osa_webform_submission_delete_{$form_type}", array(&$node, &$submission));
+  }
+
+  if (function_exists("osa_webform_submission_delete_{$node->nid}")) {
+    call_user_func_array("osa_webform_submission_delete_{$node->nid}", array(&$node, &$submission));
   }
 }
 
@@ -571,18 +611,18 @@ function osa_js_alter(&$javascript) {
           $event['color'] = 'blue';
           if (strpos($event['title'], 'Cello') !== FALSE )
             $event['color'] = 'green';
-          elseif (strpos($event['title'], 'ECM') !== FALSE )
+          elseif (strpos($event['title'], 'Early Childhood') !== FALSE )
             $event['color'] = 'crimson';
           elseif (strpos($event['title'], 'Kodaly') !== FALSE )
             $event['color'] = 'cadetblue';
           elseif (strpos($event['title'], 'Theory') !== FALSE )
             $event['color'] = 'dimgray';
-          elseif (strpos($event['title'], 'History') !== FALSE )
+          elseif (strpos($event['title'], 'Preludio') !== FALSE )
             $event['color'] = 'coral';
+          elseif (strpos($event['title'], 'Vivace') !== FALSE )
+            $event['color'] = 'deeppink';
           elseif (strpos($event['title'], 'Chamber') !== FALSE )
             $event['color'] = 'chocolate';
-          elseif (strpos($event['title'], 'Improv') !== FALSE )
-            $event['color'] = 'deeppink';
         }
         // concert
         elseif ($event['className'] == 'civi-event-type-5') {
