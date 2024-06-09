@@ -19,6 +19,8 @@ jQuery(document).ready(function($) {
 
     if (selectedOption.includes('RCM Theory')) {
       optionKey = 'RCM';
+    } else if (selectedOption.includes('Book 5+')) {
+      optionKey = 'SR'; 
     } else {
       if (selectedOption.includes('Kodaly')) {
         optionKey = 'Kodaly_';
@@ -35,6 +37,7 @@ jQuery(document).ready(function($) {
   function generatePrice() {
     var memAmount = ((membership) && (Number(membership.end_date.substring(0,4)) >= Number(schoolDates.end.date.substring(0,4)))) ? 0 : priceTable['Membership'];
     var groupName = '';
+    var level = '';
     var groupAmount = 0;
     var theoryName = '';
     var theoryAmount = 0;
@@ -59,7 +62,7 @@ jQuery(document).ready(function($) {
 
       $("[name*='_ecm_term]']:checked").each(function(index,item){
         var checked_value = item.name.replace(/\]/g,'').split(/\[/).pop();
-        var price_idx = group.concat('_', checked_value).replace(/\s/g,'_');
+        var price_idx = group.concat('_', checked_value).replace(/\s|-/g,'_');
         groupAmount += isNaN(priceTable[price_idx]) ? 0 : priceTable[price_idx];
       });
       if (groupAmount > priceTable.ECM_Max) {
@@ -71,14 +74,15 @@ jQuery(document).ready(function($) {
 
       /* for Violin or Cello groups, find the level / sub-class */
       if ((group == 'Violin Group') || (group == 'Cello Group')) {
-        var level = (group == 'Violin Group') ?
+        level = (group == 'Violin Group') ?
                     $("[name$='_violin_group]']").val() :
                     $("[name$='_cello_group]']").val();
         if (level) {
           groupName = group + ' - ' + level;
           grpPriceKeys.push(parseOptionKey(level));
+        } else {
+          level = '';
         }
-
       /* otherwise unset the group class settings */
       } else {
         groupName = '';
@@ -91,10 +95,10 @@ jQuery(document).ready(function($) {
       if (theoryName == 'null') theoryName = '';
 
       /* HACKs */
-      /* 2022-23: 30 min Violin and Beginner and Book 1 Cello, should include price for "mandatory" 30 min Kodaly */
+      /* 2022-23: Beginner and Book 1, Violin and  Cello, should include price for "mandatory" 30 min Kodaly */
       var hack_price_idx = grpPriceKeys.join('_').replace(/\s|-/g, '_');
       var kodaly_included = false;
-      if (hack_price_idx.endsWith('30_min') || (groupName.includes('Cello') && level.includes('Book 1'))) {
+      if (hack_price_idx.endsWith('30_min') || level.includes('Book 1')) {
         kodaly_included = true;
         if ((theoryName == '') || (theoryName == 'none')) {
           if (groupName.includes('Beginner')) {
@@ -160,20 +164,30 @@ jQuery(document).ready(function($) {
       $("#line-item-theory").hide();
     }
 
+    var enrichmentDisabled = ( (group == 'ECM') || (((group == 'Violin Group') || (group == 'Cello Group')) && (level.includes('Beginner') || level.includes('Book 1'))) );
+    var enrichmentEnabled = !enrichmentDisabled;
+    
     $("[name*='enrichment_programs]']").each(function( i ) {
       ths = $(this);
       lid = '#line-item-enhance-' + (i+1);
 
-      if(ths.prop('checked')) {
+      if(enrichmentEnabled && ths.prop('checked')) {
         var name = ths.prop('name');
         var val  = name.substring(name.lastIndexOf("[") + 1, name.length - 1);
         enhAmount = isNaN(priceTable[val]) ? 0 : priceTable[val];
         enhTotal += enhAmount;
 
         $("#enhance-" + (i+1) + "-name").html(ths.next().text().replace(/ \(.*?\)/g,""));
-        $("#enhance-" + (i+1) + "-amount").html(`${enhAmount}.00`);
+        if (enhAmount > 0) {
+          $("#enhance-" + (i+1) + "-amount").html(`${enhAmount}.00`);
+        } else {
+          $("#enhance-" + (i+1) + "-amount").html('tbd');
+        }
         $(lid).show();
       } else {
+        if (ths.prop('checked')) {
+          ths.prop('checked', false);
+        }
         $(lid).hide();
       }
     });

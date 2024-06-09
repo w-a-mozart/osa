@@ -57,6 +57,21 @@ jQuery(document).ready(function($) {
   $(".description").each(function( i ) {
     txt = $(this).html();
     txt = txt.replace("or none of the above", "or <span style=\"font-weight: 900; font-style: italic;\">none of the above</span>");
+    txt = txt.replaceAll("\n",'<br/>').replaceAll('{','<').replaceAll('}','>');
+    $(this).html(txt);
+  });
+
+  // add formatting to required checkbox options
+  $("label.option[for*='-confirmation']").each(function( i ) {
+    txt = $(this).html();
+    txt = txt.replace("*", "<span class=\"form-required\" style=\"font-weight: 900; font-style: italic;\" title=\"This field is required.\">*</span>");
+    $(this).html(txt);
+  });
+
+  // add formatting to label
+  $("label[for*='enrichment-programs']").each(function( i ) {
+    txt = $(this).html();
+    txt = txt.replaceAll("\n",'<br/>').replaceAll('{','<').replaceAll('}','>');
     $(this).html(txt);
   });
 
@@ -66,6 +81,4 @@ jQuery(document).ready(function($) {
   closeCheckBoxOption('ecm-term-2', 'Closed'); // ECM Term 2
   closeCheckBoxOption('enrichment-programs-1', 'Closed'); // Chamber Term 1
   closeCheckBoxOption('enrichment-programs-2', 'Closed'); // Chamber Term 2
-  closeCheckBoxOption('enrichment-programs-4', 'Closed'); // CAD Term 1
-  closeCheckBoxOption('enrichment-programs-5', 'Closed'); // CAD Term 2
 });

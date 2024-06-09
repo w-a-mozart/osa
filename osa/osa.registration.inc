@@ -9,7 +9,7 @@ require_once 'osa.inc';
  * Set the price of group classes
  * @TODO get the from DB
  *
- * updated on Jul 23 for 2022-2023
+ * updated on Jul 3 for 2023-2024
  */
 function osa_get_groupclass_price_table() {
   $priceTable = [
@@ -17,44 +17,45 @@ function osa_get_groupclass_price_table() {
     'Membership' => 95.00,
 
     /* ecm price per term */
-    'ECM_Term_1' => 160,
-    'ECM_Term_2' => 115,
-    'ECM_Term_3' => 115,
-    'ECM_Max' => 370,  /* full year */
+    'ECM_Term_1' => 250,
+    'ECM_Term_2' => 175,
+    'ECM_Term_3' => 175,
+    'ECM_Max' => 580,  /* full year */
 
     /* violin group class price */
-    'Violin_Group_30_min' => 330,
-    'Violin_Group_45_min' => 430,
-    // 'Violin_Group_60_min' => 530,
+    'Violin_Group_30_min' => 355,
+    'Violin_Group_45_min' => 495,
+    'Violin_Group_60_min' => 635,
+    'Violin_Group_SR' => 370, // Preludio and Vivace Violins (every other week)
 
     /* kodaly/theory price for violin group students */
-    'Violin_Group_Kodaly_30_min' => 165,
-    'Violin_Group_Kodaly_45_min' => 245,
-    'Violin_Group_RCM' => 375,
+    'Violin_Group_Kodaly_30_min' => 210,
+    'Violin_Group_Kodaly_45_min' => 310,
+    'Violin_Group_RCM' => 420,
 
     /* cello group class price */
-    'Cello_Group_30_min' => 380,
-    'Cello_Group_45_min' => 505,
-    // 'Cello_Group_60_min' => 555,
+    'Cello_Group_30_min' => 315,
+    'Cello_Group_45_min' => 495,
+    'Cello_Group_60_min' => 700,
 
     /* kodaly/theory price for cello group students */
-    'Cello_Group_Kodaly_30_min' => 165,
-    'Cello_Group_Kodaly_45_min' => 245,
-    'Cello_Group_RCM' => 375,
+    'Cello_Group_Kodaly_30_min' => 210,
+    'Cello_Group_Kodaly_45_min' => 310,
+    'Cello_Group_RCM' => 420,
 
     /* kodaly/theory only prices */
-    'none_Kodaly_30_min' => 165,
-    'none_Kodaly_45_min' => 245,
-    'none_RCM' => 375,
+    'none_Kodaly_30_min' => 210,
+    'none_Kodaly_45_min' => 310,
+    'none_RCM' => 420,
 
     /* enrichment programs */
-    'Chamber_Term_1' => 120,
-    'Chamber_Term_2' => 120,
-    'Chamber_Term_3' => 120,
+    'Chamber_Term_1' => 'tbd',
+    'Chamber_Term_2' => 'tbd',
+    'Chamber_Term_3' => 'tbd',
     // 'History' => 40,
-    'CAD_Term_1' => 35,
-    'CAD_Term_2' => 35,
-    'CAD_Term_3' => 35,
+    // 'CAD_Term_1' => 35,
+    // 'CAD_Term_2' => 35,
+    // 'CAD_Term_3' => 35,
   ];
   return $priceTable;
 }
@@ -65,13 +66,13 @@ function osa_get_groupclass_price_table() {
  */
 function osa_get_groupclass_eventIds() {
   $eventIdTable = [
-    'ECM' => 5176,
-    'Violin_Group' => 5177,
-    'Cello_Group' => 5178,
-    'Kodaly_Theory' => 5179,
-    'Chamber' => 5180,
-    // 'History' => 4544,
-    'CAD' => 5181,
+    'ECM' => 5668,
+    'Violin_Group' => 5665,
+    'Cello_Group' => 5666,
+    'Kodaly_Theory' => 5667,
+    'Chamber' => 5670,
+    // 'History' => 0000,
+    // 'CAD' => 0000,
   ];
   return $eventIdTable;
 }
@@ -360,6 +361,7 @@ function osa_form_alter_registration(&$form, &$form_state) {
     'eventIdTable' => osa_get_groupclass_eventIds(),
     'schoolDates'  => osa_get_school_dates(),
     'defaults'     => osa_get_groupclass_registrations(),
+    'family'       => _osa_get_contact(_osa_getHousehold()),
   ];
   $manager->addVars('osa', $vars);
 
@@ -581,8 +583,8 @@ function osa_webform_submission_update_registration($node, $submission) {
     // - fix next year if it doesn't change (again)
     $kodaly_included = FALSE;
     $kodaly_included_price = 0;
-    if ((($group_class == 'Violin Group') && (strpos($group_level, '30 min') !== FALSE)) ||
-        (($group_class == 'Cello Group') && ((strpos($group_level, 'Beginner') !== FALSE) || (strpos($group_level, 'Book 1') !== FALSE)))) {
+    if ((($group_class == 'Violin Group') || ($group_class == 'Cello Group')) &&
+        ((strpos($group_level, 'Beginner') !== FALSE) || (strpos($group_level, 'Book 1') !== FALSE))) {
 
       if (empty($theory_level) || ($theory_level == 'none')) {
         if (strpos($group_level, 'Beginner') !== FALSE) {
@@ -757,12 +759,14 @@ function _osa_registration_price_key_component($option) {
 
   $tmp_key = [];
 
-  if (strpos($group_level, 'Parent Training') !== FALSE) {
+  if (strpos($option, 'Parent Training') !== FALSE) {
     $tmp_key[] = 'Parent Training';
   } elseif (strpos($option, 'RCM Theory') !== FALSE) {
     $tmp_key[] = 'RCM';
   } elseif (strpos($option, 'Reading') !== FALSE) {
     $tmp_key[] = 'Reading';
+  } elseif (strpos($option, 'Book 5+') !== FALSE) {
+    $tmp_key[] = 'SR';
   } else {
     if (strpos($option, 'Kodaly') !== FALSE) {
       $tmp_key[] = 'Kodaly';
