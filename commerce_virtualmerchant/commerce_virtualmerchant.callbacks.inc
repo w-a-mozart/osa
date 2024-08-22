@@ -21,8 +21,7 @@ function commerce_virtualmerchant_settings_form($settings = NULL) {
 /**
  * Payment method submit_form callback; generate the payment submission form.
  *
- * This method either generates Converge Virtual Merchant Payment Form, or embeds its results
- * into the Drupal Commerce payment form to be validated
+ * This method generates the Converge Virtual Merchant Payment Form
  *
  * @param $payment_method
  *   An array of the current settings.
@@ -37,42 +36,42 @@ function commerce_virtualmerchant_settings_form($settings = NULL) {
  *   A form snippet for the checkout pane.
  */
 function commerce_virtualmerchant_submit_form($payment_method, &$pane_values, &$checkout_pane, &$order) {
-  global $base_url;
 
-  // look for the Virtual Merchant response
-  if (empty($_POST['_vmr'])) {
-    
-    // no response data, so create an iframe that will hold the Converge Virtual Merchant Payment Form
-    $width = variable_get('commerce_virtualmerchant_form_width', '100%');
-    $form['virtualmerchant_iframe'] = [
-      '#markup' => "<script type=\"text/javascript\">
-        function setIframeHeight() {
-          var ifrm = jQuery(\"#edit-commerce-payment-payment-details-virtualmerchant-iframe\");
-          ifrm.height(1);
-          var doc = ifrm.contents();
-          ifrm.height(doc[0].body.scrollHeight);
-        }
-      </script>
-      <iframe id=\"edit-commerce-payment-payment-details-virtualmerchant-iframe\" src=\"{$base_url}/commerce/virtualmerchant/form/{$order->order_id}\" width={$width} height=0 scrolling=\"no\" onload=\"setIframeHeight();\"></iframe>",
-    ];
- 
-    // include the hidden variable that will be used to hold the response from Converge - make sure it's value is null
-    $form['virtualmerchant_response'] = array('#type' => 'hidden', '#value' => '');
+  // add a css and js
+  $path = drupal_get_path('module', 'commerce_virtualmerchant');
+  $form['virtualmerchant'] = [
+    '#attached' => [
+      'css' => [ $path . '/commerce_virtualmerchant.css' ],
+      'js' => [ $path . '/commerce_virtualmerchant.js',
+                'https://cdn.jsdelivr.net/npm/jquery-validation@1.19.5/dist/jquery.validate.js',
+                'https://cdn.jsdelivr.net/npm/jquery-validation@1.19.5/dist/additional-methods.js',
+      ],
+    ],
+  ];
 
-    // add a div to display the Converge logo
-    $form['virtualmerchant_img'] = array(
-      '#markup' => '<div id="virtualmerchant-banner">' . t('Payment processing provided by') . ' <a href="https://www.convergepay.com/" title="Converge" target="_blank"><img id="virtualmerchant-logo" alt="Converge" src="https://www.convergepay.com/converge-webapp/assets/images/logos/Converge_tagline-horizontal.png" /></a></div>',
-    );
-  }
-  else {
-    // embed the response data into this form - javascript will submit this form automatically, if this is value is set
-    $form['virtualmerchant_response'] = array('#type' => 'hidden', '#value' => $_POST['_vmr']);
-    
-    // this can take a while so add a div to display the Processing gif
-    $form['virtualmerchant_img'] = array(
-      '#markup' => '<div id="virtualmerchant-processing" style="max-width: 400px; margin: 0 auto;"><img id="virtualmerchant-wait" style="max-width: 100%;" alt="Please Wait" src="/images/processing.gif" /></div>',
-    );
-  }
+  // have to add this like this, because Converge uses the URL
+  $form['virtualmerchant']['script'] = ['#markup' => '<script src="https://api.convergepay.com/hosted-payments/Checkout.js"></script>' ];
+
+  
+  // create the form using the commerece default card fields
+  module_load_include('inc', 'commerce_payment', 'includes/commerce_payment.credit_card');
+  $fields = [ 'owner' => true ];
+  $fields['type'] = ['mastercard', 'visa'];
+  $form += commerce_payment_credit_card_form($fields);
+  // pretend that the card type is required
+  $form['credit_card']['type']['#title'] .= '<span class="form-required" title="This field is required.">*</span> <div class="cc-ico cc-visa"> </div><div class="cc-ico cc-mc"></div>';
+  // change the label for card owner
+  $form['credit_card']['owner']['#title'] = t('Name on Card');
+  // don't reqiure the card number to be submitted (we don't want it), we will enforce this in javascript
+  $form['credit_card']['number']['#required'] = false;
+  $form['credit_card']['number']['#title'] .= '<span class="form-required" title="This field is required.">*</span>';
+
+  // add hidden fields to be submitted after the payment is submitted to Converge
+  $form['virtualmerchant']['token'] = ['#type' => 'hidden', '#value' => _commerce_virtualmerchant_get_token($order) ];
+  $form['virtualmerchant']['hash']  = ['#type' => 'hidden', '#value' => password_hash(date(DATE_W3C), PASSWORD_DEFAULT)];
+  $form['virtualmerchant']['vms']   = ['#type' => 'hidden', '#value' => $pane_values['payment_details']['virtualmerchant']['vms'] ];
+  $form['virtualmerchant']['vmr']   = ['#type' => 'hidden', '#value' => $pane_values['payment_details']['virtualmerchant']['vmr'] ];
+  $form['virtualmerchant']['#limit_validation_errors'] = false; 
 
   return $form;
 }
@@ -91,34 +90,28 @@ function commerce_virtualmerchant_submit_form($payment_method, &$pane_values, &$
  * @param $form_parents
  *   The identifier of the base element of the payment pane.
  */
-function commerce_virtualmerchant_submit_form_validate($payment_method, &$pane_form, &$pane_values, &$order, $form_parents = array()) {
-  $valid = TRUE;
+function commerce_virtualmerchant_submit_form_validate($payment_method, $pane_form, $pane_values, $order, $form_parents = array()) {
 
-  if (!empty($pane_values['virtualmerchant_response'])) {
-    $response_data = drupal_json_decode(openssl_decrypt($pane_values['virtualmerchant_response'], "aes-128-ctr", variable_get('commerce_virtualmerchant_pin', 'PIN'), 0, 'virtual_merchant'));
-  }
-  else {
-    $response_data = array(
-      'errorCode' => 9999,
-      'errorMessage' => t('An error occurred processing your transaction.  Please try again.'),
-    );
-  }
+  $payment_details = $_POST['commerce_payment']['payment_details'];
+  $_status   = $payment_details['virtualmerchant']['vms'];
+  $_response = $payment_details['virtualmerchant']['vmr'];
+  $valid = false;
 
-  // Fail on system error
-  if (isset($response_data['errorCode']) && ($response_data['errorCode'] !== 0)) {
-    form_set_error('virtualmerchant_iframe', $response_data['errorMessage']);
-    $valid = FALSE;
-  }
-  // Fail on transaction processing error
-  if (isset($response_data['ssl_result']) && (($response_data['ssl_result'] != 0) || ($response_data['ssl_result_message'] != "APPROVAL" && $response_data['ssl_result_message'] != 'SUCCESS'))) {
-    form_set_error('virtualmerchant_iframe', t('An error occurred processing your transaction: !1', array( '!1' => check_plain($response_data['ssl_result_message']))));
-    $valid = FALSE;
-  }
-
-  // update annonymous order's email
-  if (($user->uid == 0) && !empty($response_data['ssl_email'])) {
-    $order->mail = $response_data['ssl_email'];
-    commerce_order_save($order);
+  if ($_status == 'error') {
+    watchdog('commerce_virtualmerchant', 'Response: !1', ['!1' => '<pre>' . check_plain($_response) . '</pre>'], WATCHDOG_ERROR);
+    $response_data = drupal_json_decode($_response);
+    form_set_error('credit_card', 'An unexpected error has occurred<br/>' . $response_data['ssl_result_message']);
+  } elseif ($_status == 'declined') {
+    watchdog('commerce_virtualmerchant', 'Response: !1', ['!1' => '<pre>' . check_plain($_response) . '</pre>'], WATCHDOG_INFO);
+    $response_data = drupal_json_decode($_response);
+    form_set_error('commerce_payment][payment_details][credit_card][number', 'Your card has been DECLINED<br/>' . $response_data['ssl_result_message']);
+  } elseif ($_status == 'approved') {
+    watchdog('commerce_virtualmerchant', 'Response: !1', ['!1' => '<pre>' . check_plain($_response) . '</pre>'], WATCHDOG_INFO);
+    $valid = true;
+  } else {
+    watchdog('commerce_virtualmerchant', 'An unexpected error has occurred.', array(), WATCHDOG_ERROR);
+    drupal_set_message('An unexpected error has occurred. Please contact your system administrator.', 'error');
+    drupal_goto('/');
   }
 
   return $valid;
@@ -142,7 +135,11 @@ function commerce_virtualmerchant_submit_form_validate($payment_method, &$pane_f
 function commerce_virtualmerchant_submit_form_submit($payment_method, $pane_form, $pane_values, $order, $charge) {
 
   // if we get here, the transaction was successful, so create a commerce transaction
-  $response_data = drupal_json_decode(openssl_decrypt($pane_values['virtualmerchant_response'], "aes-128-ctr", variable_get('commerce_virtualmerchant_pin', 'PIN'), 0, 'virtual_merchant'));
+  $payment_details = $_POST['commerce_payment']['payment_details'];
+  $_status   = $payment_details['virtualmerchant']['vms'];
+  $_response = $payment_details['virtualmerchant']['vmr'];
+
+  $response_data = drupal_json_decode($_response);
 
   $currency = commerce_currency_load();
   $message = <<<EOD

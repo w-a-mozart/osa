@@ -4,6 +4,7 @@
  * Provides an Converge Virtual Merchant Payment Method for Drupal Commerce.
  */
 require_once 'commerce_virtualmerchant.inc';
+require_once 'commerce_virtualmerchant.callbacks.inc';
 
 /**
  * Implements hook_commerce_payment_method_info() to define the
@@ -39,31 +40,13 @@ function commerce_virtualmerchant_menu() {
     'file' => 'commerce_virtualmerchant.admin.inc',
   );
 
-  // page used to proxy to the Converge Virtual Merchant Payment Form
-  $items['commerce/virtualmerchant/form'] = array(
-    'title' => 'Converge Virtual Merchant Payment Form',
-    'page callback' => 'commerce_virtualmerchant_payment_form',
-    'file' => 'commerce_virtualmerchant.inc',
-    'access arguments' => array('access content'),
-  );
-
-  // page used to receive the response from the Converge Virtual Merchant Payment Form
-  $items['commerce/virtualmerchant/response'] = array(
-    'title' => 'Converge Virtual Merchant Response Redirect Handler',
-    'page callback' => 'commerce_virtualmerchant_payment_response',
-    'file' => 'commerce_virtualmerchant.inc',
-    'access arguments' => array('access content'),
-  );
-
   return $items;
 }
 
 /**
- * Implements hook_form_FORM_ID_alter().
- *
- * Attach needed javascript to the commerce payment form.
- *
+ *  Implements hook_form_FORM_ID_alter, to modify the check out form
  */
-function commerce_virtualmerchant_form_commerce_checkout_form_alter(&$form, &$form_state, $form_id) {
-  $form['#attached']['js'][] = drupal_get_path('module', 'commerce_virtualmerchant') . '/commerce_virtualmerchant.js';
+function commerce_virtualmerchant_form_commerce_checkout_form_checkout_alter(&$form, &$form_state, $form_id) {
+  // re label the submit button
+  $form['buttons']['continue']['#value'] = t('Pay Now');
 }

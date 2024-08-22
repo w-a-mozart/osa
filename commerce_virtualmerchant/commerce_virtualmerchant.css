@@ -1,0 +1,28 @@
+#payment-details {
+  margin-left: 2em;
+}
+
+
+#payment-details label,
+#payment-details input,
+#payment-details select {
+  font-size: 110%;
+}
+
+.cc-ico {
+  width: 4em;
+  height: 1em;
+  display: inline-block;
+  background-repeat: no-repeat;
+  background-size: contain;
+}
+
+.cc-visa {
+  background-image: url(/images/Visa_Brandmark_Blue_RGB_2021.png);
+  background-position: right;
+}
+
+.cc-mc {
+  background-image: url(/images/ma_symbol_opt_45_3x.png);
+  background-position: left;
+}
