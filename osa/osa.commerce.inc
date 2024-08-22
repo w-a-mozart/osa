@@ -49,12 +49,9 @@ function osa_form_alter_commerce_checkout_form_checkout(&$form, &$form_state) {
     $form['account']['login']['mail']['#description'] = t('Enter a valid e-mail address to receive your receipt.');
     $form['account']['#title'] = t('User information');
   }
-  
-  // re label the submit button
-  $form['buttons']['continue']['#value'] = t('Pay Now');
-  
-  // override validation
-  $form['buttons']['continue']['#validate'] = array('osa_commerce_checkout_form_validate');
+
+  // add additional validation
+  $form['buttons']['continue']['#validate'][] = 'osa_commerce_checkout_form_validate';
 }
 
 /*
@@ -68,7 +65,6 @@ function osa_commerce_checkout_form_validate($form, &$form_state) {
     }
   }
 
-  commerce_checkout_form_validate($form, $form_state);
 }
 
 /**
@@ -119,16 +115,7 @@ function osa_commerce_currency_info_alter(&$currencies, $langcode) {
  * Implements hook_commerce_virtualmerchant_transaction_alter() to add custom variables to the transaction
  */
 function osa_commerce_virtualmerchant_transaction_alter(&$post_values, $order) {
-  $post_values['osa_qb_name'] = htmlspecialchars(_osa_qb_name(_osa_get_contact_id($order->uid)));
-}
-
-/**
- * Implements hook_commerce_elavon_transaction_alter() to add custom variables to the transaction
- */
-function osa_commerce_elavon_transaction_alter( &$txn_array, $values, $order ) {
-  $txn_array['osa_card_type'] = $values['type'];
-  $txn_array['osa_name_card'] = htmlspecialchars($values['owner']);
-  $txn_array['osa_qb_name'] = htmlspecialchars(_osa_qb_name(_osa_get_contact_id($order->uid)));
+  $post_values['osa_qb_name'] = _osa_qb_name(_osa_get_contact_id($order->uid));
 }
 
 /**
