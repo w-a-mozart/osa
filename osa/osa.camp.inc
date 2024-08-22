@@ -608,3 +608,59 @@ function osa_views_query_alter_extra_summer_camp_payments(&$view, &$query) {
   $new_join->construct('civicrm_participant', 'civicrm_contribution', 'contact_id', 'contact_id');
   $query->table_queue['users_civicrm_uf_match__civicrm_participant']['join'] = $new_join;
 }
+
+
+/**
+ * TODO: make this more generic
+ * Process the camp food order form after it is submitted
+ * Add the line item to the shopping cart
+ */
+function osa_webform_submission_insert_261($node, $submission) {
+  global $user;
+  
+  $submitted = $submission->data;
+  $components = $node->webform['components'];
+  $submitted_values = [];
+  $submitted_components = [];
+  
+  foreach ($submission->data as $id => $submitted_value) {
+    $submitted_values[$components[$id]['form_key']] = (is_array($submitted_value) && count($submitted_value) == 1) ? $submitted_value[0] : $submitted_value;
+    $submitted_components[$components[$id]['form_key']] = $components[$id];
+  }
+
+  $sku = '';
+  $label = '';
+
+  if ($submitted_values['order_type'] == 'Subway') {
+    $sku = $submitted_values['size'] . ' Subway Combo';
+    $label .= '<b>' . $sku . '</b><br/>';
+    $label .= '<b>' . $submitted_components['subway_type']['name'] . ':</b> ' . $submitted_values['subway_type'] . '<br/>';
+    $label .= '<b>' . $submitted_components['toppings']['name'] . ':</b> ';
+    if (!empty($submitted_values['toppings'])) {
+      $submitted_values['toppings'] = is_array($submitted_values['toppings']) ? $submitted_values['toppings'] : [ $submitted_values['toppings'] ];
+      $label .= implode(', ', $submitted_values['toppings']);
+    } else {
+      $label .= 'None';
+    }
+  } elseif ($submitted_values['order_type'] == 'Pizza') {
+    $sku = ($submitted_values['gluten_free'] == 'Gluten free') ? 'Gluten free ' : '';
+    $sku .= $submitted_values['pizza_sku'];
+    $label .= '<b>' . $sku . '</b><br/>';
+    $label .= '<b>' . $submitted_components['pizza_type']['name'] . ':</b> ' . $submitted_values['pizza_type'];
+  } else {
+    $sku = 'Drink';
+    $label .= '<b>' . $submitted_components['drink_type']['name'] . ':</b> ' . $submitted_values['drink_type'];
+  }
+
+  $label .= '<br/><b>Name:</b> ' . $submitted_values['name'];
+  $label .= '<br/><b>Delivery Date:</b> ' . $submitted_values['delivery_date'];
+
+  $quantity = $submitted_values['quantity'];
+  $product = commerce_product_load_by_sku($sku);
+  $line_item = commerce_product_line_item_new($product, $quantity, 0, get_object_vars($submission));
+  $line_item_wrapper = entity_metadata_wrapper('commerce_line_item', $line_item);
+  $line_item_wrapper->line_item_label = $label;
+  commerce_cart_product_add($user->uid, $line_item, FALSE);
+
+  setcookie('last_261_delivery_date', $submitted_values['delivery_date']);
+}
