@@ -538,6 +538,42 @@ function osa_isVotingMember($uid = NULL) {
 }
 
 /**
+ *  Is the user a member of an OSA family
+ */
+function osa_isOSAfamily($uid = NULL) {
+  civicrm_initialize();
+
+  $cid = _osa_get_contact_id($uid);
+  $family = _osa_getHouseholdMembers($cid, 'display_name');
+  
+  if (($cid == 0) || empty($family)) {
+    return FALSE;
+  }
+  
+  $cids = array_keys($family);
+  $groupclass_eventIds = array_keys(array_flip(osa_get_groupclass_eventIds()));
+
+  foreach ($cids as $contact_id) {
+    $membership = _osa_get_membership($contact_id);
+    $is_member = isset($membership) ? $membership['is_current_member'] : FALSE;
+    if ($is_member) {
+      return TRUE;
+    }
+    
+    $result = civicrm_api3('Participant', 'get', [
+      'contact_id' => $contact_id,
+      'event_id' => ['IN' => $groupclass_eventIds],
+      'status_id' => ['IN' => ["Registered", "Pending from pay later"]],
+    ]);
+    if ($result['count'] > 0) {
+      return TRUE;
+    }
+  }
+
+  return FALSE;
+}
+
+/**
  *  Get the teachers related to a student
  *  @deprecated
  */

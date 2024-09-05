@@ -19,6 +19,8 @@ jQuery(document).ready(function($) {
 
     if (selectedOption.includes('RCM Theory')) {
       optionKey = 'RCM';
+    } else if (selectedOption.includes('Music Reading')) {
+      optionKey = 'Reading';
     } else if (selectedOption.includes('Book 5+')) {
       optionKey = 'SR'; 
     } else {
@@ -54,6 +56,41 @@ jQuery(document).ready(function($) {
     if (!preferredDayKodaly) { preferredDayKodaly = ''; }
 
     /* determine pricing based on selected group and theory options */
+
+    // HACK for 2024-2025 - force Book 1 students to take Group
+    var primary_instument = $("[name*='_custom_1]']").val();
+    var primary_level = $("[name*='_custom_20]']").val();
+
+    if (((primary_instument == 'Violin') || (primary_instument == 'Cello')) &&
+        ((primary_level == 'Beginner') || (primary_level == 'Twinkles') || (primary_level == 'Suzuki Book 1'))) {
+      if (group == 'none') {
+        group = (primary_instument == 'Violin') ? 'Violin Group' : 'Cello Group';
+        grpPriceKeys = [ group ];
+        if (group == 'Violin Group') {
+          if (primary_level == 'Suzuki Book 1') {
+            level = 'Early Book 1 (30 min.)';
+          } else {
+            level = 'Beginner (30 min.)';
+          }
+          $("[name$='_violin_group]']").val(level);
+        }
+        if (group == 'Cello Group') {
+          if (primary_level == 'Suzuki Book 1') {
+            level = 'Early Book 1 (45 min.)';
+          } else {
+            level = 'Beginner (30 min.)';
+          }
+          $("[name$='_cello_group]']").val(level);
+        }
+        $("[name$='_group_class]']").val(group).change();
+      }
+      $("[class$='group-class'] .description").html('<b>Book 1 students and below, are required to take group</b>');
+      $("[id$='group-class'] option[value='none']").hide();
+    } else {
+      $("[class$='group-class'] .description").html('Select the type of Group Class or <span style="font-weight: 900; font-style: italic;">none of the above</span>');
+      $("[id$='group-class'] option[value='none']").show();
+    }
+    // end of HACK - force Book 1 students to take Group
 
     /* special code for ECM */
     if (group == 'ECM') {
@@ -94,8 +131,7 @@ jQuery(document).ready(function($) {
       theoryName += $(theorySel).val();
       if (theoryName == 'null') theoryName = '';
 
-      /* HACKs */
-      /* 2022-23: Beginner and Book 1, Violin and  Cello, should include price for "mandatory" 30 min Kodaly */
+      // HACK 2022-23: Beginner and Book 1, Violin and  Cello, should include price for "mandatory" 30 min Kodaly
       var hack_price_idx = grpPriceKeys.join('_').replace(/\s|-/g, '_');
       var kodaly_included = false;
       if (hack_price_idx.endsWith('30_min') || level.includes('Book 1')) {
@@ -108,8 +144,11 @@ jQuery(document).ready(function($) {
           }
           $(theorySel).val(theoryName);
         }
+
+        $("[class$='kodaly-theory-option'] .description").html('<b>Beginner and Book 1 Group, include 30min Kodaly Class</b>');
         $("[id$='kodaly-theory-option'] option[value='none']").hide();
       } else {
+        $("[class$='kodaly-theory-option'] .description").html('Select a Kodaly / Theory level or <span style="font-weight: 900; font-style: italic;">none of the above</span>. Students will be grouped into classes based on their level and the number of participants.');
         $("[id$='kodaly-theory-option'] option[value='none']").show();
       }
       /* end HACK part 1 */
@@ -125,7 +164,8 @@ jQuery(document).ready(function($) {
       /* HACK part 2 */
       if (kodaly_included && thry_price_idx.endsWith('30_min')) {
         groupName += ' - includes ' + theoryName;
-        groupAmount += theoryAmount - 20;
+        /* don't discount $20 in 2024/2025 */
+        groupAmount += theoryAmount;
         theoryAmount = 1;
       }
       /* end HACK part 2 */
@@ -214,6 +254,6 @@ jQuery(document).ready(function($) {
     last_line.after(new_line);
     last_line = new_line;
   });
-  
+
   generatePrice();
 });

@@ -68,6 +68,16 @@ jQuery(document).ready(function($) {
     $(this).html(txt);
   });
 
+  // change formatting on confirmation check box
+  $("[name*='_confirmation]']").change(function() {
+    cb_id = $(this).attr('id');
+    if ($(this).prop('checked')) {
+      $("label.option[for*='"+ cb_id + "']").css({'color': 'grey', 'font-weight': 'normal'});
+    } else {
+      $("label.option[for*='"+ cb_id + "']").css({'color': '', 'font-weight': ''});     
+    }
+  });
+
   // add formatting to label
   $("label[for*='enrichment-programs']").each(function( i ) {
     txt = $(this).html();
@@ -75,10 +85,11 @@ jQuery(document).ready(function($) {
     $(this).html(txt);
   });
 
+
   // close any full options
   // closeOption('kodaly-theory-option-thursday', 'RCM Theory Levels 3 / 4 / 5 (45 min.)', 'Full');
-  closeCheckBoxOption('ecm-term-1', 'Closed'); // ECM Term 1
-  closeCheckBoxOption('ecm-term-2', 'Closed'); // ECM Term 2
-  closeCheckBoxOption('enrichment-programs-1', 'Closed'); // Chamber Term 1
-  closeCheckBoxOption('enrichment-programs-2', 'Closed'); // Chamber Term 2
+  // closeCheckBoxOption('ecm-term-1', 'Closed'); // ECM Term 1
+  // closeCheckBoxOption('ecm-term-2', 'Closed'); // ECM Term 2
+  // closeCheckBoxOption('enrichment-programs-1', 'Closed'); // Chamber Term 1
+  // closeCheckBoxOption('enrichment-programs-2', 'Closed'); // Chamber Term 2
 });

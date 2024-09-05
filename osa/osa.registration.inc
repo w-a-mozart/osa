@@ -14,39 +14,42 @@ require_once 'osa.inc';
 function osa_get_groupclass_price_table() {
   $priceTable = [
     /* Membership price */
-    'Membership' => 95.00,
+    'Membership' => 120.00,
 
     /* ecm price per term */
     'ECM_Term_1' => 250,
-    'ECM_Term_2' => 175,
-    'ECM_Term_3' => 175,
-    'ECM_Max' => 580,  /* full year */
+    'ECM_Term_2' => 200,
+    'ECM_Term_3' => 200,
+    'ECM_Max' => 630,  /* full year */
 
     /* violin group class price */
-    'Violin_Group_30_min' => 355,
-    'Violin_Group_45_min' => 495,
-    'Violin_Group_60_min' => 635,
+    'Violin_Group_30_min' => 410,
+    'Violin_Group_45_min' => 565,
+    'Violin_Group_60_min' => 715,
     'Violin_Group_SR' => 370, // Preludio and Vivace Violins (every other week)
 
     /* kodaly/theory price for violin group students */
-    'Violin_Group_Kodaly_30_min' => 210,
-    'Violin_Group_Kodaly_45_min' => 310,
-    'Violin_Group_RCM' => 420,
+    'Violin_Group_Kodaly_30_min' => 235,
+    'Violin_Group_Kodaly_45_min' => 345,
+    'Violin_Group_Reading' => 380,
+    'Violin_Group_RCM' => 465,
 
     /* cello group class price */
-    'Cello_Group_30_min' => 315,
-    'Cello_Group_45_min' => 495,
-    'Cello_Group_60_min' => 700,
+    'Cello_Group_30_min' => 410,
+    'Cello_Group_45_min' => 565,
+    'Cello_Group_60_min' => 380,
 
     /* kodaly/theory price for cello group students */
-    'Cello_Group_Kodaly_30_min' => 210,
-    'Cello_Group_Kodaly_45_min' => 310,
-    'Cello_Group_RCM' => 420,
+    'Cello_Group_Kodaly_30_min' => 235,
+    'Cello_Group_Kodaly_45_min' => 345,
+    'Cello_Group_Reading' => 380,
+    'Cello_Group_RCM' => 465,
 
     /* kodaly/theory only prices */
-    'none_Kodaly_30_min' => 210,
-    'none_Kodaly_45_min' => 310,
-    'none_RCM' => 420,
+    'none_Kodaly_30_min' => 235,
+    'none_Kodaly_45_min' => 345,
+    'none_Reading' => 380,
+    'none_RCM' => 465,
 
     /* enrichment programs */
     'Chamber_Term_1' => 'tbd',
@@ -66,11 +69,11 @@ function osa_get_groupclass_price_table() {
  */
 function osa_get_groupclass_eventIds() {
   $eventIdTable = [
-    'ECM' => 5668,
-    'Violin_Group' => 5665,
-    'Cello_Group' => 5666,
-    'Kodaly_Theory' => 5667,
-    'Chamber' => 5670,
+    'ECM' => 6698,
+    'Violin_Group' => 6596,
+    'Cello_Group' => 6631,
+    'Kodaly_Theory' => 6668,
+    'Chamber' => 6865,
     // 'History' => 0000,
     // 'CAD' => 0000,
   ];
@@ -593,9 +596,10 @@ function osa_webform_submission_update_registration($node, $submission) {
           $theory_level = 'Kodaly Level 1 (30 min.)';
         }
       }
-      if (strpos($theory_level, '30 min') !== FALSE) {
+      if ((strpos($theory_level, 'Kodaly') !== FALSE) && (strpos($theory_level, '30 min') !== FALSE)) {
         $kodaly_included = TRUE;
-        $kodaly_included_price = $priceTable['none_Kodaly_30_min'] - 20;
+        // don't discount $20 in 2024/2025
+        $kodaly_included_price = $priceTable['none_Kodaly_30_min'];
         $eventPrice += $kodaly_included_price;
         $price_level[] = 'includes Kodaly';
       }

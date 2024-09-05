@@ -443,6 +443,14 @@ function osa_civicrm_pageRun_CRM_Event_Page_EventInfo(&$page) {
       $page->assign('allowRegistration', FALSE);
     }
   }
+
+  if (function_exists("osa_civicrm_pageRun_CRM_Event_Page_EventInfo_{$page->_id}")) {
+    call_user_func_array("osa_civicrm_pageRun_CRM_Event_Page_EventInfo_{$page->_id}", array(&$page));
+  }
+}
+
+function osa_civicrm_pageRun_CRM_Event_Page_EventInfo_6868(&$page) {
+  drupal_goto('/civicrm/event/register?id=6868&reset=1');
 }
 
 /**
@@ -541,6 +549,18 @@ function osa_civicrm_buildForm_CRM_Event_Form_Registration_Register(&$form) {
       unset($form->_paymentFields[$name]);
     }
   }
+
+  if (function_exists("osa_civicrm_buildForm_CRM_Event_Form_Registration_Register_{$form->_eventId}")) {
+    call_user_func_array("osa_civicrm_buildForm_CRM_Event_Form_Registration_Register_{$form->_eventId}", array(&$form));
+  }
+}
+
+function osa_civicrm_buildForm_CRM_Event_Form_Registration_Register_6868(&$form) {
+  $manager = CRM_Core_Resources::singleton();
+  $vars = [
+    'is_member_family' => osa_isOSAfamily(),
+  ];
+  $manager->addVars('osa', $vars);
 }
 
 /**

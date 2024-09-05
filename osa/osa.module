@@ -623,6 +623,10 @@ function osa_js_alter(&$javascript) {
             $event['color'] = 'deeppink';
           elseif (strpos($event['title'], 'Chamber') !== FALSE )
             $event['color'] = 'chocolate';
+          elseif (strpos($event['title'], 'Music History') !== FALSE )
+            $event['color'] = 'coral';
+          elseif (strpos($event['title'], 'Harmony') !== FALSE )
+            $event['color'] = 'deeppink';
         }
         // concert
         elseif ($event['className'] == 'civi-event-type-5') {
