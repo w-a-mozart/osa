@@ -88,6 +88,21 @@
           }
         };
 
+        // override the amount with any donations - TODO must be a better way
+        if ($('#edit-checkout-donate').length) {
+          var donate_amt = 0;
+          var donate_sel = $('#edit-checkout-donate-commerce-donate-amount-und-select').val();
+          if (donate_sel) {
+            if (donate_sel == 'select_or_other') {
+              donate_sel = $('#edit-checkout-donate-commerce-donate-amount-und-other').val();
+            }
+            donate_amt = isNaN(donate_sel) ? 0 : Number(donate_sel);
+          }
+          if ((donate_amt > 0) && (donate_amt < 10000)) {
+            paymentData.ssl_amount = Number($('[name="commerce_payment[payment_details][virtualmerchant][balance]"]').val()) + donate_amt;
+          }
+        }
+        
         ConvergeEmbeddedPayment.pay(paymentData, callbacks);
 
         return false;

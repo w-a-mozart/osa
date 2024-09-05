@@ -68,7 +68,7 @@ function commerce_virtualmerchant_submit_form($payment_method, &$pane_values, &$
 
   // add hidden fields to be submitted after the payment is submitted to Converge
   $form['virtualmerchant']['token'] = ['#type' => 'hidden', '#value' => _commerce_virtualmerchant_get_token($order) ];
-  $form['virtualmerchant']['hash']  = ['#type' => 'hidden', '#value' => password_hash(date(DATE_W3C), PASSWORD_DEFAULT)];
+  $form['virtualmerchant']['balance']   = ['#type' => 'hidden', '#value' => _commerce_virtualmerchant_get_order_balance($order) ];
   $form['virtualmerchant']['vms']   = ['#type' => 'hidden', '#value' => $pane_values['payment_details']['virtualmerchant']['vms'] ];
   $form['virtualmerchant']['vmr']   = ['#type' => 'hidden', '#value' => $pane_values['payment_details']['virtualmerchant']['vmr'] ];
   $form['virtualmerchant']['#limit_validation_errors'] = false; 

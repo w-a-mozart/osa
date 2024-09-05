@@ -16,15 +16,6 @@ define('COMMERCE_VIRTUALMERCHANT_TIMEOUT', '5');
  */
 function _commerce_virtualmerchant_get_token($order) {
 
-  // get the amount to pay
-  $order_balance = commerce_payment_order_balance($order);
-  if ($order_balance['currency_code'] != commerce_default_currency()) {
-    $order_balance['amount'] = commerce_currency_convert($order_balance['amount'], $order_balance['currency_code'], commerce_default_currency());
-    $order_balance['currency_code'] = commerce_default_currency();
-  }
-  $currency = commerce_currency_load();
-  $amount = number_format(commerce_currency_amount_to_decimal($order_balance['amount'], $order_balance['currency_code']), $currency['decimals'], $currency['decimal_separator'], '');
-
   $pre_alter_post_values = [
     'ssl_test_mode'           => variable_get('commerce_virtualmerchant_server', 0) == 0 ? 'true' : 'false',
     'ssl_invoice_number'      => $order->order_id,
@@ -38,7 +29,7 @@ function _commerce_virtualmerchant_get_token($order) {
     'ssl_user_id'             => variable_get('commerce_virtualmerchant_user_id', ''),
     'ssl_pin'                 => variable_get('commerce_virtualmerchant_pin', ''),
     'ssl_transaction_type'    => 'ccsale',
-    'ssl_amount'              => $amount,
+    'ssl_amount'              => _commerce_virtualmerchant_get_order_balance($order),
   ];
   $post_values = array_merge($pre_alter_post_values, $post_values);
 
@@ -58,6 +49,19 @@ function _commerce_virtualmerchant_get_token($order) {
 
   $token = $http_response->data;
   return $token;
+}
+
+function _commerce_virtualmerchant_get_order_balance($order) {
+  // get the amount to pay
+  $order_balance = commerce_payment_order_balance($order);
+  if ($order_balance['currency_code'] != commerce_default_currency()) {
+    $order_balance['amount'] = commerce_currency_convert($order_balance['amount'], $order_balance['currency_code'], commerce_default_currency());
+    $order_balance['currency_code'] = commerce_default_currency();
+  }
+  $currency = commerce_currency_load();
+  $amount = number_format(commerce_currency_amount_to_decimal($order_balance['amount'], $order_balance['currency_code']), $currency['decimals'], $currency['decimal_separator'], '');
+
+  return $amount;
 }
 
 function _commerce_virtualmerchant_fatal_error($error_msg) {
