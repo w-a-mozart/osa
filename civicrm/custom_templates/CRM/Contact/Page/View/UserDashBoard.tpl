@@ -186,8 +186,8 @@
 </ul>
 
 <div class="osa-fp-action osa-fp-block osa-fp-center">
-  <button class="osa-fp-button" title="Register for Membership and Group Classes" onclick="window.location='/osa/form/2022-2023-registration';">
-    <div class="icon register-icon"></div> Register for 2022-23&nbsp;&nbsp;
+  <button class="osa-fp-button" title="Register for Membership and Group Classes" onclick="window.location='/osa/form/2024-2025-registration';">
+    <div class="icon register-icon"></div> Register for 2024-25&nbsp;&nbsp;
   </button>
   <button class="osa-fp-button" title="Sign up for an Event" onclick="window.location='/osa/events';">
     <div class="icon event-icon"></div> Special Events&nbsp;&nbsp;
