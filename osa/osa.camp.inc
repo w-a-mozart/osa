@@ -36,8 +36,8 @@ function osa_calc_camp_price($name, $value, $other_values) {
     ),
     */
     'Junior Program' => array(
-      'One Week' => 300.00,
-      'Both Weeks' => 550.00,
+      'One Week' => 310.00,
+      'Both Weeks' => 570.00,
     ),
     /* not Full Day Junior in 2024
     'Full Junior Program' => array(
@@ -58,16 +58,16 @@ function osa_calc_camp_price($name, $value, $other_values) {
     ),
     */
     'Senior Program' => array(
-      'One Week' => 455.00,
-      'Both Weeks' => 860.00,
+      'One Week' => 465.00,
+      'Both Weeks' => 880.00,
     ),
     'Leader In Training' => array(
-      'One Week' => 280.00,
-      'Both Weeks' => 510.00,
+      'One Week' => 290.00,
+      'Both Weeks' => 530.00,
     ),
     'Student Leader' => array(
-      'One Week' => 270.00,
-      'Both Weeks' => 490.00,
+      'One Week' => 280.00,
+      'Both Weeks' => 510.00,
     ),
     /*
     'Student Leader Guitar and Piano' => array(
@@ -100,7 +100,7 @@ function osa_calc_camp_price($name, $value, $other_values) {
     */
     'chamber_group' => array(
       'Junior Chamber Group' => 60.00,
-      'Senior Chamber Group' => 100.00,
+      'Senior Chamber Group' => 120.00,
     ),
     /*
     'add_a_masterclass_litsl' => array(
@@ -662,5 +662,6 @@ function osa_webform_submission_insert_261($node, $submission) {
   $line_item_wrapper->line_item_label = $label;
   commerce_cart_product_add($user->uid, $line_item, FALSE);
 
+  setcookie('last_261_name', $submitted_values['name']);
   setcookie('last_261_delivery_date', $submitted_values['delivery_date']);
 }

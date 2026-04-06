@@ -17,44 +17,44 @@ function osa_get_groupclass_price_table() {
     'Membership' => 120.00,
 
     /* ecm price per term */
-    'ECM_Term_1' => 250,
-    'ECM_Term_2' => 200,
-    'ECM_Term_3' => 200,
-    'ECM_Max' => 630,  /* full year */
+    'ECM_Term_1' => 175,
+    'ECM_Term_2' => 175,
+    'ECM_Term_3' => 175,
+    'ECM_Max' => 500,  /* full year */
 
     /* violin group class price */
-    'Violin_Group_30_min' => 410,
-    'Violin_Group_45_min' => 565,
-    'Violin_Group_60_min' => 715,
-    'Violin_Group_SR' => 370, // Preludio and Vivace Violins (every other week)
+    'Violin_Group_30_min' => 420,
+    'Violin_Group_45_min' => 575,
+    'Violin_Group_60_min' => 725,
+    // 'Violin_Group_SR' => 370, // Preludio and Vivace Violins (every other week)
 
     /* kodaly/theory price for violin group students */
-    'Violin_Group_Kodaly_30_min' => 235,
-    'Violin_Group_Kodaly_45_min' => 345,
-    'Violin_Group_Reading' => 380,
-    'Violin_Group_RCM' => 465,
+    'Violin_Group_Kodaly_30_min' => 245,
+    'Violin_Group_Kodaly_45_min' => 355,
+    // 'Violin_Group_Reading' => 380,
+    'Violin_Group_RCM' => 475,
 
     /* cello group class price */
-    'Cello_Group_30_min' => 410,
-    'Cello_Group_45_min' => 565,
-    'Cello_Group_60_min' => 380,
+    'Cello_Group_30_min' => 420,
+    'Cello_Group_45_min' => 575,
+    'Cello_Group_60_min' => 390,
 
     /* kodaly/theory price for cello group students */
-    'Cello_Group_Kodaly_30_min' => 235,
-    'Cello_Group_Kodaly_45_min' => 345,
-    'Cello_Group_Reading' => 380,
-    'Cello_Group_RCM' => 465,
+    'Cello_Group_Kodaly_30_min' => 245,
+    'Cello_Group_Kodaly_45_min' => 355,
+    // 'Cello_Group_Reading' => 380,
+    'Cello_Group_RCM' => 475,
 
     /* kodaly/theory only prices */
-    'none_Kodaly_30_min' => 235,
-    'none_Kodaly_45_min' => 345,
-    'none_Reading' => 380,
-    'none_RCM' => 465,
+    'none_Kodaly_30_min' => 245,
+    'none_Kodaly_45_min' => 355,
+    // 'none_Reading' => 380,
+    'none_RCM' => 475,
 
     /* enrichment programs */
-    'Chamber_Term_1' => 'tbd',
-    'Chamber_Term_2' => 'tbd',
-    'Chamber_Term_3' => 'tbd',
+    'Chamber_Term_1' => '200',
+    'Chamber_Term_2' => '200',
+    'Chamber_Term_3' => '200',
     // 'History' => 40,
     // 'CAD_Term_1' => 35,
     // 'CAD_Term_2' => 35,
@@ -69,11 +69,11 @@ function osa_get_groupclass_price_table() {
  */
 function osa_get_groupclass_eventIds() {
   $eventIdTable = [
-    'ECM' => 6698,
-    'Violin_Group' => 6596,
-    'Cello_Group' => 6631,
-    'Kodaly_Theory' => 6668,
-    'Chamber' => 6865,
+    'ECM' => 7483,
+    'Violin_Group' => 7484,
+    'Cello_Group' => 7485,
+    'Kodaly_Theory' => 7487,
+    'Chamber' => 7488,
     // 'History' => 0000,
     // 'CAD' => 0000,
   ];

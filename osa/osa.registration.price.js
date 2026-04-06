@@ -5,6 +5,7 @@
 jQuery(document).ready(function($) {
   var membership = {end_date: ''};
   var _contact_id = $("[name*='_contact_existing]']").val();
+  var cello_group_var = '';
 
   CRM.api3('membership', 'get', {contact_id: _contact_id})
     .done(function(result) {
@@ -76,7 +77,7 @@ jQuery(document).ready(function($) {
         }
         if (group == 'Cello Group') {
           if (primary_level == 'Suzuki Book 1') {
-            level = 'Early Book 1 (45 min.)';
+            level = 'Early Book 1 (30 min.)';
           } else {
             level = 'Beginner (30 min.)';
           }
@@ -91,6 +92,7 @@ jQuery(document).ready(function($) {
       $("[id$='group-class'] option[value='none']").show();
     }
     // end of HACK - force Book 1 students to take Group
+
 
     /* special code for ECM */
     if (group == 'ECM') {
